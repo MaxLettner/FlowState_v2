@@ -21,9 +21,9 @@ public class LevelGeneration {
     private static final double DECOR_SIZE = 48;
 
     //terrain parameters
-    private static final double BASE_Y = 950;  //the base level the terrain hovers around
-    private static final double MIN_Y = 800;  //highest the terrain can rise
-    private static final double MAX_Y = 1000; //lowest the terrain can sink before its a wall
+    private static final double BASE_Y = 885;  //the base level the terrain hovers around
+    private static final double MIN_Y = 735;  //highest the terrain can rise
+    private static final double MAX_Y = 935; //lowest the terrain can sink before its a wall
 
     //no structures before this x, so the player always spawns on plain ground
     private static final double SAFE_START = 800;
