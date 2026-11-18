@@ -31,6 +31,10 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   `MenuButton_<ID>` (normal / hover), `MenuControls` tablet, `MenuText_<ID>` confirm prompts. Text uses the shared
   5x7 font in `pixfont.py`. Screen positions in GameMenu = `layout()` x4; `python tools/art/menu.py out.png
   [main|controls|confirm]` renders a mock.
+- `cursor.py` (2026-11-18): golden arrow cursor `Cursor.png`, 2 frames 21x21 (normal with an engraved groove /
+  hover with a molten groove and ember halo), hotspot (1, 1). `Menu/GoldCursor.java` upscales it (x2 at 1080p)
+  because JavaFX would blur a PNG cursor down to 24 px; it replaces FXGL's cursor on every scene root, and the
+  hover frame replaces Cursor.HAND on menu buttons and skill nodes. `python tools/art/cursor.py out.png` previews.
 
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).

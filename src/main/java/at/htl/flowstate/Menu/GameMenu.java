@@ -5,7 +5,6 @@ import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.dsl.FXGL;
 import javafx.scene.CacheHint;
-import javafx.scene.Cursor;
 import javafx.scene.Group;
 import javafx.scene.effect.BlendMode;
 import javafx.scene.effect.BlurType;
@@ -360,7 +359,7 @@ public class GameMenu extends FXGLMenu {
             getChildren().add(img);
             setLayoutX(x);
             setLayoutY(y);
-            setCursor(Cursor.HAND);
+            setCursor(GoldCursor.hover());
             setOnMouseEntered(e -> {
                 keyboard = false;
                 setFocus(this);

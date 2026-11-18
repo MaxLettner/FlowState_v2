@@ -1,6 +1,7 @@
 package at.htl.flowstate.Menu.SkillTree;
 
 import at.htl.flowstate.Assets;
+import at.htl.flowstate.Menu.GoldCursor;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.NodeKind;
 import at.htl.flowstate.Skills.SkillType;
@@ -67,7 +68,7 @@ final class SkillNode extends Group {
         icon.setY(-icon.getImage().getHeight() / 2);
 
         hit = new Circle(radius - 4, Color.TRANSPARENT);
-        hit.setCursor(javafx.scene.Cursor.HAND);
+        hit.setCursor(GoldCursor.hover());
 
         Circle badgeBg = new Circle(12, Color.web("#121116"));
         badgeBg.setStroke(Color.web("#f5cd52"));

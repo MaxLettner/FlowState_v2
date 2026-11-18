@@ -12,6 +12,7 @@ import at.htl.flowstate.Factories.EnemyFactory;
 import at.htl.flowstate.Factories.LevelFactory;
 import at.htl.flowstate.Generation.LevelGeneration;
 import at.htl.flowstate.Menu.GameMenu;
+import at.htl.flowstate.Menu.GoldCursor;
 import at.htl.flowstate.Menu.Hud;
 import at.htl.flowstate.Menu.SkillTree.SkillTreeView;
 import at.htl.flowstate.Skills.SkillManager;
@@ -105,6 +106,12 @@ public class Game extends GameApplication {
                 return new GameMenu(MenuType.GAME_MENU);
             }
         });
+    }
+
+    @Override
+    protected void onPreInit() {
+        // the golden arrow replaces FXGL's default cursor on every scene
+        GoldCursor.install(getPrimaryStage());
     }
 
     @Override

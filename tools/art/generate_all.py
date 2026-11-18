@@ -18,6 +18,7 @@ import ruins
 import icons
 import skilltree
 import menu
+import cursor
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
 
@@ -34,6 +35,7 @@ def main():
     ruins.generate(OUT)
     skilltree.generate(OUT)
     menu.generate(OUT)
+    cursor.generate(OUT)
     print('textures written to', OUT)
 
 
