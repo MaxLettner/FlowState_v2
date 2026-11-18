@@ -56,7 +56,7 @@ On Windows, double-clicking the jar also works when Java is associated with `.ja
 |W|Jump (hold for higher jump; coyote time) / fly up while levitating|
 |S|Fly down while levitating|
 |1 – 4|Hotbar: select an attack, or switch a toggle (Mana Shield, enchantments) / use an instant (Levitation)|
-|Left click|Use the active attack (hold to charge Zweihander, War Bow, Fire Ball; hold for Morningstar spin)|
+|Left click|Use the active attack (hold to charge Zweihander, War Bow, Fire Ball; hold for Morningstar spin).|
 |Right click|Weapon secondary: dodge (Leather Gloves), block (Metal Gloves), throw / recall / wind up (tridents)|
 |I|Open / close skill tree (hover a skill + 1–4 to put it on the hotbar)|
 |Escape|Game menu (Resume / Exit)|
@@ -154,6 +154,21 @@ Player–enemy and enemy–enemy collisions are intentionally disabled at the ph
 |Levitation|Timed burst (3 s): gravity overridden, W up, S down, otherwise hover; then a 1 s glide|
 |Dash|Leather Gloves dodge: 150 px in 0.2 s with brief invulnerability|
 |Ground slam|Hammer mid-air attack: fast fall, shockwave on landing|
+
+### Melee feel
+
+Shared by every melee weapon (`MeleeAbility`, `MeleeSwingComponent`, `PunchComponent`, `Visuals/Impact`); weapon stats are unchanged.
+
+|Mechanic|Description|
+|---|---|
+|Direction|Slashes go in the facing direction (the player stays turned to the attack until it ends). S + attack in the air is a down-slash|
+|Three phases|Windup (no hitbox) → fast strike (the only phase that hits, sub-stepped so it can't skip enemies) → follow-through and fade|
+|Input buffer|A press up to 0.2 s before the weapon is ready is queued and fires on the first ready frame|
+|Flow chain|Attacking on the beat (buffered, or ≤ 0.14 s after ready) right after a hit that connected raises flow (max x6): +8 % damage and stronger impact per level. Mashing early or attacking late resets it. A glint at the hand marks when the window opens|
+|Pogo|A down-slash that connects bounces the player up|
+|Deflect|Swung weapons destroy enemy spears they touch during the strike|
+|Perfect release|Zweihander: releasing within 0.22 s after the charge completes (blade flash) adds flow and impact|
+|Freeze frames|Every melee hit freezes the game briefly (more for damage, crits, kills), shakes the camera and makes the target tremble. Taking damage also freezes briefly|
 
 ### Enemy AI
 

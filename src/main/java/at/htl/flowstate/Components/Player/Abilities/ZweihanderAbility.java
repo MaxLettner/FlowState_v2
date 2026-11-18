@@ -1,53 +1,118 @@
 package at.htl.flowstate.Components.Player.Abilities;
 
+import at.htl.flowstate.Combat.Hit;
+import at.htl.flowstate.Components.Player.Attacks.MeleeSwingComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
-import at.htl.flowstate.Skills.Branch;
+import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.entity.Entity;
+import javafx.geometry.Point2D;
+import javafx.scene.paint.Color;
 
-/** Tap: slow long swing. Hold: charge a heavy cleave (up to 90 dmg, bigger arc, more knockback). */
-public class ZweihanderAbility extends Ability {
+/**
+ * Tap: slow long swing. Hold: the blade is raised and trembles while charging a heavy cleave
+ * (up to 90 dmg, bigger arc, more knockback). Releasing right as the charge completes (the blade flashes)
+ * is a perfect release: it counts as an on-beat attack for flow and hits much harder visually.
+ */
+public class ZweihanderAbility extends MeleeAbility {
     private static final MeleeSpec SPEC = MeleeSpec.ZWEIHANDER;
     private static final double TAP_THRESHOLD = 0.25;
     private static final double FULL_CHARGE = 1.5;
+    private static final double PERFECT_WINDOW = 0.22;
+    private static final double PERFECT_IMPACT = 1.5;
 
+    private boolean buttonDown = false;
     private boolean charging = false;
     private double chargeTime = 0;
+    private boolean flashed = false;
+    private Entity pose;
 
     public ZweihanderAbility(Entity player, LoadoutComponent loadout) {
-        super(player, loadout, Branch.MELEE);
+        super(player, loadout);
     }
 
     @Override
     public void primaryPress() {
-        if (!ready()) return;
-        charging = true;
-        chargeTime = 0;
+        buttonDown = true;
+        press(() -> {
+            if (!buttonDown) { // buffered tap, already released
+                tapSwing();
+                cooldown(SPEC.interval());
+                return;
+            }
+            charging = true;
+            chargeTime = 0;
+            flashed = false;
+        });
+    }
+
+    private void tapSwing() {
+        Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), false);
+        slash.params().windup(0.3).strike(0.22);
+        launch(SPEC, slash, 1, 1.2);
     }
 
     @Override
     public void update(double tpf) {
-        if (charging) chargeTime += tpf;
+        super.update(tpf);
+        if (!charging) return;
+        chargeTime += tpf;
+
+        if (chargeTime >= TAP_THRESHOLD && pose == null) {
+            // raised blade while charging; the facing is locked so the pose can't flip
+            pose = SPEC.swing(slash(SPEC.hit(facing()), 1, false).params().held(), 1);
+        }
+        if (pose != null) {
+            double f = Math.min(chargeTime / FULL_CHARGE, 1);
+            pose.getComponent(MeleeSwingComponent.class).setTremble(f);
+            movement().faceAttack(facing(), 0.1);
+        }
+        if (!flashed && chargeTime >= FULL_CHARGE) {
+            flashed = true;
+            Particles.glint(hand(), new Color[]{Color.WHITE, Color.web("#fff3a0")}, 14);
+        }
     }
 
     @Override
     public void primaryRelease() {
+        buttonDown = false;
         if (!charging) return;
         charging = false;
+        removePose();
         if (chargeTime < TAP_THRESHOLD) {
-            SPEC.swing(SPEC.hit(facing()), SPEC.swingTime(), false, 1);
+            tapSwing();
         } else {
             double f = Math.min(chargeTime / FULL_CHARGE, 1);
+            boolean perfect = chargeTime >= FULL_CHARGE && chargeTime <= FULL_CHARGE + PERFECT_WINDOW;
             double damage = 35 + 55 * f;
             double knockback = 400 + 300 * f;
             double size = (160 + 20 * f) / 160;
-            SPEC.swing(SPEC.hit(facing()).withDamage(damage).knockback(knockback, facing()), 0.6, false, size);
+            if (perfect) {
+                flow = Math.min(FLOW_MAX, flow + 1);
+                Particles.text(new Point2D(player.getCenter().getX(), player.getY() - 10), "PERFECT", Color.web("#62e0ff"), 20);
+            }
+            Hit hit = SPEC.hit(facing()).withDamage(damage).knockback(knockback, facing())
+                    .impact(1 + 0.4 * f + (perfect ? PERFECT_IMPACT - 1 : 0));
+            // already wound up while charging: almost no windup, a fast heavy strike
+            Slash slash = slash(hit, 0.6, false);
+            slash.params().windup(0.06).strike(0.26);
+            launch(SPEC, slash, size, 2.2);
         }
         cooldown(SPEC.interval());
     }
 
+    private void removePose() {
+        if (pose != null) {
+            pose.removeFromWorld();
+            pose = null;
+        }
+    }
+
     @Override
     public void onDeselect() {
+        super.onDeselect();
         charging = false;
+        buttonDown = false;
+        removePose();
     }
 
     @Override
@@ -57,6 +122,6 @@ public class ZweihanderAbility extends Ability {
 
     @Override
     public double getMoveSpeedMult() {
-        return charging ? 0.5 : 1;
+        return charging ? 0.5 : super.getMoveSpeedMult();
     }
 }

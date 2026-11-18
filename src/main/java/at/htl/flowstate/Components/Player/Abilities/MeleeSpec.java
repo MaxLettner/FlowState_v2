@@ -4,11 +4,11 @@ import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.MeleeSwingComponent;
 import at.htl.flowstate.Skills.SkillType;
+import at.htl.flowstate.Visuals.WeaponArt;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.physics.BoundingShape;
 import com.almasb.fxgl.physics.HitBox;
-import at.htl.flowstate.Visuals.WeaponArt;
 import javafx.scene.image.ImageView;
 
 /**
@@ -35,13 +35,13 @@ public record MeleeSpec(String texture,
         return launch ? h.launch() : h;
     }
 
-    /** Spawns a swing entity. sizeMult scales the reach and texture (Zweihander charge). */
-    public Entity swing(Hit hit, double duration, boolean reverse, double sizeMult) {
+    /** Spawns a swing of this weapon. sizeMult scales the reach and texture (Zweihander charge, finishers). */
+    public Entity swing(MeleeSwingComponent.Params params, double sizeMult) {
         ImageView tex = WeaponArt.hanging(texture, width / 2, 0, sizeMult);
         return FXGL.entityBuilder()
                 .bbox(new HitBox(BoundingShape.box(width, reach * sizeMult)))
                 .view(tex)
-                .with(new MeleeSwingComponent(hit, duration, reverse))
+                .with(new MeleeSwingComponent(params))
                 .zIndex(13)
                 .buildAndAttach();
     }

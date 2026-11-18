@@ -4,12 +4,15 @@ import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillManager;
 import com.almasb.fxgl.entity.Entity;
+import at.htl.flowstate.Visuals.Impact;
 import com.almasb.fxgl.entity.component.Component;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class PlayerStatsComponent extends Component {
+    private static final double HURT_HITSTOP = 0.06;
+    private static final double HURT_SHAKE = 7;
     private static final double BASE_MAX_MANA = 100;
     private static final double MANA_PER_RANK = 10;
     private static final double MANA_REGEN = 0.05;           // of max mana per second
@@ -20,6 +23,9 @@ public class PlayerStatsComponent extends Component {
     private static final double INVINCIBILITY_TIME = 1.0;
     private static final double BLOCK_REDUCTION = 0.6;
     private static final double SHIELD_ABSORB = 0.7;
+    /** Testing: run with FLOWSTATE_INFINITE_SP=1 to get unlimited skill points. */
+    private static final boolean INFINITE_SKILL_POINTS = "1".equals(System.getenv("FLOWSTATE_INFINITE_SP"));
+    private static final double INFINITE_SKILL_POINTS_SHOWN = 999;
 
     private double health = 100;
     private double maxHealth = 100;
@@ -84,6 +90,8 @@ public class PlayerStatsComponent extends Component {
         }
         health -= amount;
         entity.getComponent(SpriteComponent.class).flash();
+        Impact.hitStop(HURT_HITSTOP);
+        Impact.shake(HURT_SHAKE);
         return true;
     }
 
@@ -138,6 +146,7 @@ public class PlayerStatsComponent extends Component {
     }
 
     public boolean takeSkillPoints(double s) {
+        if (INFINITE_SKILL_POINTS) return true;
         if (skillPoints - s < 0) return false;
         skillPoints -= s;
         fireSkillPointsChanged();
@@ -159,5 +168,5 @@ public class PlayerStatsComponent extends Component {
     public double getMaxHealth() { return maxHealth; }
     public double getExperience() { return experience; }
     public double getMaxExperience() { return maxExperience; }
-    public double getSkillPoints() { return skillPoints; }
+    public double getSkillPoints() { return INFINITE_SKILL_POINTS ? INFINITE_SKILL_POINTS_SHOWN : skillPoints; }
 }

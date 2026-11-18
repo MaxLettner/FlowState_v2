@@ -23,6 +23,7 @@ public class PlayerMovementComponent extends Component {
     private static final double DASH_SPEED = 750.0;   // 150 px in 0.2 s
     private static final double DASH_TIME = 0.2;
     private static final double SLAM_SPEED = 900.0;
+    private static final double POGO_FORCE = 560.0;
 
 
     private static final double PLAYER_WIDTH = 40.0;
@@ -45,6 +46,9 @@ public class PlayerMovementComponent extends Component {
 
     private double dashLeft = 0;
     private int dashDirection = 1;
+    private double dashSpeed = DASH_SPEED;
+    private boolean dodging = false;
+    private double facingLock = 0;
 
     @Override
     public void onAdded() {
@@ -57,11 +61,15 @@ public class PlayerMovementComponent extends Component {
         isLevitationActive = loadout.isLevitating();
 
         wasGrounded = isGrounded;
+        if (facingLock > 0) facingLock -= tpf;
 
         if (dashLeft > 0) {
             dashLeft -= tpf;
-            physics.setVelocityX(dashDirection * DASH_SPEED);
-            if (dashLeft <= 0 && lastMoveDirection == 0) physics.setVelocityX(0);
+            physics.setVelocityX(dashDirection * dashSpeed);
+            if (dashLeft <= 0) {
+                dodging = false;
+                if (lastMoveDirection == 0) physics.setVelocityX(0);
+            }
         }
 
         if (isLevitationActive) {
@@ -146,13 +154,13 @@ public class PlayerMovementComponent extends Component {
     public void startMoveRight() {
         lastMoveDirection = 1;
         move(1);
-        currentWatchDirection = 1;
+        if (facingLock <= 0) currentWatchDirection = 1;
     }
 
     public void startMoveLeft() {
         lastMoveDirection = -1;
         move(-1);
-        currentWatchDirection = -1;
+        if (facingLock <= 0) currentWatchDirection = -1;
     }
 
     public void stopHorizontalMovement() {
@@ -208,6 +216,30 @@ public class PlayerMovementComponent extends Component {
     public void startDash() {
         dashDirection = lastMoveDirection != 0 ? lastMoveDirection : currentWatchDirection;
         dashLeft = DASH_TIME;
+        dashSpeed = DASH_SPEED;
+        dodging = true;
+    }
+
+    /** Turns the player towards an attack and keeps them facing it for {@code seconds}. */
+    public void faceAttack(int direction, double seconds) {
+        if (direction != 1 && direction != -1) return;
+        currentWatchDirection = direction;
+        facingLock = Math.max(facingLock, seconds);
+    }
+
+    /** Small step forward that sells the weight of a melee swing. Only on the ground, never over a dodge. */
+    public void lunge(int direction, double speed, double seconds) {
+        if (dodging || !isGrounded || isLevitationActive) return;
+        dashDirection = direction;
+        dashSpeed = speed;
+        dashLeft = seconds;
+    }
+
+    /** Bounce up after a downward strike connects (pogo). */
+    public void pogo() {
+        physics.setVelocityY(-POGO_FORCE);
+        isGrounded = false;
+        jumpConsumed = true;
     }
 
     /** Hammer ground slam: fall fast. */
@@ -231,6 +263,9 @@ public class PlayerMovementComponent extends Component {
     }
 
     public boolean isGrounded() { return isGrounded; }
+
+    /** S is held (down-slash in the air, fly down while levitating). */
+    public boolean isDownHeld() { return isLevitatingDown; }
 
     public int getCurrentWatchDirection() { return currentWatchDirection; }
 }

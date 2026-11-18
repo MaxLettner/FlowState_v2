@@ -6,9 +6,8 @@ import javafx.scene.image.ImageView;
 import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
-import at.htl.flowstate.Components.Player.Attacks.ThrustComponent;
+import at.htl.flowstate.Components.Player.Attacks.PunchComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
-import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
@@ -18,7 +17,7 @@ import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 /** Fisticuffs: punches, plus dodge (Leather) or block (Metal); Spike Gloves apply Bleed. */
-public class GloveAbility extends Ability {
+public class GloveAbility extends MeleeAbility {
     public enum Glove {
         HAND_WRAPS(8, 0.3, 50, 8, "HandWraps.png", false, false, false),
         LEATHER(6, 0.2, 50, 10, "LeatherGlove.png", true, false, false),
@@ -46,26 +45,36 @@ public class GloveAbility extends Ability {
     private static final double PUNCH_KNOCKBACK = 80;
     private static final double DODGE_INVULNERABILITY = 0.2;
     private static final double DODGE_COOLDOWN = 2.0;
+    private static final double HAND_OFFSET = 6;
 
     private final Glove glove;
     private double dodgeCooldown = 0;
     private boolean blocking = false;
+    private boolean leftHand = false;
     private Entity blockVisual;
 
     public GloveAbility(Entity player, LoadoutComponent loadout, Glove glove) {
-        super(player, loadout, Branch.MELEE);
+        super(player, loadout);
         this.glove = glove;
     }
 
     @Override
     public void primaryPress() {
-        if (blocking || !ready()) return;
+        if (blocking) return;
+        press(this::punch);
+    }
+
+    private void punch() {
+        if (blocking) return;
+        int side = facing();
+        Point2D dir = new Point2D(side, 0);
 
         Hit hit = Hit.of(glove.damage, DamageKind.MELEE)
                 .family(SkillType.FISTICUFFS)
                 .crit(glove.critPercent)
-                .knockback(PUNCH_KNOCKBACK, facing());
+                .knockback(PUNCH_KNOCKBACK, side);
         if (glove.bleed) hit.bleed(1);
+        hit = flowed(hit);
 
         ImageView fist = Assets.sprite(glove.texture, 2);
         fist.setTranslateX(FIST_SIZE / 2 - fist.getImage().getWidth() / 2);
@@ -74,11 +83,14 @@ public class GloveAbility extends Ability {
         Entity punch = FXGL.entityBuilder()
                 .bbox(new HitBox(BoundingShape.box(FIST_SIZE, FIST_SIZE)))
                 .view(fist)
-                .with(new ThrustComponent(hit, glove.reach, Math.min(0.18, glove.interval * 0.9), facing()))
+                .with(new PunchComponent(hit, glove.reach, Math.min(0.18, glove.interval * 0.9), dir, side,
+                        leftHand ? HAND_OFFSET : -HAND_OFFSET, this))
                 .zIndex(5)
                 .buildAndAttach();
         punch.setScaleOrigin(new Point2D(FIST_SIZE / 2, FIST_SIZE / 2));
-        punch.setScaleX(facing());
+        punch.setScaleX(side);
+        leftHand = !leftHand;
+        movement().faceAttack(side, 0.2);
         cooldown(glove.interval);
     }
 
@@ -102,6 +114,7 @@ public class GloveAbility extends Ability {
 
     @Override
     public void onDeselect() {
+        super.onDeselect();
         stopBlocking();
     }
 
@@ -115,6 +128,7 @@ public class GloveAbility extends Ability {
 
     @Override
     public void update(double tpf) {
+        super.update(tpf);
         if (dodgeCooldown > 0) dodgeCooldown -= tpf;
     }
 
@@ -125,13 +139,13 @@ public class GloveAbility extends Ability {
 
     @Override
     public double getMoveSpeedMult() {
-        return blocking ? 0.5 : 1;
+        return blocking ? 0.5 : super.getMoveSpeedMult();
     }
 
     @Override
     public String getStatusText() {
         if (blocking) return "blocking";
         if (glove.dodge && dodgeCooldown > 0) return String.format("dodge %.1fs", dodgeCooldown);
-        return "";
+        return super.getStatusText();
     }
 }

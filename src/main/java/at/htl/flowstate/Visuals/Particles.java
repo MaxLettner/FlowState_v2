@@ -3,8 +3,12 @@ package at.htl.flowstate.Visuals;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.component.Component;
 import javafx.geometry.Point2D;
+import javafx.scene.Node;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
+import javafx.scene.text.Text;
 
 import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 
@@ -60,6 +64,57 @@ public final class Particles {
     public static void landingDust(Point2D feet) {
         burst(feet, DUST, 4, 180, 12, 40, 110, 0.35, 4, -40);
         burst(feet, DUST, 4, 0, 12, 40, 110, 0.35, 4, -40);
+    }
+
+    /**
+     * A thin bright slash streak across a hit target, oriented along the swing.
+     * It stays put while the game is frozen, so it reads as the "frozen" impact frame.
+     */
+    public static void slashMark(Point2D at, double angleDeg, double length, Color color) {
+        Rectangle core = new Rectangle(length, 4, Color.WHITE);
+        core.setTranslateX(-length / 2);
+        core.setTranslateY(-2);
+        Rectangle glow = new Rectangle(length * 1.15, 12, color.deriveColor(0, 1, 1, 0.55));
+        glow.setTranslateX(-length * 1.15 / 2);
+        glow.setTranslateY(-6);
+        javafx.scene.Group g = new javafx.scene.Group(glow, core);
+        g.setRotate(angleDeg);
+        entityBuilder().at(at).view(g).with(new Shrink(0.16)).zIndex(21).buildAndAttach();
+    }
+
+    /** Short sparkle ring (timing cues, perfect inputs, deflects). */
+    public static void glint(Point2D at, Color[] colors, int count) {
+        burst(at, colors, count, 0, 180, 90, 220, 0.25, 4, 0);
+    }
+
+    /** Small floating text that rises and fades ("x3", "PERFECT"). */
+    public static void text(Point2D at, String msg, Color color, double size) {
+        Text t = new Text(msg);
+        t.setFont(Font.font("Monospaced", FontWeight.BOLD, size));
+        t.setFill(color);
+        t.setStroke(Color.BLACK);
+        t.setStrokeWidth(1.5);
+        t.setTranslateX(-t.getLayoutBounds().getWidth() / 2);
+        entityBuilder().at(at).view(t).with(new Particle(new Point2D(0, -90), 0.7, 120)).zIndex(30).buildAndAttach();
+    }
+
+    /** Scales its view down along y and fades out. */
+    private static class Shrink extends Component {
+        private final double life;
+        private double age;
+
+        Shrink(double life) { this.life = life; }
+
+        @Override
+        public void onUpdate(double tpf) {
+            age += tpf;
+            double t = Math.min(1, age / life);
+            Node v = entity.getViewComponent().getChildren().getFirst();
+            v.setScaleY(1 - t);
+            v.setScaleX(1 + 0.3 * t);
+            entity.setOpacity(1 - t * t);
+            if (age >= life) entity.removeFromWorld();
+        }
     }
 
     private static class Particle extends Component {
