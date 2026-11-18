@@ -230,7 +230,8 @@ def stone_bg(seed=7, warm=None, canopy=(W / 2, 80, 240, 100), avoid=None, finish
     if finish is None:
         border(img, rng)
         trunk(img)
-        lintel(img)
+        # deep enough for the skill point count under the title (SkillTreeView draws it, x4, glyph top at row 26)
+        lintel(img, box=(162, 318, 3, 40))
     else:
         finish(img, rng)
     return img

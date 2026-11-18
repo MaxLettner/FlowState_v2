@@ -2,6 +2,7 @@ package at.htl.flowstate.Menu.SkillTree;
 
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Menu.GoldCursor;
+import at.htl.flowstate.Menu.PixelText;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.NodeKind;
 import at.htl.flowstate.Skills.SkillType;
@@ -16,9 +17,6 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 
 /**
  * One dot of the skill tree: a ring (carved stone = locked, gold = learnable, molten = owned) around the round
@@ -32,6 +30,7 @@ final class SkillNode extends Group {
     private static final Color OWNED_GLOW = Color.rgb(255, 122, 31, 0.8);
     private static final Color PULSE_GLOW = Color.rgb(255, 205, 82);
     private static final Color FLASH_GLOW = Color.rgb(255, 250, 220);
+    private static final PixelText.Look BADGE = PixelText.inlaid(Color.web("#fff4b0"), Color.web("#f5cd52"));
 
     final SkillType type;
     final Point2D center;
@@ -43,8 +42,8 @@ final class SkillNode extends Group {
     private final DropShadow hoverGlow = new DropShadow(BlurType.GAUSSIAN, Color.rgb(255, 240, 200, 0.9), 26, 0.3, 0, 0);
     private final Circle hit;
     private final Group badge = new Group();
-    private final Text badgeText = new Text();
-    private final Text subLabel = new Text();
+    private final ImageView badgeDigit = new ImageView();
+    private final ImageView subLabel = new ImageView();
 
     private State state = State.LOCKED;
     private boolean pulse;
@@ -73,11 +72,10 @@ final class SkillNode extends Group {
         Circle badgeBg = new Circle(12, Color.web("#121116"));
         badgeBg.setStroke(Color.web("#f5cd52"));
         badgeBg.setStrokeWidth(2);
-        badgeText.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
-        badgeText.setFill(Color.web("#fff4b0"));
-        badge.getChildren().addAll(badgeBg, badgeText);
-        badge.setLayoutX(radius * 0.72);
-        badge.setLayoutY(-radius * 0.72);
+        badgeDigit.setSmooth(false);
+        badge.getChildren().addAll(badgeBg, badgeDigit);
+        badge.setLayoutX(Math.round(radius * 0.72));
+        badge.setLayoutY(-Math.round(radius * 0.72));
         badge.setVisible(false);
 
         getChildren().addAll(ring, icon);
@@ -92,27 +90,23 @@ final class SkillNode extends Group {
     }
 
     private VBox plate() {
-        VBox box = new VBox(0);
+        VBox box = new VBox(4);
         box.setAlignment(Pos.CENTER);
         box.setLayoutY(radius - 2);
         box.setMouseTransparent(true);
-        box.setStyle("-fx-background-color: rgba(12,11,15,0.82); -fx-background-radius: 4; -fx-padding: 1 8 3 8;"
+        box.setStyle("-fx-background-color: rgba(12,11,15,0.82); -fx-background-radius: 4; -fx-padding: 4 8 4 8;"
                 + "-fx-border-color: rgba(138,119,79,0.6); -fx-border-radius: 4; -fx-border-width: 1;");
+        subLabel.setSmooth(false);
         if (type.getKind() == NodeKind.STAT) {
-            Text branch = new Text(type.getBranch().getDisplayName().toUpperCase());
-            branch.setFont(Font.font("Serif", FontWeight.BOLD, 19));
-            branch.setFill(branchColor(type.getBranch()));
-            subLabel.setFont(Font.font("Serif", FontWeight.BOLD, 13));
-            subLabel.setFill(Color.web("#e8d9b0"));
+            ImageView branch = PixelText.view(type.getBranch().getDisplayName(),
+                    PixelText.inlaid(branchColor(type.getBranch())), SCALE);
             box.getChildren().addAll(branch, subLabel);
         } else {
-            subLabel.setText(type.getDisplayName());
-            subLabel.setFont(Font.font("Serif", FontWeight.BOLD, 14));
-            subLabel.setFill(Color.web("#e8d9b0"));
+            subLabel.setImage(PixelText.render(type.getDisplayName(), PixelText.PARCHMENT, SCALE));
             box.getChildren().add(subLabel);
         }
-        // centred under the dot whatever the text width
-        box.widthProperty().addListener((o, a, w) -> box.setLayoutX(-w.doubleValue() / 2));
+        // centred under the dot whatever the text width, on whole pixels
+        box.widthProperty().addListener((o, a, w) -> box.setLayoutX(-Math.round(w.doubleValue() / 2)));
         return box;
     }
 
@@ -131,11 +125,13 @@ final class SkillNode extends Group {
         icon.setOpacity(state == State.LOCKED ? 0.85 : 1);
         badge.setVisible(slot >= 0);
         if (slot >= 0) {
-            badgeText.setText(String.valueOf(slot + 1));
-            badgeText.setX(-badgeText.getLayoutBounds().getWidth() / 2);
-            badgeText.setY(badgeText.getLayoutBounds().getHeight() / 2 - 4);
+            badgeDigit.setImage(PixelText.render(String.valueOf(slot + 1), BADGE, SCALE));
+            badgeDigit.setX(-Math.round(badgeDigit.getImage().getWidth() / 2));
+            badgeDigit.setY(-Math.round(badgeDigit.getImage().getHeight() / 2));
         }
-        if (plateText != null && type.getKind() == NodeKind.STAT) subLabel.setText(plateText);
+        if (plateText != null && type.getKind() == NodeKind.STAT) {
+            subLabel.setImage(PixelText.render(plateText, PixelText.PARCHMENT, SCALE));
+        }
         animate(0, 0);
     }
 

@@ -563,6 +563,8 @@ def generate(out_dir):
     for pid, lines in PROMPTS.items():
         prompt(lines).save(f'{out_dir}/MenuText_{pid}.png')
     controls_tablet().save(f'{out_dir}/MenuControls.png')
+    # left / right mouse button, also used by the skill tree's controls
+    strip([mouse_icon(False), mouse_icon(True)]).save(f'{out_dir}/MouseIcon.png')
 
 
 def mock(path, mode='main'):
