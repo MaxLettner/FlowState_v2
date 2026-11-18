@@ -265,8 +265,9 @@ public class Game extends GameApplication {
     private void updateCamera() {
         double threshold = cameraX + WINDOW_WIDTH * 0.75;
         if (player.getX() > threshold) cameraX = player.getX() - WINDOW_WIDTH * 0.75;
-        getGameScene().getViewport().setX(cameraX + Impact.getShakeX());
-        getGameScene().getViewport().setY(Impact.getShakeY());
+        // whole pixels: a fractional camera offset makes JavaFX resample (blur) every sprite
+        getGameScene().getViewport().setX(Math.round(cameraX + Impact.getShakeX()));
+        getGameScene().getViewport().setY(Math.round(Impact.getShakeY()));
     }
 
     //-----HELPERS-----
