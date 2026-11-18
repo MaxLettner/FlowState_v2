@@ -7,6 +7,7 @@ import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
 import at.htl.flowstate.Skills.SkillType;
+import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
@@ -30,7 +31,21 @@ public final class Combat {
     private static final double IMBUE_BURN = 2.0;
     private static final double IMBUE_SLOW = 1.5;
 
+    // freeze frames & shake for melee hits: base + per damage point, capped
+    private static final double HITSTOP_BASE = 0.03;
+    private static final double HITSTOP_PER_DAMAGE = 0.0014;
+    private static final double HITSTOP_CRIT = 0.025;
+    private static final double HITSTOP_KILL = 0.035;
+    private static final double HITSTOP_MAX = 0.13;
+    private static final double SHAKE_BASE = 2;
+    private static final double SHAKE_PER_DAMAGE = 0.12;
+
     private Combat() {}
+
+    /** What a hit did. {@link #NONE} when the target was already dead or invalid. */
+    public record Result(boolean landed, double damage, boolean crit, boolean killed) {
+        public static final Result NONE = new Result(false, 0, false, false);
+    }
 
     // Registries kept in sync by a world listener, so queries don't scan every entity (particles included)
     // each call. Copy-on-write: callers may kill enemies while iterating, and adds/removes are rare.
@@ -103,10 +118,10 @@ public final class Combat {
     }
 
     //-----Damage-----
-    public static void hit(Entity enemy, Hit h) {
-        if (enemy == null || !enemy.isActive()) return;
+    public static Result hit(Entity enemy, Hit h) {
+        if (enemy == null || !enemy.isActive()) return Result.NONE;
         EnemyStatsComponent stats = enemy.getComponentOptional(EnemyStatsComponent.class).orElse(null);
-        if (stats == null || stats.isDead()) return;
+        if (stats == null || stats.isDead()) return Result.NONE;
 
         Entity player = Game.getPlayer();
         PlayerStatsComponent playerStats = player.getComponent(PlayerStatsComponent.class);
@@ -140,7 +155,8 @@ public final class Combat {
             if (crit) Particles.burst(enemy.getCenter(), Particles.SPARK, 8, -90, 180, 200, 420, 0.3, 6, 200);
         }
         if (fist) loadout.registerComboHit();
-        if (stats.isDead()) return;
+        if (h.kind == DamageKind.MELEE) meleeImpact(enemy, damage, crit, stats.isDead(), h.impact);
+        if (stats.isDead()) return new Result(true, damage, crit, true);
 
         if (crit && h.family == SkillType.SWORDS) stats.addBleed(1);
         if (crit && fist) stats.stun(FIST_CRIT_STUN);
@@ -167,5 +183,21 @@ public final class Combat {
             }
             stats.applyKnockback(h.knockback, dir, h.launch);
         }
+        return new Result(true, damage, crit, false);
+    }
+
+    /** Freeze frames, camera shake and a trembling target, scaled by how hard the hit was. */
+    private static void meleeImpact(Entity enemy, double damage, boolean crit, boolean killed, double mult) {
+        if (mult <= 0) return;
+        double stop = HITSTOP_BASE + HITSTOP_PER_DAMAGE * damage;
+        if (crit) stop += HITSTOP_CRIT;
+        if (killed) stop += HITSTOP_KILL;
+        Impact.hitStop(Math.min(HITSTOP_MAX, stop * mult));
+
+        double shake = SHAKE_BASE + SHAKE_PER_DAMAGE * damage;
+        if (crit) shake *= 1.4;
+        if (killed) shake += 3;
+        Impact.shake(shake * mult);
+        if (!killed) Impact.tremble(enemy);
     }
 }

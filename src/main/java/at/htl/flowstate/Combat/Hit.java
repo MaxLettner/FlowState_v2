@@ -15,6 +15,8 @@ public final class Hit {
     double stun, slow, freeze, burn;
     int poisonStacks, bleedStacks;
     boolean shatterSlowed;
+    /** Scales the freeze frames and camera shake of this hit (1 = normal, 0 = none). */
+    double impact = 1;
 
     private Hit(double damage, DamageKind kind) {
         this.damage = damage;
@@ -41,6 +43,7 @@ public final class Hit {
     public Hit bleed(int stacks) { this.bleedStacks = stacks; return this; }
     /** Icicle: hitting a slowed enemy removes the slow and deals bonus damage. */
     public Hit shatterSlowed() { this.shatterSlowed = true; return this; }
+    public Hit impact(double mult) { this.impact = mult; return this; }
 
     public Hit withDamage(double newDamage) {
         Hit h = copy();
@@ -53,9 +56,12 @@ public final class Hit {
         h.family = family; h.critChance = critChance; h.knockback = knockback; h.knockDir = knockDir;
         h.sourceX = sourceX; h.launch = launch; h.stun = stun; h.slow = slow; h.freeze = freeze;
         h.burn = burn; h.poisonStacks = poisonStacks; h.bleedStacks = bleedStacks; h.shatterSlowed = shatterSlowed;
+        h.impact = impact;
         return h;
     }
 
     public double getDamage() { return damage; }
+    public double getKnockback() { return knockback; }
+    public double getImpact() { return impact; }
     public DamageKind getKind() { return kind; }
 }

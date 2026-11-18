@@ -5,6 +5,7 @@ import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
+import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
 import javafx.geometry.Point2D;
 import at.htl.flowstate.Factories.EnemyFactory;
@@ -64,6 +65,9 @@ public class Game extends GameApplication {
     private double cleanupTimer = 0;
     private static final double CLEANUP_INTERVAL = 0.5;
     private PlayerStatsComponent playerStats;
+    private double cameraX = 0;
+    // the viewport may move this far vertically for camera shake
+    private static final int SHAKE_MARGIN = 40;
 
     /** Two copies of one image side by side, scrolled at a fraction of the camera speed. */
     private record ParallaxLayer(ImageView a, ImageView b, double factor) {
@@ -176,9 +180,11 @@ public class Game extends GameApplication {
         setupFactories();
         levelGeneration = new LevelGeneration();
         Combat.init();
+        Impact.reset();
+        cameraX = 0;
         setupPlayer();
         playerStats = player.getComponent(PlayerStatsComponent.class);
-        getGameScene().getViewport().setBounds(0, 0, Integer.MAX_VALUE, (int) WINDOW_HEIGHT);
+        getGameScene().getViewport().setBounds(0, -SHAKE_MARGIN, Integer.MAX_VALUE, (int) WINDOW_HEIGHT + SHAKE_MARGIN);
         skillTree = new SkillTreeView();
         hud = new Hud();
         setupBg();
@@ -238,6 +244,7 @@ public class Game extends GameApplication {
         if (player.getY() > WINDOW_HEIGHT + 100) {
             getGameController().exit();
         }
+        Impact.update(tpf);
         updateCamera();
         levelGeneration.generateLevel(player.getX());
         cleanupPlatforms(tpf);
@@ -269,11 +276,10 @@ public class Game extends GameApplication {
 
     //-----CAMERA-----
     private void updateCamera() {
-        double vpX = getGameScene().getViewport().getX();
-        double threshold = vpX + WINDOW_WIDTH * 0.75;
-        if (player.getX() > threshold) {
-            getGameScene().getViewport().setX(player.getX() - WINDOW_WIDTH * 0.75);
-        }
+        double threshold = cameraX + WINDOW_WIDTH * 0.75;
+        if (player.getX() > threshold) cameraX = player.getX() - WINDOW_WIDTH * 0.75;
+        getGameScene().getViewport().setX(cameraX + Impact.getShakeX());
+        getGameScene().getViewport().setY(Impact.getShakeY());
     }
 
     //-----HELPERS-----

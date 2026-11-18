@@ -199,6 +199,10 @@ public class LoadoutComponent extends Component {
         return cooldowns.get(branch) <= 0;
     }
 
+    public double getCooldown(Branch branch) {
+        return cooldowns.get(branch);
+    }
+
     public void setCooldown(Branch branch, double seconds) {
         cooldowns.put(branch, seconds);
     }
