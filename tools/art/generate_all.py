@@ -14,6 +14,7 @@ import ranged
 import projectiles
 import effects
 import terrain
+import icons
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
 LAVA_ROWS = 80  # only the bottom of the lava layer is visible; keeps the x5 images small
@@ -26,6 +27,7 @@ def main():
     ranged.generate(OUT)
     projectiles.generate(OUT)
     effects.generate(OUT)
+    icons.generate(OUT)
     items = terrain.generate(OUT)
     # crop the lava frames to the visible band at the bottom
     frames = [f.crop((0, f.height - LAVA_ROWS, f.width, f.height)) for f in items['bg_lava']]
