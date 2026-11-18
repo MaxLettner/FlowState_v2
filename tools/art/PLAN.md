@@ -20,6 +20,9 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 - Fixed chest double-attach warning (`build()` instead of `buildAndAttach()`).
 - Effects/swings now render above terrain (z 12-15).
 
+- `ruins.py` (2026-11-18): `Ruins.png`, 4 frames 96x72 (destroyed house, colonnade, tower stump, broken arch),
+  bottom-aligned, drawn x2 by the `ruin` entity in `LevelFactory`; spawned by `StructureGeneration.spawnRuin`.
+
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
 - Projectile trails were not added (only fireball embers via burning ground / blasts).

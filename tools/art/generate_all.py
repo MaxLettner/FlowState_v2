@@ -14,6 +14,7 @@ import ranged
 import projectiles
 import effects
 import terrain
+import ruins
 import icons
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
@@ -28,6 +29,7 @@ def main():
     effects.generate(OUT)
     icons.generate(OUT)
     terrain.generate(OUT)
+    ruins.generate(OUT)
     print('textures written to', OUT)
 
 

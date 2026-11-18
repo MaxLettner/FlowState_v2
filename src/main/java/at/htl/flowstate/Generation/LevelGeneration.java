@@ -63,9 +63,9 @@ public class LevelGeneration {
         //the start (player spawns at x = 300) is always plain ground
         boolean safeStart = lastGeneratedX < SAFE_START;
 
-        Double structureWidth = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
-        if(structureWidth != null) {
-            lastGeneratedX = structureWidth;
+        Double structureEnd = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
+        if (structureEnd != null) {
+            lastGeneratedX = structureEnd;
             return;
         }
 
