@@ -1,5 +1,6 @@
 package at.htl.flowstate.Menu;
 
+import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
@@ -9,7 +10,10 @@ import at.htl.flowstate.Skills.SlotKind;
 import com.almasb.fxgl.app.scene.Viewport;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.ui.ProgressBar;
+import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
@@ -24,7 +28,7 @@ import static com.almasb.fxgl.dsl.FXGL.*;
  * A hotbar slot on cooldown goes dark and fills back up from the bottom; it is full again when the skill is ready.
  */
 public class Hud {
-    private static final double SLOT_W = 130;
+    private static final double SLOT_W = 165;
     private static final double SLOT_H = 58;
     private static final double SLOT_GAP = 8;
     private static final double CHARGE_W = 60;
@@ -35,6 +39,9 @@ public class Hud {
     private static final double FLASH_TIME = 0.3;
     private static final double FLASH_OPACITY = 0.55;
     private static final Color SLOT_BORDER = Color.web("#666");
+    private static final int ICON_SCALE = 2;   // 24px icons shown at 48px
+    private static final double ICON_SIZE = 24 * ICON_SCALE;
+    private static final double SLOT_PAD = 5;
 
     private final Entity player;
     private final PlayerStatsComponent stats;
@@ -48,6 +55,8 @@ public class Hud {
 
     private final Rectangle[] slotBg = new Rectangle[SkillManager.HOTBAR_SIZE];
     private final Text[] slotText = new Text[SkillManager.HOTBAR_SIZE];
+    private final ImageView[] slotIcon = new ImageView[SkillManager.HOTBAR_SIZE];
+    private final SkillType[] slotIconType = new SkillType[SkillManager.HOTBAR_SIZE];
     private final Rectangle[] slotFill = new Rectangle[SkillManager.HOTBAR_SIZE];
     private final Rectangle[] slotFlash = new Rectangle[SkillManager.HOTBAR_SIZE];
     private final Rectangle[] slotBorder = new Rectangle[SkillManager.HOTBAR_SIZE];
@@ -92,9 +101,17 @@ public class Hud {
             slotText[i] = new Text();
             slotText[i].setFill(Color.WHITE);
             slotText[i].setStyle("-fx-font-size: 13px;");
-            slotText[i].setTextAlignment(TextAlignment.CENTER);
-            slotText[i].setWrappingWidth(SLOT_W - 8);
-            StackPane slot = new StackPane(slotBg[i], cooldownLayer, slotBorder[i], slotText[i]);
+            slotText[i].setTextAlignment(TextAlignment.LEFT);
+            slotText[i].setWrappingWidth(SLOT_W - ICON_SIZE - 3 * SLOT_PAD);
+            slotIcon[i] = new ImageView();
+            slotIcon[i].setSmooth(false);
+            slotIcon[i].setFitWidth(ICON_SIZE);
+            slotIcon[i].setFitHeight(ICON_SIZE);
+            HBox content = new HBox(SLOT_PAD, slotIcon[i], slotText[i]);
+            content.setAlignment(Pos.CENTER_LEFT);
+            content.setPadding(new Insets(0, SLOT_PAD, 0, SLOT_PAD));
+            content.setMaxSize(SLOT_W, SLOT_H);
+            StackPane slot = new StackPane(slotBg[i], cooldownLayer, slotBorder[i], content);
             slot.setAlignment(Pos.CENTER);
             slot.setLayoutX(startX + i * (SLOT_W + SLOT_GAP));
             slot.setLayoutY(slotY);
@@ -155,6 +172,10 @@ public class Hud {
             String name = type == null ? "—" : type.getSlotName();
             String status = type == null ? "" : loadout.getSlotStatus(type);
             slotText[i].setText((i + 1) + "  " + name + (status.isEmpty() ? "" : "\n" + status));
+            if (type != slotIconType[i]) {
+                slotIconType[i] = type;
+                slotIcon[i].setImage(type == null ? null : Assets.pixels(type.getIconName(), ICON_SCALE));
+            }
 
             double cooldown = type == null ? 0 : loadout.getCooldownProgress(type);
             if (cooldown <= 0 && lastCooldown[i] > 0 && loadout.getCooldownTotal(type) >= FLASH_MIN_COOLDOWN) {

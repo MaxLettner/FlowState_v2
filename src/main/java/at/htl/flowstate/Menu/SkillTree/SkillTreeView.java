@@ -1,5 +1,6 @@
 package at.htl.flowstate.Menu.SkillTree;
 
+import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
 import at.htl.flowstate.Skills.Branch;
@@ -9,6 +10,9 @@ import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
 import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContentDisplay;
+import javafx.scene.effect.ColorAdjust;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -22,6 +26,8 @@ import javafx.scene.text.TextAlignment;
  */
 public class SkillTreeView {
     private static final double WIDTH = 940;
+    private static final int ICON_SCALE = 2;   // 24px icons shown at 48px
+    private static final ColorAdjust LOCKED = new ColorAdjust(0, -0.85, -0.35, 0);
     private static final String HINT = "Click to buy. Click an owned skill to equip it, or hover it and press 1–4 to put it in that hotbar slot.";
 
     private final SkillManager skills = SkillManager.get();
@@ -133,14 +139,23 @@ public class SkillTreeView {
             Text slot = new Text("[" + (i + 1) + "] " + (t == null ? "—" : t.getSlotName()));
             slot.setFill(Color.LIGHTBLUE);
             slot.setStyle("-fx-font-size: 14px;");
-            hotbarRow.getChildren().add(slot);
+            HBox entry = new HBox(4);
+            entry.setAlignment(Pos.CENTER);
+            if (t != null) entry.getChildren().add(Assets.sprite(t.getIconName(), 1));
+            entry.getChildren().add(slot);
+            hotbarRow.getChildren().add(entry);
         }
     }
 
     private Button nodeButton(SkillType type, double width) {
         Button btn = new Button(label(type));
         btn.setPrefWidth(width);
-        btn.setMinHeight(52);
+        btn.setMinHeight(58);
+        ImageView icon = Assets.sprite(type.getIconName(), ICON_SCALE);
+        if (!skills.owns(type) && !skills.canBuy(type, stats.getSkillPoints())) icon.setEffect(LOCKED);
+        btn.setGraphic(icon);
+        btn.setContentDisplay(ContentDisplay.LEFT);
+        btn.setGraphicTextGap(10);
         btn.setWrapText(true);
         btn.setTextAlignment(TextAlignment.CENTER);
         btn.setStyle(style(type));
