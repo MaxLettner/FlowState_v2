@@ -15,6 +15,8 @@ import java.util.List;
 public abstract class EnemyBehaviourComponent extends Component {
     protected Entity player;
     protected PhysicsComponent physics;
+    protected EnemyStatsComponent stats;
+    private SpriteComponent sprite;
 
     protected static final double MOVE_SPEED = 200.0;
     protected static final double JUMP_FORCE = 600.0;
@@ -49,10 +51,14 @@ public abstract class EnemyBehaviourComponent extends Component {
 
     @Override
     public void onUpdate(double tpf) {
+        // looked up here, not in onAdded: FXGL calls onAdded before the entity's later components exist
+        if (stats == null) {
+            stats = entity.getComponent(EnemyStatsComponent.class);
+            sprite = entity.getComponent(SpriteComponent.class);
+        }
         wasGrounded = isGrounded;
         updateGroundState();
 
-        EnemyStatsComponent stats = entity.getComponent(EnemyStatsComponent.class);
         if (!stats.isStunned() && !stats.isKnockedBack()) {
             chasePlayer();
             attack();
@@ -80,12 +86,10 @@ public abstract class EnemyBehaviourComponent extends Component {
 
     /** Movement speed including the Slow status effect. */
     protected double moveSpeed() {
-        return specificMoveSpeed * entity.getComponent(EnemyStatsComponent.class).getSpeedMult();
+        return specificMoveSpeed * stats.getSpeedMult();
     }
 
     private void updateSprite() {
-        SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
-
         sprite.setFacing(lastMoveDirection);
         if (!wasGrounded && isGrounded) sprite.playLand();
         if (!isGrounded) {

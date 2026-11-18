@@ -32,7 +32,7 @@ public class RangedEnemyBehaviourComponent extends EnemyBehaviourComponent {
 
     @Override
     public void onUpdate(double tpf) {
-        if (attackCooldown > 0) attackCooldown -= tpf * entity.getComponent(EnemyStatsComponent.class).getSpeedMult();
+        if (attackCooldown > 0 && stats != null) attackCooldown -= tpf * stats.getSpeedMult();
         super.onUpdate(tpf);
     }
 

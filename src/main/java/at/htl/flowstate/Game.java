@@ -1,5 +1,6 @@
 package at.htl.flowstate;
 
+import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
@@ -60,6 +61,9 @@ public class Game extends GameApplication {
     private Image[] lavaFrames;
     private double bgTime = 0;
     private double emberTimer = 0;
+    private double cleanupTimer = 0;
+    private static final double CLEANUP_INTERVAL = 0.5;
+    private PlayerStatsComponent playerStats;
 
     /** Two copies of one image side by side, scrolled at a fraction of the camera speed. */
     private record ParallaxLayer(ImageView a, ImageView b, double factor) {
@@ -171,7 +175,9 @@ public class Game extends GameApplication {
     protected void initGame() {
         setupFactories();
         levelGeneration = new LevelGeneration();
+        Combat.init();
         setupPlayer();
+        playerStats = player.getComponent(PlayerStatsComponent.class);
         getGameScene().getViewport().setBounds(0, 0, Integer.MAX_VALUE, (int) WINDOW_HEIGHT);
         skillTree = new SkillTreeView();
         hud = new Hud();
@@ -234,9 +240,9 @@ public class Game extends GameApplication {
         }
         updateCamera();
         levelGeneration.generateLevel(player.getX());
-        cleanupPlatforms();
+        cleanupPlatforms(tpf);
         scrollBg(tpf);
-        if (player.getComponent(PlayerStatsComponent.class).isDead()) {
+        if (playerStats.isDead()) {
             getGameController().exit();
         }
         hud.update();
@@ -271,7 +277,11 @@ public class Game extends GameApplication {
     }
 
     //-----HELPERS-----
-    private void cleanupPlatforms() {
+    private void cleanupPlatforms(double tpf) {
+        // scanning every entity is not needed each frame: things this far behind can wait half a second
+        cleanupTimer -= tpf;
+        if (cleanupTimer > 0) return;
+        cleanupTimer = CLEANUP_INTERVAL;
         double viewX = getGameScene().getViewport().getX();
         List<Entity> toRemove = getGameWorld().getEntitiesFiltered(e -> e != player && e.getX() < viewX - 3500);
         toRemove.forEach(Entity::removeFromWorld);

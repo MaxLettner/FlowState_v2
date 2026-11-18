@@ -11,7 +11,12 @@ import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
 
+import com.almasb.fxgl.entity.EntityWorldListener;
+
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import static com.almasb.fxgl.dsl.FXGL.getGameWorld;
 
@@ -27,13 +32,39 @@ public final class Combat {
 
     private Combat() {}
 
+    // Registries kept in sync by a world listener, so queries don't scan every entity (particles included)
+    // each call. Copy-on-write: callers may kill enemies while iterating, and adds/removes are rare.
+    private static final List<Entity> ENEMIES = new CopyOnWriteArrayList<>();
+    private static final List<Entity> PLATFORMS = new CopyOnWriteArrayList<>();
+    private static final List<Entity> ENEMIES_VIEW = Collections.unmodifiableList(ENEMIES);
+    private static final List<Entity> PLATFORMS_VIEW = Collections.unmodifiableList(PLATFORMS);
+
+    /** Call once from initGame, before any entity is spawned. */
+    public static void init() {
+        ENEMIES.clear();
+        PLATFORMS.clear();
+        getGameWorld().addWorldListener(new EntityWorldListener() {
+            @Override
+            public void onEntityAdded(Entity e) {
+                if (e.hasComponent(EnemyIdentifierComponent.class)) ENEMIES.add(e);
+                if (e.hasComponent(PlatformIdentifierComponent.class)) PLATFORMS.add(e);
+            }
+
+            @Override
+            public void onEntityRemoved(Entity e) {
+                ENEMIES.remove(e);
+                PLATFORMS.remove(e);
+            }
+        });
+    }
+
     //-----World queries-----
     public static List<Entity> enemies() {
-        return getGameWorld().getEntitiesByComponent(EnemyIdentifierComponent.class);
+        return ENEMIES_VIEW;
     }
 
     public static List<Entity> platforms() {
-        return getGameWorld().getEntitiesByComponent(PlatformIdentifierComponent.class);
+        return PLATFORMS_VIEW;
     }
 
     public static boolean touchesTerrain(Entity e) {
@@ -42,7 +73,9 @@ public final class Combat {
     }
 
     public static List<Entity> enemiesInRadius(Point2D center, double radius) {
-        return enemies().stream().filter(e -> e.getCenter().distance(center) <= radius).toList();
+        List<Entity> result = new ArrayList<>();
+        for (Entity e : ENEMIES) if (e.getCenter().distance(center) <= radius) result.add(e);
+        return result;
     }
 
     public static Entity nearestEnemy(Point2D point, double maxDistance) {
