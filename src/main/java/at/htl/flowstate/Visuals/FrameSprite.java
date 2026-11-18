@@ -81,6 +81,7 @@ public class FrameSprite extends ImageView implements View {
         if (paused || fps <= 0 || sequence.length <= 1) return;
         time += tpf;
         double frameTime = 1.0 / fps;
+        if (time < frameTime) return; // same frame as before: nothing to change
         while (time >= frameTime) {
             time -= frameTime;
             if (index < sequence.length - 1) {

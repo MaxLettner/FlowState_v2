@@ -39,6 +39,8 @@ public class EnemyStatsComponent extends Component {
     private static final Color[] HUNTER_SPLAT = {Color.web("#ffb35c"), Color.web("#f07a24"), Color.web("#b84e14")};
 
     private final Entity player;
+    private PhysicsComponent physics;
+    private SpriteComponent sprite;
 
     private double stunLeft, freezeLeft, slowLeft, burnLeft, pinLeft;
     private int poisonStacks, bleedStacks;
@@ -60,6 +62,7 @@ public class EnemyStatsComponent extends Component {
     @Override
     public void onUpdate(double tpf) {
         if (dead) return;
+        resolveComponents();
 
         tickDamageOverTime(tpf);
         if (dead) return;
@@ -75,7 +78,6 @@ public class EnemyStatsComponent extends Component {
 
         if (pinLeft > 0) {
             pinLeft -= tpf;
-            PhysicsComponent physics = entity.getComponent(PhysicsComponent.class);
             physics.setVelocityX(0);
             physics.setVelocityY(0);
             physics.overwritePosition(pinPosition);
@@ -85,16 +87,24 @@ public class EnemyStatsComponent extends Component {
         updateStatusVisuals(tpf);
     }
 
+    /** Not in onAdded: FXGL calls onAdded before the entity's later components (sprite) exist. */
+    private void resolveComponents() {
+        if (sprite != null) return;
+        physics = entity.getComponent(PhysicsComponent.class);
+        sprite = entity.getComponent(SpriteComponent.class);
+    }
+
     //-----Damage & death-----
     public void damage(double amount, DamageKind kind) {
         if (dead || amount <= 0) return;
+        resolveComponents();
         if (freezeLeft > 0 && kind != DamageKind.DOT) { // shatter
             amount *= 2;
             freezeLeft = 0;
         }
         HealthDoubleComponent hp = entity.getComponent(HealthDoubleComponent.class);
         hp.damage(amount);
-        if (kind != DamageKind.DOT) entity.getComponent(SpriteComponent.class).flash();
+        if (kind != DamageKind.DOT) sprite.flash();
         if (hp.isZero()) die();
     }
 
@@ -173,15 +183,16 @@ public class EnemyStatsComponent extends Component {
     public void applyKnockback(double strength, int direction, boolean launch) {
         if (direction != 1 && direction != -1) return;
         if (pinLeft > 0) return;
+        resolveComponents();
         knockbackVelocity = strength * direction;
         launched = launch;
         bounced.clear();
-        entity.getComponent(PhysicsComponent.class).setVelocityY(-strength * 0.3);
+        physics.setVelocityY(-strength * 0.3);
     }
 
     private void calculateKnockback(double tpf) {
         if (knockbackVelocity == 0) return;
-        entity.getComponent(PhysicsComponent.class).setVelocityX(knockbackVelocity);
+        physics.setVelocityX(knockbackVelocity);
         if (launched) checkBounce();
         if (dead) return;
 
@@ -206,7 +217,6 @@ public class EnemyStatsComponent extends Component {
     }
 
     private void updateStatusVisuals(double tpf) {
-        SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
         sprite.setFrozen(isFrozen());
         sprite.setStunned((stunLeft > 0 || pinLeft > 0) && !isFrozen());
 

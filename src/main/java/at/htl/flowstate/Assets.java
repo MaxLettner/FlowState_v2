@@ -18,6 +18,7 @@ import java.util.Map;
  */
 public final class Assets {
     private static final Map<String, Image> CACHE = new HashMap<>();
+    private static final Map<String, Frames> FRAMES = new HashMap<>();
 
     private Assets() {}
 
@@ -48,8 +49,14 @@ public final class Assets {
 
     /** A horizontal frame strip of {@code count} equally wide frames, upscaled by {@code scale}. */
     public static Frames frames(String name, int count, int scale) {
-        Image img = pixels(name, scale);
-        return new Frames(img, count, img.getWidth() / count, img.getHeight());
+        String key = name + "@x" + scale + "/" + count;
+        Frames f = FRAMES.get(key);
+        if (f == null) {
+            Image img = pixels(name, scale);
+            f = new Frames(img, count, img.getWidth() / count, img.getHeight());
+            FRAMES.put(key, f);
+        }
+        return f;
     }
 
     /** One frame of a strip as its own (upscaled) image, e.g. for ImagePattern fills. */
@@ -83,15 +90,16 @@ public final class Assets {
         WritableImage out = new WritableImage(w * scale, h * scale);
         PixelReader reader = src.getPixelReader();
         PixelWriter writer = out.getPixelWriter();
+        javafx.scene.image.WritablePixelFormat<java.nio.IntBuffer> argb = javafx.scene.image.PixelFormat.getIntArgbInstance();
         int[] row = new int[w];
         int[] scaled = new int[w * scale];
         for (int y = 0; y < h; y++) {
-            reader.getPixels(0, y, w, 1, javafx.scene.image.PixelFormat.getIntArgbInstance(), row, 0, w);
+            reader.getPixels(0, y, w, 1, argb, row, 0, w);
             for (int x = 0; x < w; x++) {
                 for (int k = 0; k < scale; k++) scaled[x * scale + k] = row[x];
             }
             for (int k = 0; k < scale; k++) {
-                writer.setPixels(0, y * scale + k, w * scale, 1, javafx.scene.image.PixelFormat.getIntArgbInstance(), scaled, 0, w * scale);
+                writer.setPixels(0, y * scale + k, w * scale, 1, argb, scaled, 0, w * scale);
             }
         }
         return out;

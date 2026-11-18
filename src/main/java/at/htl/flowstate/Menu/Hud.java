@@ -24,6 +24,14 @@ public class Hud {
     private static final double SLOT_H = 58;
     private static final double SLOT_GAP = 8;
     private static final double CHARGE_W = 60;
+    private static final Color SLOT_ON = Color.web("#1565C0");
+    private static final Color SLOT_OFF = Color.rgb(20, 20, 20, 0.8);
+    private static final Color SLOT_BORDER = Color.web("#666");
+
+    private final Entity player;
+    private final PlayerStatsComponent stats;
+    private final LoadoutComponent loadout;
+    private int lastSkillPoints = -1;
 
     private final ProgressBar hpBar = new ProgressBar();
     private final ProgressBar mpBar = new ProgressBar();
@@ -41,7 +49,9 @@ public class Hud {
     public Hud() {
         double width = getAppWidth();
         double height = getAppHeight();
-        PlayerStatsComponent stats = Game.getPlayer().getComponent(PlayerStatsComponent.class);
+        player = Game.getPlayer();
+        stats = player.getComponent(PlayerStatsComponent.class);
+        loadout = player.getComponent(LoadoutComponent.class);
 
         setupBar(hpBar, Color.web("#921616"), stats.getMaxHealth(), width * 0.82, 50, true);
         setupBar(mpBar, Color.web("#2300d5"), stats.getMaxMana(), width * 0.82, 80, false);
@@ -98,9 +108,6 @@ public class Hud {
     }
 
     public void update() {
-        Entity player = Game.getPlayer();
-        PlayerStatsComponent stats = player.getComponent(PlayerStatsComponent.class);
-        LoadoutComponent loadout = player.getComponent(LoadoutComponent.class);
         SkillManager skills = SkillManager.get();
 
         hpBar.setCurrentValue(stats.getHealth());
@@ -108,7 +115,11 @@ public class Hud {
         mpBar.setCurrentValue(stats.getMana());
         xpBar.setMaxValue(stats.getMaxExperience());
         xpBar.setCurrentValue(stats.getExperience());
-        spText.setText("Skill points: " + (int) stats.getSkillPoints() + "   [I] Skill tree");
+        int sp = (int) stats.getSkillPoints();
+        if (sp != lastSkillPoints) {
+            lastSkillPoints = sp;
+            spText.setText("Skill points: " + sp + "   [I] Skill tree");
+        }
 
         for (int i = 0; i < SkillManager.HOTBAR_SIZE; i++) {
             SkillType type = skills.getSlot(i);
@@ -119,8 +130,8 @@ public class Hud {
             String status = type == null ? "" : loadout.getSlotStatus(type);
             slotText[i].setText((i + 1) + "  " + name + (status.isEmpty() ? "" : "\n" + status));
 
-            slotBg[i].setFill(on ? Color.web("#1565C0") : Color.rgb(20, 20, 20, 0.8));
-            slotBg[i].setStroke(active ? Color.GOLD : Color.web("#666"));
+            slotBg[i].setFill(on ? SLOT_ON : SLOT_OFF);
+            slotBg[i].setStroke(active ? Color.GOLD : SLOT_BORDER);
             slotBg[i].setStrokeWidth(active ? 3 : 1);
         }
 
