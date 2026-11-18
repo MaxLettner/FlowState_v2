@@ -22,6 +22,10 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 
 - `ruins.py` (2026-11-18): `Ruins.png`, 4 frames 96x72 (destroyed house, colonnade, tower stump, broken arch),
   bottom-aligned, drawn x2 by the `ruin` entity in `LevelFactory`; spawned by `StructureGeneration.spawnRuin`.
+- `skilltree.py` (2026-11-18): full-screen skill tree. `SkillTreeBg.png` 480x270 (x4, ancient rune wall with the
+  carved title and the trunk/roots below the root node), `IconRound_<TYPE>` 28x28 round icons, `NodeRing_skill` /
+  `NodeRing_major` (3 frames: locked / available / owned) and `NodeRing_root`. Node positions must match
+  `Menu/SkillTree/SkillTreeLayout.java`; `python tools/art/skilltree.py out.png` renders a full-screen mock.
 
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).

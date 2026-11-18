@@ -16,6 +16,7 @@ import effects
 import terrain
 import ruins
 import icons
+import skilltree
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
 
@@ -30,6 +31,7 @@ def main():
     icons.generate(OUT)
     terrain.generate(OUT)
     ruins.generate(OUT)
+    skilltree.generate(OUT)
     print('textures written to', OUT)
 
 

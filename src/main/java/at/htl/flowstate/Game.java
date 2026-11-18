@@ -14,8 +14,6 @@ import at.htl.flowstate.Generation.LevelGeneration;
 import at.htl.flowstate.Menu.GameMenu;
 import at.htl.flowstate.Menu.Hud;
 import at.htl.flowstate.Menu.SkillTree.SkillTreeView;
-import at.htl.flowstate.Skills.SkillManager;
-import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.SceneFactory;
@@ -132,31 +130,25 @@ public class Game extends GameApplication {
             }
         }, KeyCode.F11);
 
-        getInput().addAction(new UserAction("Toggle Skill Tree") {
-            @Override protected void onActionBegin() {
-                if (skillTree.isOpen()) skillTree.close();
-                else skillTree.open();
-            }
+        // closing (I / Esc) is bound inside the skill tree, which pauses the game while open
+        getInput().addAction(new UserAction("Open Skill Tree") {
+            @Override protected void onActionBegin() { skillTree.open(); }
         }, KeyCode.I);
 
         getInput().addAction(new UserAction("Attack") {
-            @Override protected void onActionBegin() { if (!skillTree.isOpen()) loadout().primaryPress(); }
+            @Override protected void onActionBegin() { loadout().primaryPress(); }
             @Override protected void onActionEnd() { loadout().primaryRelease(); }
         }, MouseButton.PRIMARY);
 
         getInput().addAction(new UserAction("Secondary") {
-            @Override protected void onActionBegin() { if (!skillTree.isOpen()) loadout().secondaryPress(); }
+            @Override protected void onActionBegin() { loadout().secondaryPress(); }
             @Override protected void onActionEnd() { loadout().secondaryRelease(); }
         }, MouseButton.SECONDARY);
 
         for (int i = 0; i < SLOT_KEYS.length; i++) {
             final int slot = i;
             getInput().addAction(new UserAction("Hotbar " + (i + 1)) {
-                @Override protected void onActionBegin() {
-                    SkillType hovered = skillTree.isOpen() ? skillTree.getHoveredSkill() : null;
-                    if (hovered != null) SkillManager.get().assign(hovered, slot);
-                    else loadout().pressSlot(slot);
-                }
+                @Override protected void onActionBegin() { loadout().pressSlot(slot); }
             }, SLOT_KEYS[i]);
         }
     }
