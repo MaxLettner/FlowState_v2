@@ -9,7 +9,6 @@ import at.htl.flowstate.Skills.SkillType;
 import at.htl.flowstate.Skills.SlotKind;
 import com.almasb.fxgl.app.scene.Viewport;
 import com.almasb.fxgl.entity.Entity;
-import com.almasb.fxgl.ui.ProgressBar;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.image.ImageView;
@@ -24,7 +23,7 @@ import javafx.scene.text.TextAlignment;
 import static com.almasb.fxgl.dsl.FXGL.*;
 
 /**
- * HP / mana / XP bars, skill points, the 4-slot hotbar, combo meter and charge bar.
+ * HP / mana / XP bars in the top right, the 4-slot hotbar, combo meter and charge bar.
  * A hotbar slot on cooldown goes dark and fills back up from the bottom; it is full again when the skill is ready.
  */
 public class Hud {
@@ -42,16 +41,17 @@ public class Hud {
     private static final int ICON_SCALE = 2;   // 24px icons shown at 48px
     private static final double ICON_SIZE = 24 * ICON_SCALE;
     private static final double SLOT_PAD = 5;
+    private static final double BARS_RIGHT = 36;   // screen px between the bars and the right edge
+    private static final double BARS_TOP = 30;
+    private static final double BARS_GAP = 2 * HudBar.SCALE;
 
     private final Entity player;
     private final PlayerStatsComponent stats;
     private final LoadoutComponent loadout;
-    private int lastSkillPoints = -1;
 
-    private final ProgressBar hpBar = new ProgressBar();
-    private final ProgressBar mpBar = new ProgressBar();
-    private final ProgressBar xpBar = new ProgressBar();
-    private final Text spText = new Text();
+    private final HudBar hpBar = new HudBar("HP", 5, true);
+    private final HudBar mpBar = new HudBar("MP", 8, true);
+    private final HudBar xpBar = new HudBar("XP", 3, false);
 
     private final Rectangle[] slotBg = new Rectangle[SkillManager.HOTBAR_SIZE];
     private final Text[] slotText = new Text[SkillManager.HOTBAR_SIZE];
@@ -75,15 +75,13 @@ public class Hud {
         stats = player.getComponent(PlayerStatsComponent.class);
         loadout = player.getComponent(LoadoutComponent.class);
 
-        setupBar(hpBar, Color.web("#921616"), stats.getMaxHealth(), width * 0.82, 50, true);
-        setupBar(mpBar, Color.web("#2300d5"), stats.getMaxMana(), width * 0.82, 80, false);
-        setupBar(xpBar, Color.DARKGOLDENROD, stats.getMaxExperience(), width * 0.82, 110, true);
-
-        spText.setFill(Color.WHITE);
-        spText.setStyle("-fx-font-size: 16px; -fx-font-weight: bold;");
-        spText.setLayoutX(width * 0.82);
-        spText.setLayoutY(155);
-        addUINode(spText);
+        double barY = BARS_TOP;
+        for (HudBar bar : new HudBar[]{hpBar, mpBar, xpBar}) {
+            bar.setLayoutX(width - BARS_RIGHT - bar.barWidth());
+            bar.setLayoutY(barY);
+            barY += bar.barHeight() + BARS_GAP;
+            addUINode(bar);
+        }
 
         double totalWidth = SkillManager.HOTBAR_SIZE * SLOT_W + (SkillManager.HOTBAR_SIZE - 1) * SLOT_GAP;
         double startX = (width - totalWidth) / 2;
@@ -138,31 +136,12 @@ public class Hud {
         return r;
     }
 
-    private void setupBar(ProgressBar bar, Color color, double max, double x, double y, boolean label) {
-        bar.setMinValue(0);
-        bar.setMaxValue(max);
-        bar.setFill(color);
-        bar.setHeight(15);
-        bar.setWidth(300);
-        bar.setLabelVisible(label);
-        bar.setLayoutX(x);
-        bar.setLayoutY(y);
-        addUINode(bar);
-    }
-
     public void update() {
         SkillManager skills = SkillManager.get();
 
-        hpBar.setCurrentValue(stats.getHealth());
-        mpBar.setMaxValue(stats.getMaxMana());
-        mpBar.setCurrentValue(stats.getMana());
-        xpBar.setMaxValue(stats.getMaxExperience());
-        xpBar.setCurrentValue(stats.getExperience());
-        int sp = (int) stats.getSkillPoints();
-        if (sp != lastSkillPoints) {
-            lastSkillPoints = sp;
-            spText.setText("Skill points: " + sp + "   [I] Skill tree");
-        }
+        hpBar.update(stats.getHealth(), stats.getMaxHealth(), tpf());
+        mpBar.update(stats.getMana(), stats.getMaxMana(), tpf());
+        xpBar.update(stats.getExperience(), stats.getMaxExperience(), tpf());
 
         for (int i = 0; i < SkillManager.HOTBAR_SIZE; i++) {
             SkillType type = skills.getSlot(i);

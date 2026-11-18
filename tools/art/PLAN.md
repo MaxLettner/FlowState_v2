@@ -35,6 +35,10 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   hover with a molten groove and ember halo), hotspot (1, 1). `Menu/GoldCursor.java` upscales it (x2 at 1080p)
   because JavaFX would blur a PNG cursor down to 24 px; it replaces FXGL's cursor on every scene root, and the
   hover frame replaces Cursor.HAND on menu buttons and skill nodes. `python tools/art/cursor.py out.png` previews.
+- `hudbars.py` (2026-11-18): HP / mana / XP bars in the top right (`Menu/HudBar.java`, x2), replacing FXGL's
+  ProgressBars and the skill point text. `HudBar_<ID>` = iron trough with a diamond gem socket and a pointed end;
+  `HudFill_<ID>` = 3 frames (liquid repeating every 32 px, scrolled by the game / washed-out drain / leading edge).
+  Trough at (18, 5), 128 long; keep in sync with HudBar.java. `python tools/art/hudbars.py out.png [screenshot]`.
 
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
