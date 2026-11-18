@@ -32,6 +32,20 @@ mvn javafx:run
 
 The Maven wrapper works too: `./mvnw javafx:run`.
 
+### Standalone jar (Linux + Windows)
+
+```bash
+./mvnw -Pdist clean package
+```
+
+This builds `target/FlowState-1.0.jar`, a single jar with JavaFX and its native libraries for Linux and Windows (x64) bundled. Run it on either OS with a Java 25+ runtime installed:
+
+```bash
+java -jar FlowState-1.0.jar
+```
+
+On Windows, double-clicking the jar also works when Java is associated with `.jar` files. Ignore `target/original-FlowState-1.0.jar`; it is the jar without dependencies.
+
 ---
 
 ## Controls
