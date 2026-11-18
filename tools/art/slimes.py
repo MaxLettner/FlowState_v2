@@ -1,0 +1,335 @@
+"""Slime characters: player + enemy types, all animation strips (64x64 frames)."""
+import math
+from pixel import *
+
+SIZE = 64
+CX = 32
+BASE_Y = 62   # bottom of the slime (anchor used by SpriteComponent)
+
+LAVA_RIM = hexc('#ff8a3d')
+
+
+class Look:
+    def __init__(self, body, outline_c, eye_style, mouth, extras, bubbles=True, rim=0.55):
+        self.body = body          # ramp: highlight .. shadow (5 colours)
+        self.outline = outline_c
+        self.eye_style = eye_style
+        self.mouth = mouth
+        self.extras = extras      # list of callables(px, frame_info)
+        self.bubbles = bubbles
+        self.rim = rim
+
+
+def half_width(v, w):
+    """Half width of the slime at relative height v (0 bottom .. 1 top)."""
+    if v < 0 or v > 1:
+        return -1
+    hw = (w / 2) * (1 - v ** 2.4) ** 0.5
+    if v < 0.18:
+        hw *= 1 + 0.10 * (1 - v / 0.18)
+    return hw
+
+
+def body_mask(w, h, lift, lean):
+    """lean shifts the top of the body forward (+x) for motion."""
+    mask = {}
+    bottom = BASE_Y - lift
+    for y in range(SIZE):
+        v = (bottom - (y + 0.5)) / h
+        hw = half_width(v, w)
+        if hw <= 0:
+            continue
+        cx = CX + lean * v
+        for x in range(SIZE):
+            d = (x + 0.5 - cx)
+            if abs(d) <= hw:
+                mask[(x, y)] = (d / max(hw, 1e-3), v)
+    return mask
+
+
+def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, mood=None):
+    img = new(SIZE, SIZE)
+    px = img.load()
+    mask = body_mask(w, h, lift, lean)
+    bottom = BASE_Y - lift
+    light = (-0.55, -0.7, 0.45)
+    ll = math.sqrt(sum(c * c for c in light))
+    light = tuple(c / ll for c in light)
+
+    for (x, y), (nx, v) in mask.items():
+        ny = -(v - 0.45) / 0.55
+        nz2 = max(0.0, 1 - nx * nx * 0.85 - ny * ny * 0.6)
+        nz = math.sqrt(nz2)
+        lam = nx * light[0] + ny * light[1] + nz * light[2]
+        value = 1 - max(0.0, min(1.0, (lam + 0.25) / 1.15))
+        idx = dither_index(value, x, y, len(look.body))
+        c = look.body[idx]
+        px[x, y] = c
+
+    # warm lava bounce light: a thin rim on the lower edge only
+    for (x, y), (nx, v) in mask.items():
+        if v < 0.3 and look.rim > 0:
+            edge = any((x + dx, y + dy) not in mask for dx, dy in ((1, 0), (-1, 0), (0, 1)))
+            if edge:
+                px[x, y] = mix(px[x, y], LAVA_RIM, look.rim)
+
+    # inner bubbles
+    if look.bubbles:
+        for i, (bx, bv, r) in enumerate([(-0.35, 0.25, 1.6), (0.25, 0.18, 1.1), (0.05, 0.4, 0.9)]):
+            hw = half_width(bv, w)
+            cx = CX + lean * bv + bx * hw
+            cy = bottom - bv * h - math.sin(phase * 2 * math.pi + i) * 1.2
+            ellipse(px, SIZE, SIZE, cx, cy, r, r, look.body[1])
+            put(px, SIZE, SIZE, int(cx - 0.5), int(cy - 0.8), look.body[0])
+
+    # specular highlight
+    hv = 0.78
+    hx = CX + lean * hv - half_width(hv, w) * 0.42
+    hy = bottom - hv * h
+    shine = mix(look.body[0], (255, 255, 255, 255), 0.75)
+    ellipse(px, SIZE, SIZE, hx, hy, max(1.5, w * 0.07), max(1.2, h * 0.06), shine)
+    put(px, SIZE, SIZE, int(hx - 1), int(hy - 1), (255, 255, 255, 255))
+    put(px, SIZE, SIZE, int(hx + w * 0.11), int(hy - 1), shine)
+
+    info = dict(w=w, h=h, bottom=bottom, lean=lean, phase=phase, px=px, mood=mood)
+
+    # face
+    ev = 0.55 + eye_dy / max(h, 1)
+    ey = bottom - ev * h
+    ecx = CX + lean * ev + w * 0.12   # face looks to the right (+x)
+    look.eye_style(px, ecx, ey, w, h, blink, info)
+    look.mouth(px, ecx, ey, w, h, info)
+
+    for extra in look.extras:
+        extra(img, px, info)
+
+    return outline(img, look.outline)
+
+
+# ---------- faces ----------
+def eyes_hero(px, ecx, ey, w, h, blink, info):
+    gap = max(5, w * 0.17)
+    for sx in (-gap / 2, gap / 2):
+        x = ecx + sx
+        if blink:
+            for dx in range(-2, 2):
+                put(px, SIZE, SIZE, int(x + dx), int(ey + 1), OUTLINE)
+            continue
+        ellipse(px, SIZE, SIZE, x, ey, 2.6, 3.4, (255, 255, 255, 255))
+        ellipse(px, SIZE, SIZE, x + 0.8, ey + 0.6, 1.6, 2.4, hexc('#14213d'))
+        put(px, SIZE, SIZE, int(x), int(ey - 1), (255, 255, 255, 255))
+        put(px, SIZE, SIZE, int(x + 1), int(ey + 2), hexc('#5aa9ff'))
+
+
+def mouth_smile(px, ecx, ey, w, h, info):
+    my = ey + max(5, h * 0.14)
+    for dx, dy in [(-2, 0), (-1, 1), (0, 1), (1, 1), (2, 0)]:
+        put(px, SIZE, SIZE, int(ecx + dx), int(my + dy), OUTLINE)
+
+
+def eyes_angry(px, ecx, ey, w, h, blink, info):
+    gap = max(5, w * 0.18)
+    for i, sx in enumerate((-gap / 2, gap / 2)):
+        x = ecx + sx
+        ellipse(px, SIZE, SIZE, x, ey + 0.5, 2.3, 2.6, hexc('#fff3b0'))
+        ellipse(px, SIZE, SIZE, x + 0.8, ey + 1, 1.2, 1.6, hexc('#b3001b'))
+        # slanted brow
+        d = 1 if i == 0 else -1
+        for k in range(-3, 4):
+            put(px, SIZE, SIZE, int(x + k), int(ey - 3 + d * k * 0.45), OUTLINE)
+            put(px, SIZE, SIZE, int(x + k), int(ey - 4 + d * k * 0.45), OUTLINE)
+
+
+def mouth_teeth(px, ecx, ey, w, h, info):
+    my = int(ey + max(6, h * 0.16))
+    for dx in range(-4, 5):
+        put(px, SIZE, SIZE, int(ecx + dx), my, OUTLINE)
+        put(px, SIZE, SIZE, int(ecx + dx), my + 2, OUTLINE)
+        put(px, SIZE, SIZE, int(ecx + dx), my + 1, hexc('#3a0a14'))
+    for dx in (-3, -1, 1, 3):
+        put(px, SIZE, SIZE, int(ecx + dx), my + 1, hexc('#f4ecd8'))
+
+
+def eyes_hunter(px, ecx, ey, w, h, blink, info):
+    gap = max(5, w * 0.17)
+    for sx in (-gap / 2, gap / 2):
+        x = ecx + sx
+        ellipse(px, SIZE, SIZE, x, ey, 2.2, 2.0, hexc('#fffbe6'))
+        put(px, SIZE, SIZE, int(x + 1), int(ey), OUTLINE)
+        put(px, SIZE, SIZE, int(x + 1), int(ey - 1), OUTLINE)
+        for k in range(-2, 3):  # narrow, focused lids
+            put(px, SIZE, SIZE, int(x + k), int(ey - 2), OUTLINE)
+    # war paint stripes under the eyes
+    for sx in (-gap / 2, gap / 2):
+        for k in range(0, 3):
+            put(px, SIZE, SIZE, int(ecx + sx - 1 + k), int(ey + 3), hexc('#ffe066'))
+
+
+def mouth_flat(px, ecx, ey, w, h, info):
+    my = ey + max(6, h * 0.15)
+    for dx in range(-2, 3):
+        put(px, SIZE, SIZE, int(ecx + dx), int(my), OUTLINE)
+
+
+# ---------- extras ----------
+def headband(img, px, info):
+    """Player: red bandana around the head with two fluttering tails."""
+    w, h, bottom, lean, phase = info['w'], info['h'], info['bottom'], info['lean'], info['phase']
+    band_v = 0.74
+    by = bottom - band_v * h
+    red = ramp('#ff6b6b', '#e63946', '#b51f2e', '#7a1020')
+    for y in range(int(by) - 1, int(by) + 2):
+        v = (bottom - (y + 0.5)) / h
+        hw = half_width(v, w)
+        if hw <= 0:
+            continue
+        cx = CX + lean * v
+        for x in range(int(cx - hw), int(cx + hw) + 1):
+            if (x + 0.5 - cx) ** 2 <= hw * hw and img.getpixel((x, y))[3] > 0:
+                shade = 0 if y == int(by) - 1 else (1 if x > cx - hw * 0.3 else 2)
+                if x > cx + hw * 0.6:
+                    shade = 2
+                px[x, y] = red[shade]
+    # knot + tails behind (left)
+    hw = half_width(band_v, w)
+    kx = CX + lean * band_v - hw
+    ellipse(px, SIZE, SIZE, kx, by, 1.6, 1.6, red[1])
+    for t_i, (amp, length, off) in enumerate([(2.2, 11, 0.0), (1.6, 8, 1.3)]):
+        for k in range(1, length):
+            tx = kx - k
+            ty = by + k * 0.35 + math.sin(phase * 2 * math.pi + k * 0.55 + off) * amp * (k / length)
+            c = red[2] if k % 3 == 0 else red[1]
+            put(px, SIZE, SIZE, int(tx), int(ty), c)
+            put(px, SIZE, SIZE, int(tx), int(ty) + 1, red[3])
+
+
+def horns(img, px, info):
+    """Brute: two small bone horns on top."""
+    w, h, bottom, lean = info['w'], info['h'], info['bottom'], info['lean']
+    top = bottom - h
+    bone = ramp('#fff8e1', '#e8dcb8', '#bfae84', '#8a7a55')
+    for side in (-1, 1):
+        bx = CX + lean + side * w * 0.2
+        for k in range(6):
+            x = bx + side * k * 0.5
+            y = top + 3 - k
+            width = max(1, 3 - k // 2)
+            for dx in range(width):
+                put(px, SIZE, SIZE, int(x + dx * side * -1), int(y), bone[0 if dx == 0 and k > 1 else 1 if k < 4 else 2])
+
+
+def feather(img, px, info):
+    """Hunter: headband with a feather sticking up at the back."""
+    w, h, bottom, lean, phase = info['w'], info['h'], info['bottom'], info['lean'], info['phase']
+    band_v = 0.72
+    by = int(bottom - band_v * h)
+    band = ramp('#8d5524', '#6b3e1a', '#4a2a10')
+    for y in (by, by + 1):
+        v = (bottom - (y + 0.5)) / h
+        hw = half_width(v, w)
+        cx = CX + lean * v
+        for x in range(int(cx - hw), int(cx + hw) + 1):
+            if img.getpixel((x, y))[3] > 0:
+                px[x, y] = band[0 if y == by else 1]
+    # beads
+    hw = half_width(band_v, w)
+    cx = CX + lean * band_v
+    for k, col in enumerate(['#ffe066', '#3ec1d3', '#ffe066']):
+        put(px, SIZE, SIZE, int(cx - 3 + k * 3), by + 1, hexc(col))
+    # feather (back = left)
+    fx = cx - hw * 0.55
+    sway = math.sin(phase * 2 * math.pi) * 1.0
+    shaft = hexc('#4a2a10')
+    vane = ramp('#fff1e6', '#3ec1d3', '#1d7f8c', '#0f4c55')
+    length = 13
+    for k in range(length):
+        x = fx - k * 0.6 + sway * (k / length)
+        y = by - k
+        half = 0 if k < 2 else (2 if k < length - 3 else 1)
+        for d in range(-half, half + 1):
+            col = vane[1] if d <= 0 else vane[2]
+            if k > length - 4:
+                col = vane[0]          # white tip
+            elif k % 4 == 0 and d != 0:
+                col = vane[3]          # notches
+            put(px, SIZE, SIZE, int(x) + d, int(y) + (1 if abs(d) == 2 else 0), col)
+        put(px, SIZE, SIZE, int(x), int(y), shaft if k < length - 3 else vane[0])
+
+
+PLAYER = Look(ramp('#c8fbff', '#6fe3ff', '#2fb4f5', '#1f7ad1', '#16479a'), hexc('#0b1a3a'),
+              eyes_hero, mouth_smile, [headband], rim=0.45)
+BRUTE = Look(ramp('#d8ff9a', '#8fd94a', '#4fa52a', '#2f6e1f', '#1b4016'), hexc('#0e1f0b'),
+             eyes_angry, mouth_teeth, [horns], rim=0.6)
+HUNTER = Look(ramp('#ffd6a8', '#f3964a', '#c9562a', '#8e3220', '#561a17'), hexc('#2a0b0b'),
+              eyes_hunter, mouth_flat, [feather], rim=0.35)
+
+
+# ---------- animations ----------
+def anim_idle(look, n=6):
+    frames = []
+    for i in range(n):
+        s = math.sin(i / n * 2 * math.pi)
+        frames.append(draw_slime(look, 40 - s * 1.5, 38 + s * 1.5, phase=i / n, blink=(i == 3)))
+    return frames
+
+
+def anim_walk(look, n=8):
+    frames = []
+    for i in range(n):
+        p = i / n
+        hop = max(0.0, math.sin(p * 2 * math.pi))           # in the air half the cycle
+        squash = max(0.0, -math.sin(p * 2 * math.pi))
+        w = 40 + squash * 6 - hop * 3
+        h = 38 - squash * 5 + hop * 4
+        frames.append(draw_slime(look, w, h, lift=hop * 5, lean=2 + hop * 2, phase=p))
+    return frames
+
+
+def anim_air(look):
+    # rising fast, rising, apex, falling
+    params = [(33, 47, 1.5), (36, 43, 1), (41, 38, 0), (35, 45, -1.5)]
+    return [draw_slime(look, w, h, lean=l, eye_dy=-1 if i < 2 else 1, phase=i / 4) for i, (w, h, l) in enumerate(params)]
+
+
+def anim_land(look):
+    params = [(54, 26), (50, 31), (44, 37), (41, 39)]
+    return [draw_slime(look, w, h, phase=i / 4) for i, (w, h) in enumerate(params)]
+
+
+def anim_attack(look):
+    # wind up (lean back), throw (lean forward), recover
+    params = [(42, 36, -3), (44, 34, -5), (36, 44, 6), (40, 38, 2)]
+    return [draw_slime(look, w, h, lean=l, phase=i / 4) for i, (w, h, l) in enumerate(params)]
+
+
+def frozen_overlay(look):
+    """Ice shell drawn over a slime (enemy freeze effect)."""
+    img = new(SIZE, SIZE)
+    px = img.load()
+    mask = body_mask(46, 44, 0, 0)
+    ice = ramp('#ffffff', '#d6f6ff', '#a8e4f7', '#6cc3e8')
+    for (x, y), (nx, v) in mask.items():
+        idx = dither_index(0.3 + 0.5 * (1 - v) * 0.6 + (0.2 if nx > 0.4 else 0), x, y, len(ice))
+        c = ice[idx]
+        px[x, y] = (c[0], c[1], c[2], 150)
+    # crystal shards on top
+    for sx, height in [(-12, 9), (-3, 13), (7, 8), (14, 6)]:
+        for k in range(height):
+            wdt = max(0, (height - k) // 3)
+            for d in range(-wdt, wdt + 1):
+                put(px, SIZE, SIZE, CX + sx + d, BASE_Y - 40 - k + abs(sx) // 3, (230, 250, 255, 210))
+    # shine lines
+    for k in range(6):
+        put(px, SIZE, SIZE, CX - 10 + k, BASE_Y - 30 + k, (255, 255, 255, 230))
+    return outline(img, (60, 130, 180, 200))
+
+
+def generate(out_dir):
+    for name, look in [('Player', PLAYER), ('EnemyBrute', BRUTE), ('EnemyHunter', HUNTER)]:
+        strip(anim_idle(look)).save(f'{out_dir}/{name}_idle.png')
+        strip(anim_walk(look)).save(f'{out_dir}/{name}_walk.png')
+        strip(anim_air(look)).save(f'{out_dir}/{name}_air.png')
+        strip(anim_land(look)).save(f'{out_dir}/{name}_land.png')
+        if look is HUNTER:
+            strip(anim_attack(look)).save(f'{out_dir}/{name}_attack.png')
+    frozen_overlay(BRUTE).save(f'{out_dir}/FrozenOverlay.png')

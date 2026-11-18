@@ -1,0 +1,17 @@
+from pixel import ramp
+
+STEEL = ramp('#f5f8fc', '#cfd8e3', '#9aa9ba', '#6a7a8e', '#424c5e')
+DARK_STEEL = ramp('#a9b2c4', '#7a849c', '#555e75', '#383f52', '#232838')
+RUST = ramp('#f0b48a', '#cf7f4f', '#a65a33', '#723c24', '#4a2519')
+WOOD = ramp('#d9a066', '#ad7444', '#83552e', '#5d3b20', '#3c2515')
+DARK_WOOD = ramp('#a5704a', '#7a4f33', '#573722', '#3b2416', '#24160d')
+LEATHER = ramp('#c48c58', '#99683d', '#734b2a', '#4f321c', '#321f11')
+GOLD = ramp('#fff4b0', '#f5cd52', '#cf9c2f', '#97691f', '#5e3f12')
+BONE = ramp('#fffaee', '#ece2c6', '#cbbb94', '#9b8b66', '#655a3e')
+ICE = ramp('#ffffff', '#d8f6ff', '#a2e0f7', '#62b6df', '#2f7aa8')
+CRIMSON = ramp('#ff8a8a', '#e63946', '#b51f2e', '#7a1020', '#4a0812')
+TEAL = ramp('#b8fff4', '#4fe0c8', '#22a596', '#13706a', '#0b4643')
+PURPLE = ramp('#f0d4ff', '#b77cff', '#7f45d6', '#53279b', '#2f155e')
+GREEN = ramp('#e2ffb0', '#9be84f', '#5bb42c', '#357a1d', '#1e4612')
+BLACK_IRON = ramp('#7b7f8c', '#555966', '#3a3d48', '#26282f', '#16171c')
+CLOTH_WHITE = ramp('#ffffff', '#e8e4dc', '#bcb4a6', '#8a8172', '#5a5348')
