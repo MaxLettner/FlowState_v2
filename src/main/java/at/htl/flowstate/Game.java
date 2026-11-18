@@ -85,6 +85,9 @@ public class Game extends GameApplication {
         settings.setVersion("0.7.0");
         settings.setWidth((int) WINDOW_WIDTH);
         settings.setHeight((int) WINDOW_HEIGHT);
+        // the 1920x1080 game is scaled (letterboxed) to the screen; F11 toggles windowed mode
+        settings.setFullScreenAllowed(true);
+        settings.setFullScreenFromStart(true);
         settings.setSceneFactory(new SceneFactory() {
             @NotNull
             @Override
@@ -120,6 +123,12 @@ public class Game extends GameApplication {
             @Override protected void onActionBegin() { movement().startDown(); }
             @Override protected void onActionEnd() { movement().stopDown(); }
         }, KeyCode.S);
+
+        getInput().addAction(new UserAction("Toggle Fullscreen") {
+            @Override protected void onActionBegin() {
+                getSettings().getFullScreen().set(!getSettings().getFullScreen().get());
+            }
+        }, KeyCode.F11);
 
         getInput().addAction(new UserAction("Toggle Skill Tree") {
             @Override protected void onActionBegin() {

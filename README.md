@@ -46,6 +46,7 @@ The Maven wrapper works too: `./mvnw javafx:run`.
 |Right click|Weapon secondary: dodge (Leather Gloves), block (Metal Gloves), throw / recall / wind up (tridents)|
 |I|Open / close skill tree (hover a skill + 1–4 to put it on the hotbar)|
 |Escape|Game menu (Resume / Exit)|
+|F11|Toggle fullscreen / windowed (the game starts in fullscreen)|
 
 ---
 
