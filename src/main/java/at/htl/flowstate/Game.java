@@ -12,12 +12,13 @@ import at.htl.flowstate.Factories.EnemyFactory;
 import at.htl.flowstate.Factories.LevelFactory;
 import at.htl.flowstate.Generation.LevelGeneration;
 import at.htl.flowstate.Menu.GameMenu;
+import at.htl.flowstate.Menu.GoldCursor;
 import at.htl.flowstate.Menu.Hud;
 import at.htl.flowstate.Menu.SkillTree.SkillTreeView;
 import at.htl.flowstate.Skills.SkillManager;
-import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
+import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.UserAction;
@@ -90,13 +91,27 @@ public class Game extends GameApplication {
         // the 1920x1080 game is scaled (letterboxed) to the screen; F11 toggles windowed mode
         settings.setFullScreenAllowed(true);
         settings.setFullScreenFromStart(true);
+        // the game starts in the rune menu; the world is only built once "Start New Game" is pressed
+        settings.setMainMenuEnabled(true);
         settings.setSceneFactory(new SceneFactory() {
             @NotNull
             @Override
+            public com.almasb.fxgl.app.scene.FXGLMenu newMainMenu() {
+                return new GameMenu(MenuType.MAIN_MENU);
+            }
+
+            @NotNull
+            @Override
             public com.almasb.fxgl.app.scene.FXGLMenu newGameMenu() {
-                return new GameMenu();
+                return new GameMenu(MenuType.GAME_MENU);
             }
         });
+    }
+
+    @Override
+    protected void onPreInit() {
+        // the golden arrow replaces FXGL's default cursor on every scene
+        GoldCursor.install(getPrimaryStage());
     }
 
     @Override
@@ -132,31 +147,25 @@ public class Game extends GameApplication {
             }
         }, KeyCode.F11);
 
-        getInput().addAction(new UserAction("Toggle Skill Tree") {
-            @Override protected void onActionBegin() {
-                if (skillTree.isOpen()) skillTree.close();
-                else skillTree.open();
-            }
+        // closing (I / Esc) is bound inside the skill tree, which pauses the game while open
+        getInput().addAction(new UserAction("Open Skill Tree") {
+            @Override protected void onActionBegin() { skillTree.open(); }
         }, KeyCode.I);
 
         getInput().addAction(new UserAction("Attack") {
-            @Override protected void onActionBegin() { if (!skillTree.isOpen()) loadout().primaryPress(); }
+            @Override protected void onActionBegin() { loadout().primaryPress(); }
             @Override protected void onActionEnd() { loadout().primaryRelease(); }
         }, MouseButton.PRIMARY);
 
         getInput().addAction(new UserAction("Secondary") {
-            @Override protected void onActionBegin() { if (!skillTree.isOpen()) loadout().secondaryPress(); }
+            @Override protected void onActionBegin() { loadout().secondaryPress(); }
             @Override protected void onActionEnd() { loadout().secondaryRelease(); }
         }, MouseButton.SECONDARY);
 
         for (int i = 0; i < SLOT_KEYS.length; i++) {
             final int slot = i;
             getInput().addAction(new UserAction("Hotbar " + (i + 1)) {
-                @Override protected void onActionBegin() {
-                    SkillType hovered = skillTree.isOpen() ? skillTree.getHoveredSkill() : null;
-                    if (hovered != null) SkillManager.get().assign(hovered, slot);
-                    else loadout().pressSlot(slot);
-                }
+                @Override protected void onActionBegin() { loadout().pressSlot(slot); }
             }, SLOT_KEYS[i]);
         }
     }
@@ -176,6 +185,7 @@ public class Game extends GameApplication {
         Combat.init();
         Impact.reset();
         cameraX = 0;
+        SkillManager.reset();   // initGame runs again for "Start New Game"; before the player caches it
         setupPlayer();
         playerStats = player.getComponent(PlayerStatsComponent.class);
         getGameScene().getViewport().setBounds(0, -SHAKE_MARGIN, Integer.MAX_VALUE, (int) WINDOW_HEIGHT + SHAKE_MARGIN);
@@ -213,6 +223,9 @@ public class Game extends GameApplication {
     }
 
     private void setupBg() {
+        // a new game keeps the scene root (only the game world and UI are cleared)
+        for (ParallaxLayer l : layers) getGameScene().getRoot().getChildren().removeAll(l.a(), l.b());
+        layers.clear();
         layers.add(addLayer(Assets.pixels("bg_far.png", BG_SCALE), 0.03, 0));
         layers.add(addLayer(Assets.pixels("bg_mid.png", BG_SCALE), 0.08, 0));
     }
@@ -265,8 +278,9 @@ public class Game extends GameApplication {
     private void updateCamera() {
         double threshold = cameraX + WINDOW_WIDTH * 0.75;
         if (player.getX() > threshold) cameraX = player.getX() - WINDOW_WIDTH * 0.75;
-        getGameScene().getViewport().setX(cameraX + Impact.getShakeX());
-        getGameScene().getViewport().setY(Impact.getShakeY());
+        // whole pixels: a fractional camera offset makes JavaFX resample (blur) every sprite
+        getGameScene().getViewport().setX(Math.round(cameraX + Impact.getShakeX()));
+        getGameScene().getViewport().setY(Math.round(Impact.getShakeY()));
     }
 
     //-----HELPERS-----

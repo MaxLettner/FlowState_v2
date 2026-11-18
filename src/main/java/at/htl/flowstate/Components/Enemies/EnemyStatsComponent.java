@@ -34,7 +34,6 @@ public class EnemyStatsComponent extends Component {
     private static final double ELEMENTAL_MASTERY = 1.25;
     private static final double KNOCKBACK_FRICTION = 600;
     private static final double BOUNCE_DAMAGE = 10;
-    private static final double PIT_DEATH_Y = 1200;
     private static final Color[] BRUTE_SPLAT = {Color.web("#9be84f"), Color.web("#5bb42c"), Color.web("#357a1d")};
     private static final Color[] HUNTER_SPLAT = {Color.web("#ffb35c"), Color.web("#f07a24"), Color.web("#b84e14")};
 
@@ -66,11 +65,6 @@ public class EnemyStatsComponent extends Component {
 
         tickDamageOverTime(tpf);
         if (dead) return;
-
-        if (entity.getY() > PIT_DEATH_Y) {
-            die();
-            return;
-        }
 
         if (knockbackVelocity == 0) stunLeft = Math.max(0, stunLeft - tpf);
         freezeLeft = Math.max(0, freezeLeft - tpf);

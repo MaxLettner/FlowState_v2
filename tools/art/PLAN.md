@@ -20,6 +20,22 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 - Fixed chest double-attach warning (`build()` instead of `buildAndAttach()`).
 - Effects/swings now render above terrain (z 12-15).
 
+- `ruins.py` (2026-11-18): `Ruins.png`, 4 frames 96x72 (destroyed house, colonnade, tower stump, broken arch),
+  bottom-aligned, drawn x2 by the `ruin` entity in `LevelFactory`; spawned by `StructureGeneration.spawnRuin`.
+- `skilltree.py` (2026-11-18): full-screen skill tree. `SkillTreeBg.png` 480x270 (x4, ancient rune wall with the
+  carved title and the trunk/roots below the root node), `IconRound_<TYPE>` 28x28 round icons, `NodeRing_skill` /
+  `NodeRing_major` (3 frames: locked / available / owned) and `NodeRing_root`. Node positions must match
+  `Menu/SkillTree/SkillTreeLayout.java`; `python tools/art/skilltree.py out.png` renders a full-screen mock.
+- `menu.py` (2026-11-18): full-screen Esc menu (`Menu/GameMenu.java`) on the same rune wall. `MenuBg` / `MenuGlow`
+  480x270 (x4, lintel with the FLOWSTATE title, carved seal holding the buttons, two torches), `MenuFlame` (6f),
+  `MenuButton_<ID>` (normal / hover), `MenuControls` tablet, `MenuText_<ID>` confirm prompts. Text uses the shared
+  5x7 font in `pixfont.py`. Screen positions in GameMenu = `layout()` x4; `python tools/art/menu.py out.png
+  [main|controls|confirm]` renders a mock.
+- `cursor.py` (2026-11-18): golden arrow cursor `Cursor.png`, 2 frames 21x21 (normal with an engraved groove /
+  hover with a molten groove and ember halo), hotspot (1, 1). `Menu/GoldCursor.java` upscales it (x2 at 1080p)
+  because JavaFX would blur a PNG cursor down to 24 px; it replaces FXGL's cursor on every scene root, and the
+  hover frame replaces Cursor.HAND on menu buttons and skill nodes. `python tools/art/cursor.py out.png` previews.
+
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
 - Projectile trails were not added (only fireball embers via burning ground / blasts).

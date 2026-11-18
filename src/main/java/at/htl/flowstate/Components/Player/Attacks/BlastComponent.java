@@ -53,14 +53,15 @@ public class BlastComponent extends Component {
     }
 
     public static void spawn(Point2D center, double radius, double growTime, double fadeTime, Style style, Consumer<Entity> onHit) {
-        Frames frames = Assets.frames(style.texture, style.frames, 2);
-        double scale = radius / (style.artRadius * 2);   // frames are already x2
-        double w = frames.width() * scale, h = frames.height() * scale;
+        // JavaFX filters scaled or sub-pixel ImageViews even with smooth=false, so the strip is upscaled
+        // on the CPU by a whole factor and drawn 1:1 on whole pixels instead of being stretched to the radius.
+        int scale = Math.max(1, (int) Math.round(radius / style.artRadius));
+        Frames frames = Assets.frames(style.texture, style.frames, scale);
+        double w = frames.width(), h = frames.height();
         FrameSprite sprite = new FrameSprite(frames).once(frames, style.frames / (growTime + fadeTime), null);
-        sprite.setFitWidth(w);
-        sprite.setFitHeight(h);
-        sprite.setTranslateX(-w / 2);
-        sprite.setTranslateY(style.grounded ? -h + 4 * scale : -h / 2);
+        double left = -w / 2, top = style.grounded ? -h + 2 * scale : -h / 2;
+        sprite.setTranslateX(Math.round(center.getX() + left) - center.getX());
+        sprite.setTranslateY(Math.round(center.getY() + top) - center.getY());
 
         entityBuilder()
                 .at(center)

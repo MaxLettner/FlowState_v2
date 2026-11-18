@@ -21,16 +21,11 @@ public class LevelGeneration {
     private static final double DECOR_SIZE = 48;
 
     //terrain parameters
-    private static final double BASE_Y = 950;  //the base level the terrain hovers around
-    private static final double MIN_Y = 800;  //highest the terrain can rise
-    private static final double MAX_Y = 1000; //lowest the terrain can sink before its a wall
+    private static final double BASE_Y = 885;  //the base level the terrain hovers around
+    private static final double MIN_Y = 735;  //highest the terrain can rise
+    private static final double MAX_Y = 935; //lowest the terrain can sink before its a wall
 
-    //pit parameters
-    private static final double PIT_CHANCE = 0.06;  //in decimal
-    private static final double PIT_MIN_WIDTH = 160;
-    private static final double PIT_MAX_WIDTH = 280;
-
-    //no pits or structures before this x, so the player never spawns over a hole
+    //no structures before this x, so the player always spawns on plain ground
     private static final double SAFE_START = 800;
 
     //how far ahead the world is generated
@@ -68,18 +63,9 @@ public class LevelGeneration {
         //the start (player spawns at x = 300) is always plain ground
         boolean safeStart = lastGeneratedX < SAFE_START;
 
-        //pit
-        if (!safeStart && Math.random() < PIT_CHANCE) {
-            double pitWidth = FXGLMath.random((int) PIT_MIN_WIDTH, (int) PIT_MAX_WIDTH);
-            lastGeneratedX += pitWidth;
-            terrainDrift = 0;
-            slopeSegmentsLeft = 0;
-            return;
-        }
-
-        Double structureWidth = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
-        if(structureWidth != null) {
-            lastGeneratedX = structureWidth;
+        Double structureEnd = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
+        if (structureEnd != null) {
+            lastGeneratedX = structureEnd;
             return;
         }
 

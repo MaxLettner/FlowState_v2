@@ -3,177 +3,260 @@ package at.htl.flowstate.Menu.SkillTree;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
-import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.NodeKind;
 import at.htl.flowstate.Skills.SkillManager;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
+import com.almasb.fxgl.input.UserAction;
+import com.almasb.fxgl.scene.SubScene;
+import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.ContentDisplay;
-import javafx.scene.effect.ColorAdjust;
+import javafx.scene.CacheHint;
+import javafx.scene.Group;
+import javafx.scene.control.Label;
+import javafx.scene.effect.BlendMode;
+import javafx.scene.effect.GaussianBlur;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import javafx.scene.text.Text;
-import javafx.scene.text.TextAlignment;
+
+import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * Skill tree overlay (I). One tab per branch: stat node, three sub-trees with three skills each.
- * Click to buy. Click an owned skill to put it in the first free hotbar slot,
- * or hover it and press 1-4 to put it in a specific slot.
+ * Full-screen skill tree (I): the tree is carved into an ancient rune wall, the Rusty Sword at its root.
+ * Owned nodes and the grooves leading to them glow with molten rock, learnable ones have gold rings.
+ * Click a node to buy it (or a stat rank). Click an owned skill to put it in the first free hotbar slot,
+ * or hover it and press 1-4 to put it in that slot. Hovering shows a tooltip next to the node.
+ * Shown as an FXGL sub-scene, so the game world is paused while it is open.
  */
 public class SkillTreeView {
-    private static final double WIDTH = 940;
-    private static final int ICON_SCALE = 2;   // 24px icons shown at 48px
-    private static final ColorAdjust LOCKED = new ColorAdjust(0, -0.85, -0.35, 0);
-    private static final String HINT = "Click to buy. Click an owned skill to equip it, or hover it and press 1–4 to put it in that hotbar slot.";
+    private static final KeyCode[] SLOT_KEYS = {KeyCode.DIGIT1, KeyCode.DIGIT2, KeyCode.DIGIT3, KeyCode.DIGIT4};
+    private static final int BG_SCALE = 4;            // SkillTreeBg.png is 480x270
+    private static final double TIP_W = 340;
+    private static final double SPARK_SPEED = 240;    // px/s along a groove
+    private static final Color GOLD = Color.web("#f5cd52");
+    private static final Color PARCHMENT = Color.web("#e8d9b0");
+    private static final Color BAD = Color.web("#ff6b5e");
+    private static final Color GOOD = Color.web("#9be06f");
+    private static final String PANEL = "-fx-background-color: rgba(14,13,18,0.88); -fx-background-radius: 6;"
+            + "-fx-border-color: #8a774f; -fx-border-width: 2; -fx-border-radius: 6;";
 
     private final SkillManager skills = SkillManager.get();
     private final PlayerStatsComponent stats;
 
-    private final VBox root = new VBox(14);
-    private final Text spText = new Text();
-    private final HBox tabs = new HBox(12);
-    private final VBox content = new VBox(14);
-    private final HBox hotbarRow = new HBox(10);
-    private final Text infoText = new Text(HINT);
+    // only the top scene is updated, so pushing this pauses physics, entities and Game.onUpdate
+    private final SubScene scene = new SubScene() {
+        @Override
+        protected void onUpdate(double tpf) {
+            animate(tpf);
+        }
+    };
+    private final Pane root = new Pane();
+    private final GrooveRenderer grooves = new GrooveRenderer();
+    private final ImageView glowView = new ImageView(grooves.glow);
+    private final Group sparkLayer = new Group();
+    private final Map<SkillType, SkillNode> nodes = new EnumMap<>(SkillType.class);
+    private final List<Spark> sparks = new ArrayList<>();
 
-    private Branch branch = Branch.MELEE;
-    private SkillType hovered = null;
+    private final Label spLabel = new Label();
+    private final VBox tip = new VBox(5);
+    private final Text tipName = new Text();
+    private final Text tipKind = new Text();
+    private final Text tipDesc = new Text();
+    private final Text tipStatus = new Text();
+    private final Text tipHint = new Text();
+    private final HBox hotbarSlots = new HBox(8);
+
+    private SkillNode hovered = null;
+    private String message = null;   // feedback for the hovered node, e.g. "Not enough skill points"
     private boolean open = false;
+    private boolean dirty = true;
+    private double time = 0;
 
     public SkillTreeView() {
         stats = Game.getPlayer().getComponent(PlayerStatsComponent.class);
 
-        root.setAlignment(Pos.TOP_CENTER);
-        root.setPrefWidth(WIDTH);
-        root.setStyle("-fx-background-color: rgba(0,0,0,0.88); -fx-padding: 20;");
-        root.setLayoutX(FXGL.getAppWidth() / 2.0 - WIDTH / 2);
-        root.setLayoutY(30);
+        root.setPrefSize(SkillTreeLayout.WIDTH, SkillTreeLayout.HEIGHT);
+        ImageView bg = new ImageView(Assets.pixels("SkillTreeBg.png", BG_SCALE));
+        bg.setSmooth(false);
 
-        Text title = new Text("Skill Tree");
-        title.setFill(Color.WHITE);
-        title.setStyle("-fx-font-size: 32px; -fx-font-weight: bold;");
+        ImageView lines = new ImageView(grooves.lines);
+        lines.setSmooth(false);
+        glowView.setSmooth(false);
+        glowView.setEffect(new GaussianBlur(22));
+        glowView.setBlendMode(BlendMode.ADD);
+        glowView.setMouseTransparent(true);
+        glowView.setCache(true);
+        glowView.setCacheHint(CacheHint.SPEED);
+        sparkLayer.setBlendMode(BlendMode.ADD);
+        sparkLayer.setMouseTransparent(true);
 
-        spText.setFill(Color.GOLD);
-        spText.setStyle("-fx-font-size: 18px;");
+        Group nodeLayer = new Group();
+        for (SkillType t : SkillType.values()) {
+            SkillNode node = new SkillNode(t);
+            node.hitArea().setOnMouseEntered(e -> hover(node));
+            node.hitArea().setOnMouseExited(e -> unhover(node));
+            node.hitArea().setOnMouseClicked(e -> {
+                if (e.getButton() == MouseButton.PRIMARY) onClick(node);
+            });
+            nodes.put(t, node);
+            nodeLayer.getChildren().add(node);
+        }
 
-        tabs.setAlignment(Pos.CENTER);
-        content.setAlignment(Pos.TOP_CENTER);
-        hotbarRow.setAlignment(Pos.CENTER);
-
-        infoText.setFill(Color.LIGHTGRAY);
-        infoText.setStyle("-fx-font-size: 14px;");
-        infoText.setWrappingWidth(WIDTH - 60);
-        infoText.setTextAlignment(TextAlignment.CENTER);
-
-        root.getChildren().addAll(title, spText, tabs, content, hotbarRow, infoText);
+        root.getChildren().addAll(bg, lines, glowView, sparkLayer, nodeLayer, header(), hotbar(), controls(), tooltip());
+        scene.getContentRoot().getChildren().add(root);
+        initInput();
 
         skills.addListener(this::refresh);
         stats.addSkillPointsListener(this::refresh);
-        refresh();
+    }
+
+    /** The game scene's input is inactive while this is open, so the overlay needs its own bindings. */
+    private void initInput() {
+        for (KeyCode key : new KeyCode[]{KeyCode.I, KeyCode.ESCAPE}) {
+            scene.getInput().addAction(new UserAction("Close Skill Tree " + key) {
+                @Override protected void onActionBegin() { close(); }
+            }, key);
+        }
+        for (int i = 0; i < SLOT_KEYS.length; i++) {
+            final int slot = i;
+            scene.getInput().addAction(new UserAction("Assign Slot " + (i + 1)) {
+                @Override protected void onActionBegin() { assignHovered(slot); }
+            }, SLOT_KEYS[i]);
+        }
     }
 
     //-----Open / close-----
     public void open() {
+        if (open) return;
         open = true;
         refresh();
-        FXGL.getGameScene().addUINode(root);
+        FXGL.getSceneService().pushSubScene(scene);
     }
 
     public void close() {
+        if (!open) return;
         open = false;
-        hovered = null;
-        FXGL.getGameScene().removeUINode(root);
+        if (hovered != null) unhover(hovered);
+        FXGL.getSceneService().popSubScene();
     }
 
     public boolean isOpen() {
         return open;
     }
 
-    public SkillType getHoveredSkill() {
-        return hovered;
+    //-----Static parts-----
+    private Label header() {
+        // sits in the lower part of the stone lintel that carries the carved title
+        spLabel.setFont(Font.font("Serif", FontWeight.BOLD, 22));
+        spLabel.setTextFill(GOLD);
+        spLabel.setAlignment(Pos.CENTER);
+        spLabel.setPrefWidth(560);
+        spLabel.setLayoutX(SkillTreeLayout.WIDTH / 2 - 280);
+        spLabel.setLayoutY(100);
+        spLabel.setMouseTransparent(true);
+        return spLabel;
     }
 
-    //-----Building-----
-    private void refresh() {
-        spText.setText("Skill points: " + (int) stats.getSkillPoints());
-
-        tabs.getChildren().clear();
-        for (Branch b : Branch.values()) {
-            Button tab = new Button(b.getDisplayName());
-            tab.setPrefWidth(160);
-            tab.setStyle("-fx-font-size: 16px; -fx-text-fill: white; -fx-background-color: "
-                    + (b == branch ? "#1565C0;" : "#444;"));
-            tab.setOnAction(e -> {
-                branch = b;
-                refresh();
-            });
-            tabs.getChildren().add(tab);
-        }
-
-        content.getChildren().clear();
-        content.getChildren().add(nodeButton(SkillManager.statOf(branch), 300));
-
-        HBox subtrees = new HBox(14);
-        subtrees.setAlignment(Pos.TOP_CENTER);
-        for (SkillType subtree : SkillType.subtreesOf(branch)) {
-            VBox box = new VBox(8);
-            box.setAlignment(Pos.TOP_CENTER);
-            box.setStyle("-fx-border-color: #666; -fx-border-width: 1; -fx-padding: 10;");
-            box.getChildren().add(nodeButton(subtree, 270));
-            for (SkillType skill : SkillType.skillsOf(subtree)) box.getChildren().add(nodeButton(skill, 270));
-            subtrees.getChildren().add(box);
-        }
-        content.getChildren().add(subtrees);
-
-        hotbarRow.getChildren().clear();
-        Text label = new Text("Hotbar:");
-        label.setFill(Color.WHITE);
-        label.setStyle("-fx-font-size: 14px;");
-        hotbarRow.getChildren().addAll(label, nodeButton(SkillType.RUSTY_SWORD, 150));
-        for (int i = 0; i < SkillManager.HOTBAR_SIZE; i++) {
-            SkillType t = skills.getSlot(i);
-            Text slot = new Text("[" + (i + 1) + "] " + (t == null ? "—" : t.getSlotName()));
-            slot.setFill(Color.LIGHTBLUE);
-            slot.setStyle("-fx-font-size: 14px;");
-            HBox entry = new HBox(4);
-            entry.setAlignment(Pos.CENTER);
-            if (t != null) entry.getChildren().add(Assets.sprite(t.getIconName(), 1));
-            entry.getChildren().add(slot);
-            hotbarRow.getChildren().add(entry);
-        }
+    private VBox hotbar() {
+        Text title = new Text("HOTBAR");
+        title.setFont(Font.font("Serif", FontWeight.BOLD, 16));
+        title.setFill(PARCHMENT);
+        VBox box = new VBox(6, title, hotbarSlots);
+        box.setStyle(PANEL + "-fx-padding: 8 12 12 12;");
+        box.setLayoutX(56);
+        box.setLayoutY(912);
+        box.setMouseTransparent(true);
+        return box;
     }
 
-    private Button nodeButton(SkillType type, double width) {
-        Button btn = new Button(label(type));
-        btn.setPrefWidth(width);
-        btn.setMinHeight(58);
-        ImageView icon = Assets.sprite(type.getIconName(), ICON_SCALE);
-        if (!skills.owns(type) && !skills.canBuy(type, stats.getSkillPoints())) icon.setEffect(LOCKED);
-        btn.setGraphic(icon);
-        btn.setContentDisplay(ContentDisplay.LEFT);
-        btn.setGraphicTextGap(10);
-        btn.setWrapText(true);
-        btn.setTextAlignment(TextAlignment.CENTER);
-        btn.setStyle(style(type));
-        btn.setOnMouseEntered(e -> {
-            hovered = type;
-            infoText.setText(type.getDisplayName() + ": " + type.getDescription());
-        });
-        btn.setOnMouseExited(e -> {
-            if (hovered == type) hovered = null;
-            infoText.setText(HINT);
-        });
-        btn.setOnAction(e -> onClick(type));
-        return btn;
+    private VBox controls() {
+        VBox box = new VBox(3,
+                controlLine("Click", "learn / equip"),
+                controlLine("1 - 4", "put hovered skill in a slot"),
+                controlLine("I / Esc", "close"));
+        box.setStyle(PANEL + "-fx-padding: 10 14 10 14;");
+        box.setLayoutX(1520);
+        box.setLayoutY(946);
+        box.setMouseTransparent(true);
+        return box;
     }
 
-    private void onClick(SkillType type) {
+    private HBox controlLine(String key, String what) {
+        Text k = new Text(key);
+        k.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
+        k.setFill(GOLD);
+        Text w = new Text(what);
+        w.setFont(Font.font("SansSerif", 14));
+        w.setFill(PARCHMENT);
+        Pane keyBox = new Pane(k);
+        keyBox.setPrefWidth(78);
+        k.setY(14);
+        HBox line = new HBox(6, keyBox, w);
+        line.setAlignment(Pos.CENTER_LEFT);
+        return line;
+    }
+
+    private VBox tooltip() {
+        tipName.setFont(Font.font("Serif", FontWeight.BOLD, 22));
+        tipKind.setFont(Font.font("Serif", FontWeight.BOLD, 13));
+        tipKind.setFill(Color.web("#a39fab"));
+        tipDesc.setFont(Font.font("SansSerif", 14));
+        tipDesc.setFill(PARCHMENT);
+        tipDesc.setWrappingWidth(TIP_W - 30);
+        tipStatus.setFont(Font.font("SansSerif", FontWeight.BOLD, 14));
+        tipStatus.setWrappingWidth(TIP_W - 30);
+        tipHint.setFont(Font.font("SansSerif", 12));
+        tipHint.setFill(Color.web("#a39fab"));
+        tipHint.setWrappingWidth(TIP_W - 30);
+        tip.getChildren().addAll(tipName, tipKind, tipDesc, tipStatus, tipHint);
+        tip.setStyle(PANEL + "-fx-background-color: rgba(14,13,18,0.95); -fx-padding: 10 14 12 14;");
+        tip.setPrefWidth(TIP_W);
+        tip.setMouseTransparent(true);
+        tip.setVisible(false);
+        return tip;
+    }
+
+    //-----Hover / click-----
+    private void hover(SkillNode node) {
+        if (hovered != null) hovered.setHovered(false);
+        hovered = node;
+        message = null;
+        node.setHovered(true);
+        showTip();
+    }
+
+    private void unhover(SkillNode node) {
+        if (hovered != node) return;
+        node.setHovered(false);
+        hovered = null;
+        message = null;
+        tip.setVisible(false);
+    }
+
+    private void onClick(SkillNode node) {
+        SkillType type = node.type;
         if (type.getKind() == NodeKind.STAT || !skills.owns(type)) {
-            skills.buy(type);
+            if (skills.lockReason(type) != null) {
+                message = null;
+            } else if (skills.buy(type)) {
+                node.flash();
+                message = null;
+            } else {
+                message = "Not enough skill points";
+            }
+            showTip();
             return;
         }
         if (!type.isUsable() || skills.slotOf(type) >= 0) return;
@@ -181,38 +264,174 @@ public class SkillTreeView {
         if (empty >= 0) {
             skills.assign(type, empty);
         } else {
-            infoText.setText("Hotbar is full: hover " + type.getDisplayName() + " and press 1–4 to replace a slot.");
+            message = "Hotbar is full: press 1-4 to replace a slot";
+            showTip();
         }
     }
 
-    private String label(SkillType type) {
-        String name = type.getKind() == NodeKind.SUBTREE
-                ? type.getDisplayName() + "  (" + type.getSlotName() + ")"
-                : type.getDisplayName();
-
-        if (type.getKind() == NodeKind.STAT) {
-            int rank = skills.getRank(type.getBranch());
-            String status = rank >= SkillManager.MAX_RANK ? "max" : "+1 rank: " + skills.cost(type) + " SP";
-            return name + "  —  rank " + rank + "/" + SkillManager.MAX_RANK + "\n" + status;
+    private void assignHovered(int slot) {
+        if (hovered == null) return;
+        if (!skills.owns(hovered.type) || !hovered.type.isUsable()) {
+            message = skills.owns(hovered.type) ? "This can't go on the hotbar" : "Learn it first";
+            showTip();
+            return;
         }
-        if (skills.owns(type)) {
-            int slot = skills.slotOf(type);
-            return name + "\n" + (slot >= 0 ? "Owned · slot " + (slot + 1) : "Owned · click to equip");
-        }
-        String reason = skills.lockReason(type);
-        return name + "\n" + (reason != null ? reason : "Cost " + skills.cost(type) + " SP");
+        skills.assign(hovered.type, slot);
     }
 
-    private String style(SkillType type) {
-        String base = "-fx-font-size: 13px; ";
-        boolean owned = skills.owns(type);
-        if (type.getKind() == NodeKind.STAT) {
-            if (skills.canBuy(type, stats.getSkillPoints())) return base + "-fx-background-color: #FF8C00; -fx-text-fill: white;";
-            return base + (owned ? "-fx-background-color: #008000; -fx-text-fill: white;" : "-fx-background-color: #444; -fx-text-fill: #aaa;");
+    //-----Refresh-----
+    private void refresh() {
+        if (!open) {
+            dirty = true;
+            return;
         }
-        if (owned && skills.slotOf(type) >= 0) return base + "-fx-background-color: #1565C0; -fx-text-fill: white;";
-        if (owned) return base + "-fx-background-color: #008000; -fx-text-fill: white;";
-        if (skills.canBuy(type, stats.getSkillPoints())) return base + "-fx-background-color: #FF8C00; -fx-text-fill: white;";
-        return base + "-fx-background-color: #444; -fx-text-fill: #aaa;";
+        dirty = false;
+        int sp = (int) stats.getSkillPoints();
+        spLabel.setText(sp + (sp == 1 ? " SKILL POINT" : " SKILL POINTS"));
+
+        Map<SkillType, GrooveRenderer.Fill> fills = new EnumMap<>(SkillType.class);
+        for (SkillNode node : nodes.values()) {
+            SkillType t = node.type;
+            boolean owned = skills.owns(t);
+            boolean learnable = skills.lockReason(t) == null;
+            SkillNode.State state = owned ? SkillNode.State.OWNED
+                    : learnable ? SkillNode.State.AVAILABLE : SkillNode.State.LOCKED;
+            String plate = t.getKind() == NodeKind.STAT
+                    ? t.getDisplayName() + "  " + skills.getRank(t.getBranch()) + "/" + SkillManager.MAX_RANK : null;
+            node.setState(state, skills.canBuy(t, stats.getSkillPoints()), skills.slotOf(t), plate);
+            fills.put(t, owned ? GrooveRenderer.Fill.MOLTEN
+                    : learnable ? GrooveRenderer.Fill.DORMANT : GrooveRenderer.Fill.NONE);
+        }
+        grooves.render(fills);
+        rebuildSparks(fills);
+        refreshHotbar();
+        if (hovered != null) showTip();
+    }
+
+    private void refreshHotbar() {
+        hotbarSlots.getChildren().clear();
+        for (int i = 0; i < SkillManager.HOTBAR_SIZE; i++) {
+            SkillType t = skills.getSlot(i);
+            Pane slot = new Pane();
+            slot.setPrefSize(60, 60);
+            slot.setStyle("-fx-background-color: #1b1a20; -fx-border-color: #57535f; -fx-border-width: 2;");
+            if (t != null) {
+                ImageView icon = Assets.sprite(t.getIconName(), 2);
+                icon.setLayoutX(6);
+                icon.setLayoutY(6);
+                slot.getChildren().add(icon);
+            }
+            // the key under the slot, so it never hides part of the icon
+            Text key = new Text(String.valueOf(i + 1));
+            key.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
+            key.setFill(GOLD);
+            VBox column = new VBox(2, slot, key);
+            column.setAlignment(Pos.CENTER);
+            hotbarSlots.getChildren().add(column);
+        }
+    }
+
+    private void showTip() {
+        if (hovered == null) return;
+        SkillType t = hovered.type;
+        tipName.setText(t.getDisplayName());
+        tipName.setFill(SkillNode.branchColor(t.getBranch()));
+        tipKind.setText(kindLine(t));
+        tipDesc.setText(t.getDescription());
+
+        Status s = status(t);
+        tipStatus.setText(message != null ? message : s.text);
+        tipStatus.setFill(message != null ? BAD : s.color);
+        tipHint.setText(s.hint == null ? "" : s.hint);
+        tipHint.setManaged(s.hint != null);
+        tipHint.setVisible(s.hint != null);
+
+        tip.applyCss();
+        tip.layout();
+        double h = tip.prefHeight(TIP_W);
+        Point2D c = hovered.center;
+        double gap = hovered.radius + 14;
+        double x = c.getX() + gap;
+        if (x + TIP_W > SkillTreeLayout.WIDTH - 40) x = c.getX() - gap - TIP_W;
+        double y = Math.max(40, Math.min(SkillTreeLayout.HEIGHT - 40 - h, c.getY() - h / 2));
+        tip.setLayoutX(x);
+        tip.setLayoutY(y);
+        tip.setVisible(true);
+    }
+
+    private record Status(String text, Color color, String hint) {}
+
+    private Status status(SkillType t) {
+        int slot = skills.slotOf(t);
+        String slotHint = t.isUsable() ? "Hover and press 1-4 to put it in that hotbar slot." : null;
+        if (t.getKind() == NodeKind.START) {
+            return new Status(slot >= 0 ? "Equipped in slot " + (slot + 1) : "Owned - click to equip", GOOD, slotHint);
+        }
+        if (t.getKind() == NodeKind.STAT) {
+            int rank = skills.getRank(t.getBranch());
+            if (rank >= SkillManager.MAX_RANK) return new Status("Rank " + rank + "/" + SkillManager.MAX_RANK + " - max", GOOD, null);
+            boolean afford = skills.canBuy(t, stats.getSkillPoints());
+            return new Status("Rank " + rank + "/" + SkillManager.MAX_RANK + " - next rank costs " + skills.cost(t) + " SP",
+                    afford ? GOLD : BAD, afford ? "Click to learn the next rank." : "Not enough skill points.");
+        }
+        if (skills.owns(t)) {
+            if (!t.isUsable()) return new Status("Owned", GOOD, null);
+            return new Status(slot >= 0 ? "Equipped in slot " + (slot + 1) : "Owned - click to equip", GOOD, slotHint);
+        }
+        String reason = skills.lockReason(t);
+        if (reason != null) return new Status("Locked - " + reason, BAD, "Costs " + skills.cost(t) + " SP once unlocked.");
+        boolean afford = skills.canBuy(t, stats.getSkillPoints());
+        return new Status("Costs " + skills.cost(t) + " SP", afford ? GOLD : BAD,
+                afford ? "Click to learn." : "Not enough skill points.");
+    }
+
+    private static String kindLine(SkillType t) {
+        String branch = t.getBranch().getDisplayName();
+        return switch (t.getKind()) {
+            case START -> "Starting weapon";
+            case STAT -> "Stat - " + branch;
+            case SUBTREE -> "Sub-tree - " + branch + (t.getSlotName() != null ? " - grants " + t.getSlotName() : "");
+            case SKILL -> "Skill - " + branch + " / " + t.getParent().getDisplayName();
+        };
+    }
+
+    //-----Animation-----
+    /** A bright speck of molten rock flowing along an owned groove, from the parent out to the child. */
+    private record Spark(List<Point2D> path, double length, double phase, Rectangle core, Rectangle halo) {}
+
+    private void rebuildSparks(Map<SkillType, GrooveRenderer.Fill> fills) {
+        sparks.clear();
+        sparkLayer.getChildren().clear();
+        int i = 0;
+        for (Map.Entry<SkillType, GrooveRenderer.Fill> e : fills.entrySet()) {
+            if (e.getValue() != GrooveRenderer.Fill.MOLTEN || SkillTreeLayout.parent(e.getKey()) == null) continue;
+            List<Point2D> path = grooves.screenPath(e.getKey());
+            double length = 0;
+            for (int k = 1; k < path.size(); k++) length += path.get(k).distance(path.get(k - 1));
+            Rectangle core = new Rectangle(4, 4, Color.web("#fff3a0"));
+            Rectangle halo = new Rectangle(10, 10, Color.rgb(255, 150, 40, 0.45));
+            sparkLayer.getChildren().addAll(halo, core);
+            sparks.add(new Spark(path, length, (i++ * 0.37) % 1.0, core, halo));
+        }
+    }
+
+    private void animate(double tpf) {
+        time += tpf;
+        if (dirty) refresh();
+        glowView.setOpacity(0.7 + 0.3 * Math.sin(time * 2.1));
+        for (SkillNode node : nodes.values()) node.animate(time, tpf);
+        for (Spark s : sparks) {
+            double t = (time * SPARK_SPEED / Math.max(1, s.length) + s.phase) % 1.0;
+            Point2D p = s.path.get((int) (t * (s.path.size() - 1)));
+            // snap to the 2px groove grid so the speck stays a crisp pixel
+            double x = Math.floor(p.getX() / 2) * 2, y = Math.floor(p.getY() / 2) * 2;
+            s.core.setX(x - 2);
+            s.core.setY(y - 2);
+            s.halo.setX(x - 5);
+            s.halo.setY(y - 5);
+            double fade = Math.sin(Math.PI * t);
+            s.core.setOpacity(fade);
+            s.halo.setOpacity(fade);
+        }
     }
 }

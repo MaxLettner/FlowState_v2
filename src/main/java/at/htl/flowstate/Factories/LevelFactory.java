@@ -118,6 +118,23 @@ public class LevelFactory implements EntityFactory {
                 .build();
     }
 
+    /** Ambient ruin (destroyed house, colonnade, tower stump, archway) behind the player, purely visual. */
+    @Spawns("ruin")
+    public Entity newRuin(SpawnData data) {
+        int frame = data.get("frame");
+        ImageView v = new ImageView(Assets.frameImage("Ruins.png", RUIN_FRAMES, TILE_SCALE, frame));
+        v.setSmooth(false);
+        if (data.hasKey("flip") && (boolean) data.get("flip")) v.setScaleX(-1);
+        return FXGL.entityBuilder(data)
+                .view(v)
+                .zIndex(-3)
+                .build();
+    }
+
+    public static final int RUIN_FRAMES = 4;
+    public static final double RUIN_WIDTH = 96 * TILE_SCALE;
+    public static final double RUIN_HEIGHT = 72 * TILE_SCALE;
+
     private static double mod(double v, double m) {
         return ((v % m) + m) % m;
     }
