@@ -19,6 +19,7 @@ import icons
 import skilltree
 import menu
 import cursor
+import hudbars
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
 
@@ -36,6 +37,7 @@ def main():
     skilltree.generate(OUT)
     menu.generate(OUT)
     cursor.generate(OUT)
+    hudbars.generate(OUT)
     print('textures written to', OUT)
 
 
