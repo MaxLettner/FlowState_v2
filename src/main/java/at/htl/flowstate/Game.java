@@ -14,6 +14,7 @@ import at.htl.flowstate.Generation.LevelGeneration;
 import at.htl.flowstate.Menu.GameMenu;
 import at.htl.flowstate.Menu.Hud;
 import at.htl.flowstate.Menu.SkillTree.SkillTreeView;
+import at.htl.flowstate.Skills.SkillManager;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.SceneFactory;
@@ -168,6 +169,7 @@ public class Game extends GameApplication {
         Combat.init();
         Impact.reset();
         cameraX = 0;
+        SkillManager.reset();   // initGame runs again for "Start New Game"; before the player caches it
         setupPlayer();
         playerStats = player.getComponent(PlayerStatsComponent.class);
         getGameScene().getViewport().setBounds(0, -SHAKE_MARGIN, Integer.MAX_VALUE, (int) WINDOW_HEIGHT + SHAKE_MARGIN);
@@ -205,6 +207,9 @@ public class Game extends GameApplication {
     }
 
     private void setupBg() {
+        // a new game keeps the scene root (only the game world and UI are cleared)
+        for (ParallaxLayer l : layers) getGameScene().getRoot().getChildren().removeAll(l.a(), l.b());
+        layers.clear();
         layers.add(addLayer(Assets.pixels("bg_far.png", BG_SCALE), 0.03, 0));
         layers.add(addLayer(Assets.pixels("bg_mid.png", BG_SCALE), 0.08, 0));
     }

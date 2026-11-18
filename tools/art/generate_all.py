@@ -17,6 +17,7 @@ import terrain
 import ruins
 import icons
 import skilltree
+import menu
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
 
@@ -32,6 +33,7 @@ def main():
     terrain.generate(OUT)
     ruins.generate(OUT)
     skilltree.generate(OUT)
+    menu.generate(OUT)
     print('textures written to', OUT)
 
 

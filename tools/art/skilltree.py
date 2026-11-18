@@ -20,6 +20,7 @@ from pixel import *
 from materials import GOLD
 from effects import Noise
 import icons
+from pixfont import text_cells, text_width
 
 W, H = 480, 270           # background, shown x4
 BG_SCALE = 4
@@ -45,18 +46,7 @@ def smooth(t):
     return t * t * (3 - 2 * t)
 
 
-# ---------------------------------------------------------------- tiny font (title)
-FONT = {
-    'S': [' ####', '#    ', '#    ', ' ### ', '    #', '    #', '#### '],
-    'K': ['#   #', '#  # ', '# #  ', '##   ', '# #  ', '#  # ', '#   #'],
-    'I': ['#####', '  #  ', '  #  ', '  #  ', '  #  ', '  #  ', '#####'],
-    'L': ['#    ', '#    ', '#    ', '#    ', '#    ', '#    ', '#####'],
-    'T': ['#####', '  #  ', '  #  ', '  #  ', '  #  ', '  #  ', '  #  '],
-    'R': ['#### ', '#   #', '#   #', '#### ', '# #  ', '#  # ', '#   #'],
-    'E': ['#####', '#    ', '#    ', '#### ', '#    ', '#    ', '#####'],
-}
-
-
+# ---------------------------------------------------------------- runes
 def rune_glyphs(rng, count=14):
     """Futhark-like 5x5 glyphs: a stem plus a couple of diagonal or straight strokes."""
     strokes = [((2, 0), (4, 2)), ((2, 0), (0, 2)), ((2, 2), (4, 4)), ((2, 2), (0, 4)), ((2, 2), (4, 0)),
@@ -139,13 +129,19 @@ def crack(px_val, rng, x, y, length, ember, cracks):
     cracks.append((pts, ember))
 
 
-def stone_bg(seed=7):
+def stone_bg(seed=7, warm=None, canopy=(W / 2, 80, 240, 100), avoid=None, finish=None):
+    """The rune wall. warm: light spots (x, y, rx, ry) that tint the stone; canopy: soft light (x, y, rx, ry);
+    avoid(x, y): stones that get no inscription; finish(img, rng): frame and centre piece (default: skill tree)."""
+    rx, ry = ROOT[0] / BG_SCALE, ROOT[1] / BG_SCALE
+    if warm is None:
+        warm = ((rx, ry + 35, 170, 85),)
+    if avoid is None:
+        avoid = lambda sx, sy: abs(sx - rx) < 40 and sy > 180
     rng = random.Random(seed)
     val, edge, owner = wall_values(rng)
     nz_m, nz_v = Noise(81, n=16), Noise(82, n=16)
 
-    # lighting: dark vignette, warm light rising from the trunk, a little soft light behind the tree canopy
-    rx, ry = ROOT[0] / BG_SCALE, ROOT[1] / BG_SCALE
+    # lighting: dark vignette, warm light (rising from the trunk), a little soft light behind the canopy
     warmth = [[0.0] * W for _ in range(H)]
     for y in range(H):
         for x in range(W):
@@ -154,10 +150,10 @@ def stone_bg(seed=7):
             ex = abs(x - W / 2) / (W / 2)
             ey = abs(y - H * 0.45) / (H * 0.55)
             vig = smooth((math.hypot(ex * 0.9, ey) - 0.4) / 0.7)
-            canopy = max(0.0, 1 - math.hypot((x - W / 2) / 240, (y - 80) / 100))
-            w = max(0.0, 1 - math.hypot((x - rx) / 170, (y - (ry + 35)) / 85))
+            soft = max(0.0, 1 - math.hypot((x - canopy[0]) / canopy[2], (y - canopy[1]) / canopy[3]))
+            w = max(max(0.0, 1 - math.hypot((x - wx) / wrx, (y - wy) / wry)) for wx, wy, wrx, wry in warm)
             warmth[y][x] = w
-            val[y][x] += 0.38 * vig - 0.08 * canopy - 0.16 * w * w
+            val[y][x] += 0.38 * vig - 0.08 * soft - 0.16 * w * w
 
     img = new(W, H)
     px = img.load()
@@ -191,7 +187,7 @@ def stone_bg(seed=7):
     glyphs = rune_glyphs(rng, 18)
     sites = cyclopean(random.Random(seed))[0]
     cand = [i for i, (sx, sy, _) in enumerate(sites)
-            if 30 < sx < W - 40 and 50 < sy < H - 40 and not (abs(sx - rx) < 40 and sy > 180)]
+            if 30 < sx < W - 40 and 50 < sy < H - 40 and not avoid(sx, sy)]
     rng.shuffle(cand)
     for n, i in enumerate(cand[:16]):
         sx, sy, _ = sites[i]
@@ -231,9 +227,12 @@ def stone_bg(seed=7):
             else:
                 px[x, y] = WALL[7]
 
-    border(img, rng)
-    trunk(img)
-    lintel(img)
+    if finish is None:
+        border(img, rng)
+        trunk(img)
+        lintel(img)
+    else:
+        finish(img, rng)
     return img
 
 
@@ -250,8 +249,9 @@ def carve_glyph(px, g, ox, oy, fill, lip=WALL[1]):
         put(px, W, H, ox + gx, oy + gy, fill)
 
 
-def border(img, rng):
-    """Raised stone frame around the screen with a rune band carved into it; corner bosses."""
+def border(img, rng, skip=(150, 330)):
+    """Raised stone frame around the screen with a rune band carved into it; corner bosses.
+    No runes on the top band between skip[0] and skip[1] (hidden by the lintel)."""
     px = img.load()
     nz = Noise(91, n=16)
     for y in range(H):
@@ -287,7 +287,7 @@ def border(img, rng):
     step = 9
     for x in range(14, W - 18, step):  # top / bottom bands
         for y in (off, H - off - 5):
-            if 150 < x < 330 and y < H / 2:
+            if skip[0] < x < skip[1] and y < H / 2:
                 continue  # under the lintel
             fill = EMBER[4] if rng.random() < 0.18 else WALL[7]
             carve_glyph(px, rng.choice(glyphs), x, y, fill)
@@ -398,11 +398,11 @@ def trunk(img):
             put(px, W, H, int(round(x)), int(round(y)), EMBER[5])
 
 
-def lintel(img):
-    """Raised slab hanging from the top frame with the molten, carved title."""
+def lintel(img, text='SKILL TREE', box=(162, 318, 3, 35), scale=2, text_dy=7):
+    """Raised slab hanging from the top frame with the molten, carved title (box = x0, x1, y0, y1)."""
     px = img.load()
     nz = Noise(95, n=16)
-    x0, x1, y0, y1 = 162, 318, 3, 35
+    x0, x1, y0, y1 = box
     for y in range(y0, y1 + 3):  # drop shadow
         for x in range(x0 + 2, x1 + 3):
             if y > y1 or x > x1:
@@ -422,28 +422,15 @@ def lintel(img):
             elif d == 4:  # carved inner line
                 v = 0.8 if (dl == 4 or dt == 4) else 0.05
             px[x, y] = WALL[dither_index(max(0, min(1, v)), x, y, len(WALL), band=0.1)]
-    # title, 2x scaled 5x7 letters, molten with a dark carved rim
-    text = 'SKILL TREE'
-    widths = [3 if c == ' ' else 5 for c in text]
-    total = (sum(widths) + len(text) - 1) * 2
-    ox, oy = (x0 + x1 + 1) // 2 - total // 2, y0 + 7
-    cells = set()
-    cx = ox
-    for c, wd in zip(text, widths):
-        if c != ' ':
-            for gy, row in enumerate(FONT[c]):
-                for gx, ch in enumerate(row):
-                    if ch == '#':
-                        for sx in range(2):
-                            for sy in range(2):
-                                cells.add((cx + gx * 2 + sx, oy + gy * 2 + sy))
-        cx += (wd + 1) * 2
+    # title: scaled 5x7 letters, molten with a dark carved rim
+    ox, oy = (x0 + x1 + 1) // 2 - text_width(text, scale) // 2, y0 + text_dy
+    cells = {(ox + x, oy + y) for x, y in text_cells(text, scale)}
     for x, y in cells:  # rim
         for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1), (1, 1)):
             if (x + dx, y + dy) not in cells:
                 put(px, W, H, x + dx, y + dy, WALL[7] if (dx, dy) != (1, 1) else EMBER[5])
     for x, y in cells:
-        t = (y - oy) / 13
+        t = (y - oy) / (7 * scale - 1)
         px[x, y] = EMBER[1] if t < 0.3 else EMBER[2] if t < 0.75 else EMBER[3]
         if t < 0.08:
             px[x, y] = EMBER[0]

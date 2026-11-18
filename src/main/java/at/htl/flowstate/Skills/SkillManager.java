@@ -39,6 +39,11 @@ public final class SkillManager {
         return instance;
     }
 
+    /** Forgets all progress (new game). Everything holding the old instance has to be rebuilt afterwards. */
+    public static void reset() {
+        instance = null;
+    }
+
     //-----Queries-----
     public static SkillType statOf(Branch branch) {
         return switch (branch) {
