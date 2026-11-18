@@ -3,6 +3,8 @@ package at.htl.flowstate.Menu.SkillTree;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Menu.PixelText;
+import at.htl.flowstate.Menu.PixelText.Look;
 import at.htl.flowstate.Skills.NodeKind;
 import at.htl.flowstate.Skills.SkillManager;
 import at.htl.flowstate.Skills.SkillType;
@@ -13,20 +15,18 @@ import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
 import javafx.scene.CacheHint;
 import javafx.scene.Group;
-import javafx.scene.control.Label;
 import javafx.scene.effect.BlendMode;
 import javafx.scene.effect.GaussianBlur;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
-import javafx.scene.text.Text;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -43,12 +43,19 @@ import java.util.Map;
 public class SkillTreeView {
     private static final KeyCode[] SLOT_KEYS = {KeyCode.DIGIT1, KeyCode.DIGIT2, KeyCode.DIGIT3, KeyCode.DIGIT4};
     private static final int BG_SCALE = 4;            // SkillTreeBg.png is 480x270
-    private static final double TIP_W = 340;
+    private static final double TIP_W = 420;
+    private static final double TIP_PAD = 14;
+    private static final double TIP_TEXT_W = TIP_W - 2 * TIP_PAD;
+    private static final int SP_GLYPH_TOP = 26;       // art row of the skill point count on the lintel (skilltree.py)
+    private static final int TEXT_SCALE = 2;          // body text, like the node rings and icons
+    private static final int TITLE_SCALE = 4;         // like the rune menu's buttons
     private static final double SPARK_SPEED = 240;    // px/s along a groove
-    private static final Color GOLD = Color.web("#f5cd52");
-    private static final Color PARCHMENT = Color.web("#e8d9b0");
-    private static final Color BAD = Color.web("#ff6b5e");
-    private static final Color GOOD = Color.web("#9be06f");
+    private static final double PANEL_SIDE = 56;      // the hotbar and controls panels sit in the lower corners
+    private static final double PANEL_BOTTOM = 1046;
+    private static final Look GOLD = PixelText.inlaid(Color.web("#f5cd52"), Color.web("#cf9c2f"));
+    private static final Look BAD = PixelText.inlaid(Color.web("#ff6b5e"));
+    private static final Look GOOD = PixelText.inlaid(Color.web("#9be06f"));
+    private static final Look GREY = PixelText.inlaid(Color.web("#a39fab"));
     private static final String PANEL = "-fx-background-color: rgba(14,13,18,0.88); -fx-background-radius: 6;"
             + "-fx-border-color: #8a774f; -fx-border-width: 2; -fx-border-radius: 6;";
 
@@ -69,13 +76,13 @@ public class SkillTreeView {
     private final Map<SkillType, SkillNode> nodes = new EnumMap<>(SkillType.class);
     private final List<Spark> sparks = new ArrayList<>();
 
-    private final Label spLabel = new Label();
-    private final VBox tip = new VBox(5);
-    private final Text tipName = new Text();
-    private final Text tipKind = new Text();
-    private final Text tipDesc = new Text();
-    private final Text tipStatus = new Text();
-    private final Text tipHint = new Text();
+    private final ImageView spView = new ImageView();
+    private final VBox tip = new VBox(8);
+    private final ImageView tipName = new ImageView();
+    private final ImageView tipKind = new ImageView();
+    private final ImageView tipDesc = new ImageView();
+    private final ImageView tipStatus = new ImageView();
+    private final ImageView tipHint = new ImageView();
     private final HBox hotbarSlots = new HBox(8);
 
     private SkillNode hovered = null;
@@ -157,71 +164,67 @@ public class SkillTreeView {
     }
 
     //-----Static parts-----
-    private Label header() {
-        // sits in the lower part of the stone lintel that carries the carved title
-        spLabel.setFont(Font.font("Serif", FontWeight.BOLD, 22));
-        spLabel.setTextFill(GOLD);
-        spLabel.setAlignment(Pos.CENTER);
-        spLabel.setPrefWidth(560);
-        spLabel.setLayoutX(SkillTreeLayout.WIDTH / 2 - 280);
-        spLabel.setLayoutY(100);
-        spLabel.setMouseTransparent(true);
-        return spLabel;
+    private ImageView header() {
+        // molten, under the carved title on the stone lintel; the image has one art pixel of rim above the letters
+        spView.setSmooth(false);
+        spView.setLayoutY((SP_GLYPH_TOP - 1) * BG_SCALE);
+        spView.setMouseTransparent(true);
+        return spView;
     }
 
     private VBox hotbar() {
-        Text title = new Text("HOTBAR");
-        title.setFont(Font.font("Serif", FontWeight.BOLD, 16));
-        title.setFill(PARCHMENT);
-        VBox box = new VBox(6, title, hotbarSlots);
-        box.setStyle(PANEL + "-fx-padding: 8 12 12 12;");
-        box.setLayoutX(56);
-        box.setLayoutY(912);
+        VBox box = new VBox(8, PixelText.view("HOTBAR", PixelText.MOLTEN, TEXT_SCALE), hotbarSlots);
+        box.setStyle(PANEL + "-fx-padding: 10 12 12 12;");
+        anchor(box, false);
         box.setMouseTransparent(true);
         return box;
     }
 
+    /** The keys as stone keycaps and the mouse, like the controls tablet of the rune menu. */
     private VBox controls() {
-        VBox box = new VBox(3,
-                controlLine("Click", "learn / equip"),
-                controlLine("1 - 4", "put hovered skill in a slot"),
-                controlLine("I / Esc", "close"));
+        VBox box = new VBox(6,
+                controlLine("LEARN / EQUIP", PixelText.mouse(false, TEXT_SCALE)),
+                controlLine("PUT HOVERED SKILL IN A SLOT", key("1"), symbol("-"), key("4")),
+                controlLine("CLOSE", key("I"), symbol("/"), key("ESC")));
         box.setStyle(PANEL + "-fx-padding: 10 14 10 14;");
-        box.setLayoutX(1520);
-        box.setLayoutY(946);
+        anchor(box, true);
         box.setMouseTransparent(true);
         return box;
     }
 
-    private HBox controlLine(String key, String what) {
-        Text k = new Text(key);
-        k.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
-        k.setFill(GOLD);
-        Text w = new Text(what);
-        w.setFont(Font.font("SansSerif", 14));
-        w.setFill(PARCHMENT);
-        Pane keyBox = new Pane(k);
-        keyBox.setPrefWidth(78);
-        k.setY(14);
-        HBox line = new HBox(6, keyBox, w);
+    /** Keeps a panel in a lower corner, on whole pixels, whatever size its text gives it. */
+    private static void anchor(Region box, boolean right) {
+        box.heightProperty().addListener((o, a, h) -> box.setLayoutY(Math.round(PANEL_BOTTOM - h.doubleValue())));
+        if (right) {
+            box.widthProperty().addListener((o, a, w) ->
+                    box.setLayoutX(Math.round(SkillTreeLayout.WIDTH - PANEL_SIDE - w.doubleValue())));
+        } else {
+            box.setLayoutX(PANEL_SIDE);
+        }
+    }
+
+    private static Image key(String name) {
+        return PixelText.keycap(name, TEXT_SCALE);
+    }
+
+    private static Image symbol(String s) {
+        return PixelText.render(s, PixelText.PARCHMENT, TEXT_SCALE);
+    }
+
+    private HBox controlLine(String what, Image... keys) {
+        HBox keyBox = new HBox(4);
+        for (Image k : keys) keyBox.getChildren().add(PixelText.view(k));
+        keyBox.setAlignment(Pos.CENTER_RIGHT);
+        keyBox.setPrefWidth(92);
+        HBox line = new HBox(12, keyBox, PixelText.view(what, PixelText.PARCHMENT, TEXT_SCALE));
         line.setAlignment(Pos.CENTER_LEFT);
         return line;
     }
 
     private VBox tooltip() {
-        tipName.setFont(Font.font("Serif", FontWeight.BOLD, 22));
-        tipKind.setFont(Font.font("Serif", FontWeight.BOLD, 13));
-        tipKind.setFill(Color.web("#a39fab"));
-        tipDesc.setFont(Font.font("SansSerif", 14));
-        tipDesc.setFill(PARCHMENT);
-        tipDesc.setWrappingWidth(TIP_W - 30);
-        tipStatus.setFont(Font.font("SansSerif", FontWeight.BOLD, 14));
-        tipStatus.setWrappingWidth(TIP_W - 30);
-        tipHint.setFont(Font.font("SansSerif", 12));
-        tipHint.setFill(Color.web("#a39fab"));
-        tipHint.setWrappingWidth(TIP_W - 30);
+        for (ImageView v : new ImageView[]{tipName, tipKind, tipDesc, tipStatus, tipHint}) v.setSmooth(false);
         tip.getChildren().addAll(tipName, tipKind, tipDesc, tipStatus, tipHint);
-        tip.setStyle(PANEL + "-fx-background-color: rgba(14,13,18,0.95); -fx-padding: 10 14 12 14;");
+        tip.setStyle(PANEL + "-fx-background-color: rgba(14,13,18,0.95); -fx-padding: 12 14 14 14;");
         tip.setPrefWidth(TIP_W);
         tip.setMouseTransparent(true);
         tip.setVisible(false);
@@ -287,7 +290,11 @@ public class SkillTreeView {
         }
         dirty = false;
         int sp = (int) stats.getSkillPoints();
-        spLabel.setText(sp + (sp == 1 ? " SKILL POINT" : " SKILL POINTS"));
+        Image spText = PixelText.render(sp + (sp == 1 ? " SKILL POINT" : " SKILL POINTS"), PixelText.MOLTEN, BG_SCALE);
+        spView.setImage(spText);
+        // centred like the carved title (skilltree.lintel), on the wall's pixel grid
+        int textW = (int) (spText.getWidth() / BG_SCALE) - 2;
+        spView.setLayoutX(((int) SkillTreeLayout.WIDTH / BG_SCALE / 2 - textW / 2 - 1) * BG_SCALE);
 
         Map<SkillType, GrooveRenderer.Fill> fills = new EnumMap<>(SkillType.class);
         for (SkillNode node : nodes.values()) {
@@ -322,10 +329,7 @@ public class SkillTreeView {
                 slot.getChildren().add(icon);
             }
             // the key under the slot, so it never hides part of the icon
-            Text key = new Text(String.valueOf(i + 1));
-            key.setFont(Font.font("Monospaced", FontWeight.BOLD, 15));
-            key.setFill(GOLD);
-            VBox column = new VBox(2, slot, key);
+            VBox column = new VBox(4, slot, PixelText.view(key(String.valueOf(i + 1))));
             column.setAlignment(Pos.CENTER);
             hotbarSlots.getChildren().add(column);
         }
@@ -334,15 +338,14 @@ public class SkillTreeView {
     private void showTip() {
         if (hovered == null) return;
         SkillType t = hovered.type;
-        tipName.setText(t.getDisplayName());
-        tipName.setFill(SkillNode.branchColor(t.getBranch()));
-        tipKind.setText(kindLine(t));
-        tipDesc.setText(t.getDescription());
+        tipName.setImage(PixelText.render(t.getDisplayName(), PixelText.inlaid(SkillNode.branchColor(t.getBranch())),
+                TITLE_SCALE, TIP_TEXT_W, false));
+        tipKind.setImage(text(kindLine(t), GREY));
+        tipDesc.setImage(text(t.getDescription(), PixelText.PARCHMENT));
 
         Status s = status(t);
-        tipStatus.setText(message != null ? message : s.text);
-        tipStatus.setFill(message != null ? BAD : s.color);
-        tipHint.setText(s.hint == null ? "" : s.hint);
+        tipStatus.setImage(text(message != null ? message : s.text, message != null ? BAD : s.look));
+        tipHint.setImage(s.hint == null ? null : text(s.hint, GREY));
         tipHint.setManaged(s.hint != null);
         tipHint.setVisible(s.hint != null);
 
@@ -359,7 +362,11 @@ public class SkillTreeView {
         tip.setVisible(true);
     }
 
-    private record Status(String text, Color color, String hint) {}
+    private static Image text(String s, Look look) {
+        return PixelText.render(s, look, TEXT_SCALE, TIP_TEXT_W, false);
+    }
+
+    private record Status(String text, Look look, String hint) {}
 
     private Status status(SkillType t) {
         int slot = skills.slotOf(t);

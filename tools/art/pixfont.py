@@ -1,7 +1,10 @@
 """5x7 pixel font (uppercase, digits, a little punctuation) shared by the menu and skill tree art.
 
 Glyphs are lists of 7 row strings ('#' = ink); widths vary for punctuation. Letter spacing is 1 px (x scale).
+`PixelFont.png` carries the same glyphs to the game (`Menu/PixelText.java`): ASCII 32-127 in a 16-column grid
+of 6x8 cells, ink in rows 0-6, and row 7 marking the glyph's width.
 """
+from PIL import Image
 
 FONT = {
     'A': [' ### ', '#   #', '#   #', '#####', '#   #', '#   #', '#   #'],
@@ -44,10 +47,13 @@ FONT = {
     '-': ['    ', '    ', '    ', '####', '    ', '    ', '    '],
     '+': ['     ', '  #  ', '  #  ', '#####', '  #  ', '  #  ', '     '],
     '?': [' ### ', '#   #', '    #', '   # ', '  #  ', '     ', '  #  '],
+    '%': ['##  #', '##  #', '   # ', '  #  ', ' #   ', '#  ##', '#  ##'],
+    '=': ['    ', '    ', '####', '    ', '####', '    ', '    '],
     '.': [' ', ' ', ' ', ' ', ' ', ' ', '#'],
     ',': ['  ', '  ', '  ', '  ', '  ', ' #', '# '],
     '!': ['#', '#', '#', '#', '#', ' ', '#'],
     ':': [' ', '#', ' ', ' ', ' ', '#', ' '],
+    ';': ['  ', ' #', '  ', '  ', '  ', ' #', '# '],
     "'": ['#', '#', ' ', ' ', ' ', ' ', ' '],
     '(': [' #', '# ', '# ', '# ', '# ', '# ', ' #'],
     ')': ['# ', ' #', ' #', ' #', ' #', ' #', '# '],
@@ -77,3 +83,18 @@ def text_cells(text, scale=1):
                             cells.add((x + gx * scale + sx, gy * scale + sy))
         x += (glyph_width(c) + 1) * scale
     return cells
+
+
+def generate(out_dir):
+    cols, cw, ch = 16, 6, 8
+    img = Image.new('RGBA', (cols * cw, 6 * ch), (0, 0, 0, 0))
+    px = img.load()
+    for c, rows in FONT.items():
+        i = ord(c) - 32
+        ox, oy = (i % cols) * cw, (i // cols) * ch
+        for x in range(len(rows[0])):
+            px[ox + x, oy + 7] = (255, 0, 0, 255)
+            for y, row in enumerate(rows):
+                if row[x] == '#':
+                    px[ox + x, oy + y] = (255, 255, 255, 255)
+    img.save(f'{out_dir}/PixelFont.png')

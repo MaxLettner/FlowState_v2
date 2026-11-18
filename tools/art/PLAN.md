@@ -39,6 +39,10 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   ProgressBars and the skill point text. `HudBar_<ID>` = iron trough with a diamond gem socket and a pointed end;
   `HudFill_<ID>` = 3 frames (liquid repeating every 32 px, scrolled by the game / washed-out drain / leading edge).
   Trough at (18, 5), 128 long; keep in sync with HudBar.java. `python tools/art/hudbars.py out.png [screenshot]`.
+- `pixfont.py` → `PixelFont.png` (2026-11-18): the menu's 5x7 font for runtime text. `Menu/PixelText.java` draws it
+  with the menu looks (molten, inlaid in any colour, keycaps; `MouseIcon.png` from menu.py). All skill tree text
+  uses it: x4 for the skill point count (on the deepened lintel, glyph top at art row 26) and tooltip names, x2 for
+  the rest.
 
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
