@@ -10,6 +10,7 @@ import com.almasb.fxgl.app.scene.Viewport;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.ui.ProgressBar;
 import javafx.geometry.Pos;
+import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -18,14 +19,21 @@ import javafx.scene.text.TextAlignment;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
 
-/** HP / mana / XP bars, skill points, the 4-slot hotbar, combo meter and charge bar. */
+/**
+ * HP / mana / XP bars, skill points, the 4-slot hotbar, combo meter and charge bar.
+ * A hotbar slot on cooldown goes dark and fills back up from the bottom; it is full again when the skill is ready.
+ */
 public class Hud {
     private static final double SLOT_W = 130;
     private static final double SLOT_H = 58;
     private static final double SLOT_GAP = 8;
     private static final double CHARGE_W = 60;
     private static final Color SLOT_ON = Color.web("#1565C0");
-    private static final Color SLOT_OFF = Color.rgb(20, 20, 20, 0.8);
+    private static final Color SLOT_OFF = Color.rgb(48, 48, 56, 0.85);   // ready ("full")
+    private static final Color SLOT_EMPTY = Color.rgb(8, 8, 10, 0.85);   // just used
+    private static final double FLASH_MIN_COOLDOWN = 1.0;  // shorter cooldowns (weapon swings) don't flash
+    private static final double FLASH_TIME = 0.3;
+    private static final double FLASH_OPACITY = 0.55;
     private static final Color SLOT_BORDER = Color.web("#666");
 
     private final Entity player;
@@ -40,6 +48,11 @@ public class Hud {
 
     private final Rectangle[] slotBg = new Rectangle[SkillManager.HOTBAR_SIZE];
     private final Text[] slotText = new Text[SkillManager.HOTBAR_SIZE];
+    private final Rectangle[] slotFill = new Rectangle[SkillManager.HOTBAR_SIZE];
+    private final Rectangle[] slotFlash = new Rectangle[SkillManager.HOTBAR_SIZE];
+    private final Rectangle[] slotBorder = new Rectangle[SkillManager.HOTBAR_SIZE];
+    private final double[] lastCooldown = new double[SkillManager.HOTBAR_SIZE];
+    private final double[] flashLeft = new double[SkillManager.HOTBAR_SIZE];
 
     private final Rectangle comboBg;
     private final Rectangle comboFill;
@@ -67,15 +80,21 @@ public class Hud {
         double startX = (width - totalWidth) / 2;
         double slotY = height - SLOT_H - 24;
         for (int i = 0; i < SkillManager.HOTBAR_SIZE; i++) {
-            slotBg[i] = new Rectangle(SLOT_W, SLOT_H);
-            slotBg[i].setArcWidth(8);
-            slotBg[i].setArcHeight(8);
+            slotBg[i] = roundedSlot();
+            slotFill[i] = new Rectangle(SLOT_W, 0, SLOT_OFF);
+            slotFlash[i] = new Rectangle(SLOT_W, SLOT_H, Color.WHITE);
+            slotFlash[i].setOpacity(0);
+            Pane cooldownLayer = new Pane(slotFill[i], slotFlash[i]);
+            cooldownLayer.setClip(roundedSlot());
+            cooldownLayer.setMaxSize(SLOT_W, SLOT_H);
+            slotBorder[i] = roundedSlot();
+            slotBorder[i].setFill(Color.TRANSPARENT);
             slotText[i] = new Text();
             slotText[i].setFill(Color.WHITE);
             slotText[i].setStyle("-fx-font-size: 13px;");
             slotText[i].setTextAlignment(TextAlignment.CENTER);
             slotText[i].setWrappingWidth(SLOT_W - 8);
-            StackPane slot = new StackPane(slotBg[i], slotText[i]);
+            StackPane slot = new StackPane(slotBg[i], cooldownLayer, slotBorder[i], slotText[i]);
             slot.setAlignment(Pos.CENTER);
             slot.setLayoutX(startX + i * (SLOT_W + SLOT_GAP));
             slot.setLayoutY(slotY);
@@ -93,6 +112,13 @@ public class Hud {
 
         addUINode(chargeBg);
         addUINode(chargeFill);
+    }
+
+    private static Rectangle roundedSlot() {
+        Rectangle r = new Rectangle(SLOT_W, SLOT_H);
+        r.setArcWidth(8);
+        r.setArcHeight(8);
+        return r;
     }
 
     private void setupBar(ProgressBar bar, Color color, double max, double x, double y, boolean label) {
@@ -130,9 +156,15 @@ public class Hud {
             String status = type == null ? "" : loadout.getSlotStatus(type);
             slotText[i].setText((i + 1) + "  " + name + (status.isEmpty() ? "" : "\n" + status));
 
-            slotBg[i].setFill(on ? SLOT_ON : SLOT_OFF);
-            slotBg[i].setStroke(active ? Color.GOLD : SLOT_BORDER);
-            slotBg[i].setStrokeWidth(active ? 3 : 1);
+            double cooldown = type == null ? 0 : loadout.getCooldownProgress(type);
+            if (cooldown <= 0 && lastCooldown[i] > 0 && loadout.getCooldownTotal(type) >= FLASH_MIN_COOLDOWN) {
+                flashLeft[i] = FLASH_TIME;
+            }
+            lastCooldown[i] = cooldown;
+            updateCooldown(i, on, cooldown);
+
+            slotBorder[i].setStroke(active ? Color.GOLD : SLOT_BORDER);
+            slotBorder[i].setStrokeWidth(active ? 3 : 1);
         }
 
         double combo = loadout.getComboProgress();
@@ -155,5 +187,19 @@ public class Hud {
             chargeFill.setWidth(CHARGE_W * charge);
             chargeFill.setFill(charge >= 1 ? Color.ORANGERED : Color.GOLD);
         }
+    }
+
+    /** Dark background with the ready color rising from the bottom as the cooldown runs out. */
+    private void updateCooldown(int i, boolean on, double cooldown) {
+        Color ready = on ? SLOT_ON : SLOT_OFF;
+        boolean cooling = cooldown > 0;
+        slotBg[i].setFill(cooling ? SLOT_EMPTY : ready);
+        double h = cooling ? SLOT_H * (1 - cooldown) : 0;
+        slotFill[i].setFill(ready);
+        slotFill[i].setHeight(h);
+        slotFill[i].setY(SLOT_H - h);
+
+        if (flashLeft[i] > 0) flashLeft[i] = Math.max(0, flashLeft[i] - tpf());
+        slotFlash[i].setOpacity(FLASH_OPACITY * flashLeft[i] / FLASH_TIME);
     }
 }

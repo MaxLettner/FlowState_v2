@@ -40,6 +40,7 @@ public class LoadoutComponent extends Component {
     private final SkillManager skills = SkillManager.get();
     private final Map<SkillType, Ability> abilities = new EnumMap<>(SkillType.class);
     private final EnumMap<Branch, Double> cooldowns = new EnumMap<>(Branch.class);
+    private final EnumMap<Branch, Double> cooldownTotals = new EnumMap<>(Branch.class);
 
     private int activeSlot = 0;
     private SkillType activeAttack = null;
@@ -59,7 +60,10 @@ public class LoadoutComponent extends Component {
 
     @Override
     public void onAdded() {
-        for (Branch b : Branch.values()) cooldowns.put(b, 0.0);
+        for (Branch b : Branch.values()) {
+            cooldowns.put(b, 0.0);
+            cooldownTotals.put(b, 0.0);
+        }
     }
 
     @Override
@@ -205,6 +209,32 @@ public class LoadoutComponent extends Component {
 
     public void setCooldown(Branch branch, double seconds) {
         cooldowns.put(branch, seconds);
+        cooldownTotals.put(branch, seconds);
+    }
+
+    /**
+     * How much of a hotbar skill's cooldown is still left: 1 right after use, 0 when ready.
+     * Weapons and spells share one cooldown per branch, so every attack of that branch reports it.
+     */
+    public double getCooldownProgress(SkillType type) {
+        if (type == SkillType.MANA_SHIELD) return shieldBreakCooldown > 0 ? shieldBreakCooldown / SHIELD_BREAK_COOLDOWN : 0;
+        if (type == SkillType.LEVITATION) return levitationCooldown > 0 ? levitationCooldown / LEVITATION_COOLDOWN : 0;
+        if (type.getSlotKind() != SlotKind.ATTACK || type.getBranch() == null) return 0;
+        Ability a = abilities.get(type);
+        if (a != null && a.getSlotCooldown() >= 0) return a.getSlotCooldown();
+        double left = cooldowns.get(type.getBranch());
+        double total = cooldownTotals.get(type.getBranch());
+        return left > 0 && total > 0 ? Math.min(1, left / total) : 0;
+    }
+
+    /** Full length in seconds of the cooldown {@link #getCooldownProgress} is reporting. */
+    public double getCooldownTotal(SkillType type) {
+        if (type == SkillType.MANA_SHIELD) return SHIELD_BREAK_COOLDOWN;
+        if (type == SkillType.LEVITATION) return LEVITATION_COOLDOWN;
+        if (type.getSlotKind() != SlotKind.ATTACK || type.getBranch() == null) return 0;
+        Ability a = abilities.get(type);
+        if (a != null && a.getSlotCooldown() >= 0) return a.getSlotCooldownTotal();
+        return cooldownTotals.get(type.getBranch());
     }
 
     public void markCast() {

@@ -6,36 +6,36 @@ import com.almasb.fxgl.core.math.FXGLMath;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
-import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
-import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
-import javafx.scene.paint.Color;
 
-/** Basic Bow, Shortbow and Bone Bow: click to shoot an arcing arrow. */
-public class BowAbility extends Ability {
+/**
+ * Basic Bow, Shortbow and Bone Bow: hold to draw, release to shoot an arcing arrow.
+ * A partial draw shoots a weaker arrow that is slower, so it drops sooner and doesn't fly as far.
+ */
+public class BowAbility extends DrawnBowAbility {
     public enum Bow {
-        BASIC("BasicBow.png", 16.5, 13, "Arrow.png", 14, 0.6, 1000, 900, 0, false),
-        SHORT("ShortBow.png", 13.5, 11, "Arrow.png", 8, 0.25, 900, 500, 0, false),
-        BONE("BoneBow.png", 16.5, 13, "BoneArrow.png", 15, 0.6, 1000, 900, 1, true);
+        BASIC("BasicBow.png", 16.5, 13, "Arrow.png", 14, 0.8, 1000, 900, 0, false),
+        SHORT("ShortBow.png", 13.5, 11, "Arrow.png", 8, 0.4, 900, 500, 0, false),
+        BONE("BoneBow.png", 16.5, 13, "BoneArrow.png", 15, 0.8, 1000, 900, 1, true);
 
         final String texture, arrow;
         final double gripX, gripY; // grip inside a native frame (tools/art/ranged.py)
-        final double damage, interval, speed, range;
+        final double damage, fullDraw, speed, range;   // stats at full draw
         final int pierce;
         final boolean shatter;
 
-        Bow(String texture, double gripX, double gripY, String arrow, double damage, double interval, double speed,
+        Bow(String texture, double gripX, double gripY, String arrow, double damage, double fullDraw, double speed,
             double range, int pierce, boolean shatter) {
             this.texture = texture;
             this.gripX = gripX;
             this.gripY = gripY;
             this.arrow = arrow;
             this.damage = damage;
-            this.interval = interval;
+            this.fullDraw = fullDraw;
             this.speed = speed;
             this.range = range;
             this.pierce = pierce;
@@ -46,6 +46,10 @@ public class BowAbility extends Ability {
     static final double ARROW_GRAVITY = 800;
     static final double EAGLE_EYE_SPEED = 1.25;   // Bow passive
     static final double EAGLE_EYE_GRAVITY = 0.7;
+    // a partial draw: damage scales linearly (so tapping is never better than drawing), speed and range keep a floor
+    static final double MIN_POWER = 0.1;
+    private static final double MIN_SPEED = 0.35;
+    private static final double MIN_RANGE = 0.3;
     private static final double SHARD_DAMAGE = 5;
     private static final double SHARD_SPEED = 600;
     private static final double SHARD_RANGE = 120;
@@ -54,26 +58,30 @@ public class BowAbility extends Ability {
     private final Bow bow;
 
     public BowAbility(Entity player, LoadoutComponent loadout, Bow bow) {
-        super(player, loadout, Branch.RANGED);
+        super(player, loadout, bow.texture, bow.gripX, bow.gripY, 22);
         this.bow = bow;
     }
 
     @Override
-    public void primaryPress() {
-        if (!ready()) return;
+    protected double fullDraw() {
+        return bow.fullDraw;
+    }
+
+    @Override
+    protected void release(double drawTime) {
+        double f = Math.min(drawTime / bow.fullDraw, 1);
+        double damage = bow.damage * Math.max(MIN_POWER, f);
+        double speed = bow.speed * (MIN_SPEED + (1 - MIN_SPEED) * f);
+        double range = bow.range * (MIN_RANGE + (1 - MIN_RANGE) * f);
+        int basePierce = f >= 1 ? bow.pierce : 0;   // only a full draw pierces
         PlayerProjectileComponent arrow = new PlayerProjectileComponent(
-                aim().multiply(bow.speed * EAGLE_EYE_SPEED),
-                pierce(bow.pierce),
-                (e, i) -> Hit.of(bow.damage, DamageKind.RANGED).family(SkillType.BOW))
+                aim().multiply(speed * EAGLE_EYE_SPEED),
+                pierce(basePierce),
+                (e, i) -> Hit.of(damage, DamageKind.RANGED).family(SkillType.BOW))
                 .gravity(ARROW_GRAVITY * EAGLE_EYE_GRAVITY)
-                .maxDistance(bow.range);
+                .maxDistance(range);
         if (bow.shatter) arrow.onStop(this::shatter);
         spawnProjectile(projectileSprite(bow.arrow, 28, 3), 28, 3, arrow);
-        // full draw for a moment, then the string snaps back to rest
-        Frames frames = Assets.frames(bow.texture, 3, 2);
-        FrameSprite held = new FrameSprite(frames).play(frames, new int[]{2, 0}, 16, false, null);
-        HeldWeaponComponent.spawnAimed(held, bow.gripX * 2, bow.gripY * 2, 22, 0.3);
-        cooldown(bow.interval);
     }
 
     /** Bone Bow: the arrow splinters into 3 short-range bone shards. */
