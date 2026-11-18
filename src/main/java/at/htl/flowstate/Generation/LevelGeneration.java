@@ -16,6 +16,10 @@ public class LevelGeneration {
     //so the player never sees the bottom edge
     private static final double DEEP_FLOOR = 1500;
 
+    //surface decorations (GroundSurface.png: 6 frames of 24x24 art, drawn at x2)
+    private static final int DECOR_FRAMES = 6;
+    private static final double DECOR_SIZE = 48;
+
     //terrain parameters
     private static final double BASE_Y = 950;  //the base level the terrain hovers around
     private static final double MIN_Y = 800;  //highest the terrain can rise
@@ -159,6 +163,18 @@ public class LevelGeneration {
                 .put("color", Color.DARKSLATEGRAY)
                 .put("width", width)
                 .put("height", height));
+        spawnDecor(x, y, width);
+    }
+
+    //bones, thorns, skulls on stakes ... standing on the surface, purely visual
+    private static void spawnDecor(double x, double y, double width) {
+        if (width < DECOR_SIZE * 2) return;
+        int count = (int) (width / 220) + (Math.random() < 0.5 ? 1 : 0);
+        for (int i = 0; i < count; i++) {
+            double dx = Math.random() * (width - DECOR_SIZE);
+            spawn("decor", new SpawnData(x + dx, y - DECOR_SIZE + 4)
+                    .put("frame", FXGLMath.random(0, DECOR_FRAMES - 1)));
+        }
     }
 
     //-----GETTERS-----
