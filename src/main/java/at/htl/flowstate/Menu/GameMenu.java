@@ -32,10 +32,12 @@ import java.util.List;
 import java.util.Random;
 
 /**
- * The Esc menu: a full-screen rune wall (tools/art/menu.py) with the buttons inside a carved, glowing seal.
- * It is FXGL's game menu sub-scene, so the game is paused while it is open; Esc resumes.
- * Start New Game and Exit Game ask first, Controls shows the key tablet, Save / Load are not implemented yet
- * and only answer "coming soon". Esc or Back leaves a dialog; arrows / W S + Enter work as well as the mouse.
+ * The rune menu: a full-screen rune wall (tools/art/menu.py) with the buttons inside a carved, glowing seal.
+ * Used twice: as FXGL's main menu, shown at launch before any world exists, and as the Esc game menu, a
+ * sub-scene that pauses the game (Esc resumes). In the game menu Start New Game and Exit Game ask first, since
+ * progress would be lost; in the main menu they act at once. Controls shows the key tablet, Save / Load are not
+ * implemented yet and only answer "coming soon". Esc or Back leaves a dialog; arrows / W S + Enter work as well
+ * as the mouse.
  */
 public class GameMenu extends FXGLMenu {
     private enum View { MAIN, CONTROLS, CONFIRM_NEW, CONFIRM_EXIT }
@@ -74,6 +76,7 @@ public class GameMenu extends FXGLMenu {
     private final MenuButton startButton, quitButton, cancelButton, backButton;
     private final Text leftHint = hint(), rightHint = hint();
 
+    private final boolean inGame;      // Esc menu over a running game (else the main menu at launch)
     private View view = View.MAIN;
     private MenuButton focused = null;
     private boolean keyboard = false;   // the last focus change came from the keyboard
@@ -82,8 +85,9 @@ public class GameMenu extends FXGLMenu {
     private double emberTimer = 0;
     private final Random rng = new Random();
 
-    public GameMenu() {
-        super(MenuType.GAME_MENU);
+    public GameMenu(MenuType type) {
+        super(type);
+        inGame = type == MenuType.GAME_MENU;
         root.setPrefSize(1920, 1080);
 
         ImageView bg = Assets.sprite("MenuBg.png", SCALE);
@@ -120,8 +124,11 @@ public class GameMenu extends FXGLMenu {
         emberLayer.setMouseTransparent(true);
 
         String[] ids = {"NEW_GAME", "SAVE", "LOAD", "CONTROLS", "EXIT"};
-        Runnable[] actions = {() -> show(View.CONFIRM_NEW), () -> soon(0), () -> soon(1),
-                () -> show(View.CONTROLS), () -> show(View.CONFIRM_EXIT)};
+        // not fireExit(): that shows FXGL's own confirmation box on top of ours
+        Runnable[] actions = {
+                inGame ? () -> show(View.CONFIRM_NEW) : this::fireNewGame,
+                () -> soon(0), () -> soon(1), () -> show(View.CONTROLS),
+                inGame ? () -> show(View.CONFIRM_EXIT) : () -> getController().exit()};
         for (int i = 0; i < ids.length; i++) {
             MenuButton b = new MenuButton(ids[i], MAIN_X, MAIN_Y + i * MAIN_STEP, actions[i]);
             mainButtons.add(b);
@@ -138,7 +145,7 @@ public class GameMenu extends FXGLMenu {
         prompt.setSmooth(false);
         prompt.setLayoutY(PROMPT_Y);
         startButton = new MenuButton("START", CONFIRM_LEFT_X, CONFIRM_Y, this::fireNewGame);
-        quitButton = new MenuButton("QUIT", CONFIRM_LEFT_X, CONFIRM_Y, this::fireExit);
+        quitButton = new MenuButton("QUIT", CONFIRM_LEFT_X, CONFIRM_Y, () -> getController().exit());
         cancelButton = new MenuButton("CANCEL", CONFIRM_RIGHT_X, CONFIRM_Y, () -> show(View.MAIN));
         confirmGroup.getChildren().addAll(prompt, startButton, quitButton, cancelButton);
 
@@ -185,7 +192,7 @@ public class GameMenu extends FXGLMenu {
             startButton.setVisible(v == View.CONFIRM_NEW);
             quitButton.setVisible(v == View.CONFIRM_EXIT);
         }
-        rightHint.setText(v == View.MAIN ? "ESC  RESUME" : "ESC  BACK");
+        rightHint.setText(v != View.MAIN ? "ESC  BACK" : inGame ? "ESC  RESUME" : "");
         rightHint.setLayoutX(1864 - rightHint.getLayoutBounds().getWidth());
         for (MenuButton b : allButtons()) b.setDown(false);
         // keyboard users land on a sensible button (Cancel in the prompts); the mouse re-focuses on hover

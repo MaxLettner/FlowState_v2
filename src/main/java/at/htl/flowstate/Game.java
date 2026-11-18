@@ -17,6 +17,7 @@ import at.htl.flowstate.Menu.SkillTree.SkillTreeView;
 import at.htl.flowstate.Skills.SkillManager;
 import com.almasb.fxgl.app.GameApplication;
 import com.almasb.fxgl.app.GameSettings;
+import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.input.UserAction;
@@ -89,11 +90,19 @@ public class Game extends GameApplication {
         // the 1920x1080 game is scaled (letterboxed) to the screen; F11 toggles windowed mode
         settings.setFullScreenAllowed(true);
         settings.setFullScreenFromStart(true);
+        // the game starts in the rune menu; the world is only built once "Start New Game" is pressed
+        settings.setMainMenuEnabled(true);
         settings.setSceneFactory(new SceneFactory() {
             @NotNull
             @Override
+            public com.almasb.fxgl.app.scene.FXGLMenu newMainMenu() {
+                return new GameMenu(MenuType.MAIN_MENU);
+            }
+
+            @NotNull
+            @Override
             public com.almasb.fxgl.app.scene.FXGLMenu newGameMenu() {
-                return new GameMenu();
+                return new GameMenu(MenuType.GAME_MENU);
             }
         });
     }
