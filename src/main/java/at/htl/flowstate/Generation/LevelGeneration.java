@@ -26,6 +26,9 @@ public class LevelGeneration {
     private static final double PIT_MIN_WIDTH = 160;
     private static final double PIT_MAX_WIDTH = 280;
 
+    //no pits or structures before this x, so the player never spawns over a hole
+    private static final double SAFE_START = 800;
+
     //how far ahead the world is generated
     private static final double SPAWN_DISTANCE = 1400;
 
@@ -58,8 +61,11 @@ public class LevelGeneration {
     }
 
     private void spawnNextSegment() {
+        //the start (player spawns at x = 300) is always plain ground
+        boolean safeStart = lastGeneratedX < SAFE_START;
+
         //pit
-        if (Math.random() < PIT_CHANCE) {
+        if (!safeStart && Math.random() < PIT_CHANCE) {
             double pitWidth = FXGLMath.random((int) PIT_MIN_WIDTH, (int) PIT_MAX_WIDTH);
             lastGeneratedX += pitWidth;
             terrainDrift = 0;
@@ -67,7 +73,7 @@ public class LevelGeneration {
             return;
         }
 
-        Double structureWidth = structureGeneration.trySpawn(lastGeneratedX, currentY);
+        Double structureWidth = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
         if(structureWidth != null) {
             lastGeneratedX = structureWidth;
             return;
