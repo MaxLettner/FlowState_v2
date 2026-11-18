@@ -16,7 +16,7 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 - Melee swings use WeaponArt + arc trail; tridents/spear re-anchored; bows/crossbows aimed with draw/reload
   frames (`HeldWeaponComponent.spawnAimed`); gloves + MetalGuard sprites; all projectiles sprite-based;
   `BlastComponent.Style` (FIRE/ICE/DUST) animated blasts; animated burning ground; chest strip animation;
-  textured terrain (world-anchored ImagePattern); 3-layer parallax with animated lava + ambient embers.
+  textured terrain (world-anchored ImagePattern); 2-layer parallax (hellish abyss: horned colossus, fangs, black pit) + sparse ambient embers.
 - Fixed chest double-attach warning (`build()` instead of `buildAndAttach()`).
 - Effects/swings now render above terrain (z 12-15).
 
@@ -46,7 +46,7 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   (8f, 40x34; anchors described in the module docstring).
 - `terrain.py` — drafted, awaiting review. Ground 64x64 basalt + GroundTop 64x12 crust (Ground bodies are
   DARKSLATEGRAY rects today), Platform 32x32 brown bricks + PlatformTop 32x8 (structures, SADDLEBROWN today),
-  bg_far / bg_mid / bg_lava (4f) at 480x216, seamless horizontally, meant for x5 parallax.
+  bg_far / bg_mid at 480x216, seamless horizontally, meant for x5 parallax.
 - Nothing has been written into `src/main/resources/assets/textures` yet and no Java changed for the art.
   Previews were only rendered to the scratchpad.
 
