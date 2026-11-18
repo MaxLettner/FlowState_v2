@@ -50,18 +50,18 @@ public enum SkillType {
 
     // ----- Ranged -----
     BOW("Bow", "Basic Bow", SUBTREE, RANGED, null, ATTACK,
-            "Grants the Basic Bow. Passive Eagle Eye: arrows fly 25% faster and drop less."),
+            "Grants the Basic Bow. Hold to draw: a full draw hits hardest and flies farthest. Passive Eagle Eye: arrows fly 25% faster and drop less."),
     SHORTBOW("Shortbow", "Shortbow", SKILL, RANGED, BOW, ATTACK,
-            "Fast click shots. Short range, low damage, no pierce."),
+            "Quick 0.4 s draw. Short range, low damage, no pierce."),
     BONE_BOW("Bone Bow", "Bone Bow", SKILL, RANGED, BOW, ATTACK,
-            "Balanced bow, pierce 1. Arrows shatter into bone shards when they stop."),
+            "Balanced bow, pierce 1 on a full draw. Arrows shatter into bone shards when they stop."),
     WAR_BOW("War Bow", "War Bow", SKILL, RANGED, BOW, ATTACK,
             "Hold to draw. Damage, speed and pierce (up to 3) grow with draw time."),
 
     CROSSBOW("Crossbow", "Basic Crossbow", SUBTREE, RANGED, null, ATTACK,
-            "Grants the Basic Crossbow. Passive Quick Reload: crossbow reloads -15%."),
+            "Grants the Basic Crossbow. Hold to crank a bolt in, click to fire it; it stays loaded. Passive Quick Reload: cranking -15%."),
     DUAL_CROSSBOW("Dual Crossbow", "Dual Crossbow", SKILL, RANGED, CROSSBOW, ATTACK,
-            "Fires a burst of 2 bolts, then reloads."),
+            "Fires a burst of 2 bolts per load."),
     HEAVY_CROSSBOW("Heavy Crossbow", "Heavy Crossbow", SKILL, RANGED, CROSSBOW, ATTACK,
             "Straight rail bolt with infinite pierce. Pins the last enemy hit to the wall."),
     POISON_CROSSBOW("Poison Crossbow", "Poison Crossbow", SKILL, RANGED, CROSSBOW, ATTACK,

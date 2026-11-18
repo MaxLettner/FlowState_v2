@@ -47,6 +47,14 @@ public abstract class Ability {
     public boolean isBlocking() { return false; }
     public String getStatusText() { return ""; }
 
+    /**
+     * Hotbar fill for an ability with its own reload instead of the branch cooldown:
+     * 1 = empty, 0 = ready. -1 means "use the branch cooldown".
+     */
+    public double getSlotCooldown() { return -1; }
+    /** Full length in seconds of {@link #getSlotCooldown}'s reload (for the ready flash). */
+    public double getSlotCooldownTotal() { return 0; }
+
     //-----Helpers-----
     protected boolean ready() { return loadout.isReady(branch); }
     protected void cooldown(double seconds) { loadout.setCooldown(branch, seconds); }

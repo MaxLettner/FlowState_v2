@@ -14,7 +14,11 @@ import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
 import javafx.scene.paint.Color;
 
-/** Basic, Dual, Heavy and Poison Crossbow: flat bolts with a reload time. */
+/**
+ * Basic, Dual, Heavy and Poison Crossbow: flat bolts.
+ * Hold to crank a bolt in (slowed while cranking; letting go early resets the crank). Once loaded it stays loaded,
+ * also across weapon switches, and the next click fires it. Releasing the button after loading does nothing.
+ */
 public class CrossbowAbility extends Ability {
     public enum Crossbow {
         BASIC("BasicCrossbow.png", 13.5, 13.5, "Bolt.png", 20, 1.0, 1400, 200, 0, 1, 1, 22, 4),
@@ -47,6 +51,8 @@ public class CrossbowAbility extends Ability {
     }
 
     private static final double QUICK_RELOAD = 0.85; // Crossbow passive
+    private static final double CRANK_MOVE_MULT = 0.5;
+    private static final double LOADED_SHOW = 0.25;  // seconds the crossbow stays out after loading
     private static final double BURST_GAP = 0.1;
     private static final double PIN_DURATION = 2.0;
     private static final int POISON_STACKS = 2;
@@ -54,6 +60,12 @@ public class CrossbowAbility extends Ability {
     private final Crossbow crossbow;
     private int pendingShots = 0;
     private double burstTimer = 0;
+    private boolean loaded = true;
+    private boolean cranking = false;
+    private double crankTime = 0;
+    private Entity heldCrossbow;
+    private Frames crossbowFrames;
+    private FrameSprite crossbowSprite;
 
     public CrossbowAbility(Entity player, LoadoutComponent loadout, Crossbow crossbow) {
         super(player, loadout, Branch.RANGED);
@@ -62,7 +74,43 @@ public class CrossbowAbility extends Ability {
 
     @Override
     public void primaryPress() {
-        if (!ready()) return;
+        if (pendingShots > 0 || cranking) return;
+        if (loaded) fire();
+        else startCrank();
+    }
+
+    @Override
+    public void primaryRelease() {
+        // let go before the bolt is in: the crank slips back to empty
+        if (cranking) stopCrank(false);
+    }
+
+    private double reloadTime() {
+        return crossbow.reload * QUICK_RELOAD;
+    }
+
+    private void startCrank() {
+        cranking = true;
+        crankTime = 0;
+        crossbowFrames = Assets.frames(crossbow.texture, 2, 2);
+        crossbowSprite = new FrameSprite(crossbowFrames);
+        crossbowSprite.show(crossbowFrames, 1); // empty
+        heldCrossbow = HeldWeaponComponent.spawnAimed(crossbowSprite, crossbow.gripX * 2, crossbow.gripY * 2, 16, 0);
+    }
+
+    private void stopCrank(boolean done) {
+        cranking = false;
+        crankTime = 0;
+        if (done) loaded = true;
+        if (heldCrossbow != null) {
+            crossbowSprite.show(crossbowFrames, done ? 0 : 1);
+            heldCrossbow.getComponent(HeldWeaponComponent.class).setLifetime(done ? LOADED_SHOW : 0.05);
+            heldCrossbow = null;
+        }
+    }
+
+    private void fire() {
+        loaded = false;
         fireBolt();
         pendingShots = crossbow.burst - 1;
         burstTimer = BURST_GAP;
@@ -71,11 +119,14 @@ public class CrossbowAbility extends Ability {
         FrameSprite held = new FrameSprite(frames).play(frames, new int[]{0, 1}, 20, false, null);
         HeldWeaponComponent.spawnAimed(held, crossbow.gripX * 2, crossbow.gripY * 2, 16,
                 0.15 + BURST_GAP * (crossbow.burst - 1) + 0.2);
-        cooldown(crossbow.reload * QUICK_RELOAD);
     }
 
     @Override
     public void update(double tpf) {
+        if (cranking) {
+            crankTime += tpf;
+            if (crankTime >= reloadTime()) stopCrank(true);
+        }
         if (pendingShots <= 0) return;
         burstTimer -= tpf;
         if (burstTimer <= 0) {
@@ -88,6 +139,33 @@ public class CrossbowAbility extends Ability {
     @Override
     public void onDeselect() {
         pendingShots = 0;
+        if (cranking) stopCrank(false);
+    }
+
+    @Override
+    public double getChargeProgress() {
+        return cranking ? Math.min(crankTime / reloadTime(), 1) : -1;
+    }
+
+    @Override
+    public double getMoveSpeedMult() {
+        return cranking ? CRANK_MOVE_MULT : 1;
+    }
+
+    @Override
+    public double getSlotCooldown() {
+        if (loaded) return 0;
+        return 1 - (cranking ? Math.min(crankTime / reloadTime(), 1) : 0);
+    }
+
+    @Override
+    public double getSlotCooldownTotal() {
+        return reloadTime();
+    }
+
+    @Override
+    public String getStatusText() {
+        return loaded ? "loaded" : cranking ? "cranking" : "empty";
     }
 
     private void fireBolt() {
