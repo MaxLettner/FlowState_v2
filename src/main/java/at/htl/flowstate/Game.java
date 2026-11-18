@@ -53,14 +53,8 @@ public class Game extends GameApplication {
 
     // parallax layers (tools/art/terrain.py): 480x216 art shown at x5 = 2400x1080, seamless horizontally
     private static final int BG_SCALE = 5;
-    private static final int LAVA_FRAMES = 4;
-    private static final double LAVA_FPS = 5;
-    private static final double LAVA_DROP = 45; // lava surface just below the ground line
-    private static final double EMBER_INTERVAL = 0.12;
+    private static final double EMBER_INTERVAL = 0.35; // faint embers rising out of the abyss
     private final List<ParallaxLayer> layers = new ArrayList<>();
-    private ParallaxLayer lava;
-    private Image[] lavaFrames;
-    private double bgTime = 0;
     private double emberTimer = 0;
     private double cleanupTimer = 0;
     private static final double CLEANUP_INTERVAL = 0.5;
@@ -219,13 +213,8 @@ public class Game extends GameApplication {
     }
 
     private void setupBg() {
-        lavaFrames = new Image[LAVA_FRAMES];
-        for (int i = 0; i < LAVA_FRAMES; i++) lavaFrames[i] = Assets.frameImage("bg_lava.png", LAVA_FRAMES, BG_SCALE, i);
-
         layers.add(addLayer(Assets.pixels("bg_far.png", BG_SCALE), 0.03, 0));
         layers.add(addLayer(Assets.pixels("bg_mid.png", BG_SCALE), 0.08, 0));
-        lava = addLayer(lavaFrames[0], 0.15, WINDOW_HEIGHT - lavaFrames[0].getHeight() + LAVA_DROP);
-        layers.add(lava);
     }
 
     private ParallaxLayer addLayer(Image img, double factor, double y) {
@@ -258,19 +247,17 @@ public class Game extends GameApplication {
 
     //-----BACKGROUND-----
     private void scrollBg(double tpf) {
-        bgTime += tpf;
-        lava.setImage(lavaFrames[(int) (bgTime * LAVA_FPS) % LAVA_FRAMES]);
         double cameraX = getGameScene().getViewport().getX();
         for (ParallaxLayer layer : layers) layer.scroll(cameraX);
 
-        // embers drifting up from the lava
+        // sparse embers drifting up from the abyss
         emberTimer -= tpf;
         if (emberTimer <= 0) {
             emberTimer = EMBER_INTERVAL;
             Point2D at = new Point2D(cameraX + Math.random() * WINDOW_WIDTH, WINDOW_HEIGHT + 10);
-            Point2D vel = new Point2D(-20 + Math.random() * 40, -60 - Math.random() * 80);
-            Particles.spawn(at, vel, Particles.EMBER[(int) (Math.random() * Particles.EMBER.length)],
-                    Math.random() < 0.3 ? 6 : 4, 6 + Math.random() * 4, -4, -50);
+            Point2D vel = new Point2D(-15 + Math.random() * 30, -35 - Math.random() * 45);
+            Particles.spawn(at, vel, Particles.EMBER[1 + (int) (Math.random() * (Particles.EMBER.length - 1))],
+                    Math.random() < 0.15 ? 5 : 3, 8 + Math.random() * 5, -2, -50);
         }
     }
 
