@@ -2,10 +2,13 @@
 (seamless horizontally). Tiles are meant to be drawn at x2 via a world-anchored ImagePattern;
 backgrounds are 480x216 and scale x5 to 2400x1080.
 
-  Ground        64x64  basalt rock (fills ground bodies)
-  GroundTop     64x12  crust strip for the top edge of ground (horizontal tiling, transparent below)
-  Platform      32x32  brown stone bricks (structures)
-  PlatformTop   32x8   cap stones for the top edge of platforms
+  Ground        64x64  red-black hell rock with glowing crevices (fills ground bodies)
+  GroundTop     64x12  charred crust strip for the top edge of ground (horizontal tiling)
+  GroundEmbed   6 frames 24x16  bones/skull/crystals/magma buried in the ground body
+  GroundSurface 6 frames 24x24  bottom-aligned decorations standing on the ground
+  Platform      3 frames 32x32  floating platform variants: black iron, obsidian+bone, rune stone
+  PlatformTop   3 frames 32x8   matching top edges
+  PlatformUnder 3 frames 32x10  matching things hanging below (chains, bone tips, molten drips)
   bg_far        480x216 opaque, slowest layer
   bg_mid        480x216 transparent, middle layer
 """
@@ -16,9 +19,6 @@ from materials import *
 from effects import Noise
 from projectiles import FIRE
 
-BASALT = ramp('#6b6470', '#4e4855', '#3a3540', '#29252e', '#1a171e')
-ASH = ramp('#9a929c', '#7a727e', '#5d5662', '#433d48', '#2c2731')
-BRICK = ramp('#c08a5c', '#9a6a44', '#7a5134', '#5a3a25', '#3a2416')
 SKY = ramp('#4a1c1a', '#36161a', '#26111a', '#1a0d16', '#110911')
 
 
@@ -38,10 +38,17 @@ def voronoi_tile(S, cells, seed):
     return pts, near
 
 
+HELLROCK = ramp('#5a3036', '#40202a', '#2c141c', '#1e0c13', '#12070c')
+DIM_BONE = ramp('#d8cbaa', '#b0a07c', '#857659', '#5c503c', '#3a3226')
+OBSIDIAN = ramp('#5b4a6e', '#3a2e4a', '#251d31', '#171220', '#0c0912')
+GLOW = ramp('#ffd27a', '#ff8a2a', '#e0441c', '#9a2214', '#5a120e')
+
+
 def ground_tile(S=64, seed=1):
+    """Hell rock: red-black stones split by crevices, some of which glow with heat."""
     img = new(S, S)
     px = img.load()
-    pts, near = voronoi_tile(S, 14, seed)
+    pts, near = voronoi_tile(S, 12, seed)
     nz = Noise(seed, n=16)
     rng = random.Random(seed + 5)
     tone = [rng.choice((0, 0, 1)) for _ in pts]
@@ -49,9 +56,8 @@ def ground_tile(S=64, seed=1):
         for x in range(S):
             i, edge = near[y][x]
             if edge < 1.1:
-                px[x, y] = BASALT[4]
+                px[x, y] = HELLROCK[4]
                 continue
-            # lit along the top-left of each stone: compare with the cell a step up-left
             ul = near[(y - 2) % S][(x - 2) % S]
             dr = near[(y + 2) % S][(x + 2) % S]
             s = 2 + tone[i]
@@ -60,52 +66,204 @@ def ground_tile(S=64, seed=1):
             elif dr[0] != i or dr[1] < 1.1:
                 s += 1
             n = nz(x * 16 / S * 2, y * 16 / S * 2)
-            if n > 0.68:
+            if n > 0.7:
                 s -= 1
             elif n < 0.3 and (x + y) % 2 == 0:
                 s += 1
-            px[x, y] = BASALT[max(0, min(4, s))]
-    # a few glowing cracks inside crevices
+            px[x, y] = HELLROCK[max(0, min(4, s))]
+    # hot crevices with a dim halo bleeding into the stone
+    hot = set()
     for y in range(S):
         for x in range(S):
-            i, edge = near[y][x]
-            if edge < 1.1 and nz(x * 0.25, y * 0.25 + 30) > 0.82:
-                px[x, y] = FIRE[4] if (x + y) % 3 else FIRE[3]
+            if near[y][x][1] < 1.1 and nz(x * 0.22, y * 0.22 + 30) > 0.74:
+                hot.add((x, y))
+    for x, y in hot:
+        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            q = ((x + dx) % S, (y + dy) % S)
+            if q not in hot:
+                px[q] = mix(px[q], GLOW[3], 0.45)
+    for x, y in hot:
+        px[x, y] = GLOW[2] if (x * 3 + y) % 4 else GLOW[1]
     return img
 
 
 def ground_top(W=64, H=12, seed=2):
+    """Charred crust: black, lumpy, with a faint red-hot rim and ember specks."""
     img = new(W, H)
     px = img.load()
     nz = Noise(seed, n=16)
     for x in range(W):
-        top = 1 + round(1.6 * nz(x * 16 / W * 2, 0))
+        top = 1 + round(2 * nz(x * 16 / W * 3, 0))
         bottom = 7 + round(3.5 * nz(x * 16 / W * 3, 5))
         for y in range(top, min(H, bottom + 1)):
             if y == top:
-                c = ASH[0] if nz(x * 0.9, 9) > 0.45 else ASH[1]
+                c = hexc('#6e2a24') if nz(x * 0.9, 9) > 0.55 else hexc('#4a2026')
             elif y == top + 1:
-                c = ASH[1]
+                c = HELLROCK[1]
             elif y >= bottom - 1:
-                c = BASALT[4] if y == bottom else ASH[3]
+                c = HELLROCK[4]
             else:
-                c = ASH[2] if (x * 7 + y * 3) % 11 else ASH[3]
+                c = HELLROCK[3] if (x * 7 + y * 3) % 11 else HELLROCK[4]
             px[x, y] = c
-        # ember specks
-        if nz(x * 1.3, 17) > 0.8:
-            px[x, top + 2] = FIRE[3]
+        if nz(x * 1.3, 17) > 0.78:
+            px[x, top + 2] = GLOW[2]
     return img
 
 
-def platform_tile(W=32, H=32, seed=3):
+# ---------------------------------------------------------------- ground decorations
+def bone(px, w, h, x0, y0, x1, y1, pal=DIM_BONE, knob=1.3):
+    line(px, w, h, x0, y0, x1, y1, pal[1])
+    line(px, w, h, x0, y0 + 1, x1, y1 + 1, pal[3])
+    for cx, cy in ((x0, y0), (x1, y1)):
+        ellipse(px, w, h, cx, cy, knob, knob, pal[2])
+        put(px, w, h, int(cx), int(cy) - 1, pal[0])
+
+
+def skull(px, w, h, cx, cy, pal=DIM_BONE, eyes=True):
+    ellipse(px, w, h, cx, cy, 5, 4.2, pal[2])
+    ellipse(px, w, h, cx - 0.5, cy - 1, 3.8, 3, pal[1])
+    for y in range(int(cy + 3), int(cy + 6)):
+        for x in range(int(cx - 3), int(cx + 3)):
+            put(px, w, h, x, y, pal[2] if (x + y) % 2 else pal[3])
+    for ex in (cx - 2.5, cx + 1.5):
+        ellipse(px, w, h, ex, cy + 0.5, 1.3, 1.3, OBSIDIAN[4])
+        if eyes:
+            put(px, w, h, int(ex), int(cy + 0.5), GLOW[2])
+    put(px, w, h, int(cx - 0.5), int(cy + 2.5), OBSIDIAN[4])
+
+
+def crystal(px, w, h, x, base, height, lean, pal=GLOW):
+    for i in range(height):
+        t = i / height
+        half = 2.2 * (1 - t) + 0.4
+        cx = x + lean * t
+        for dx in range(int(-half), int(half) + 1):
+            c = pal[1] if dx < 0 else pal[2] if dx == 0 else pal[3]
+            if i == height - 1:
+                c = pal[0]
+            put(px, w, h, int(round(cx + dx)), base - i, c)
+
+
+def ground_embed(seed=40):
+    """Things buried in the ground body: 24x16 frames, transparent around them."""
+    fw, fh = 24, 16
+    frames = []
+    # 0 ribcage
+    f = new(fw, fh); px = f.load()
+    bone(px, fw, fh, 3, 8, 20, 8)
+    for i in range(4):
+        x = 6 + i * 4
+        for k in range(6):
+            a = k / 5 * math.pi * 0.9
+            put(px, fw, fh, int(x + 2.5 * math.sin(a)), int(8 - 5 * math.cos(a) + 5), DIM_BONE[2])
+            put(px, fw, fh, int(x + 2.5 * math.sin(a)), int(8 - 5 * math.cos(a) + 0), DIM_BONE[1] if k < 3 else DIM_BONE[3])
+    frames.append(f)
+    # 1 skull with a glint in its sockets
+    f = new(fw, fh); px = f.load()
+    skull(px, fw, fh, 11, 6)
+    bone(px, fw, fh, 16, 12, 22, 9)
+    frames.append(f)
+    # 2 crossed bones
+    f = new(fw, fh); px = f.load()
+    bone(px, fw, fh, 3, 3, 20, 12)
+    bone(px, fw, fh, 4, 12, 19, 4)
+    frames.append(f)
+    # 3 cluster of glowing crystals in a pocket
+    f = new(fw, fh); px = f.load()
+    ellipse(px, fw, fh, 12, 11, 9, 4, HELLROCK[4])
+    for x, ht, ln in ((7, 8, -2), (11, 12, 0), (15, 9, 2), (18, 6, 3)):
+        crystal(px, fw, fh, x, 13, ht, ln)
+    frames.append(f)
+    # 4 magma pocket
+    f = new(fw, fh); px = f.load()
+    ellipse(px, fw, fh, 12, 8, 10, 5.5, HELLROCK[4])
+    ellipse(px, fw, fh, 12, 8.5, 8, 4, GLOW[3])
+    ellipse(px, fw, fh, 12, 9, 6, 2.8, GLOW[2])
+    ellipse(px, fw, fh, 11, 9, 3, 1.4, GLOW[1])
+    put(px, fw, fh, 9, 8, GLOW[0])
+    frames.append(f)
+    # 5 buried horn
+    f = new(fw, fh); px = f.load()
+    for i in range(18):
+        t = i / 17
+        cx, cy = 3 + 18 * t, 12 - 8 * math.sin(t * math.pi * 0.6)
+        r = 3 * (1 - t) + 0.5
+        ellipse(px, fw, fh, cx, cy, r, r, DIM_BONE[3] if i % 4 else DIM_BONE[4])
+        put(px, fw, fh, int(cx), int(cy - r + 0.5), DIM_BONE[2])
+    frames.append(f)
+    return frames
+
+
+def ground_surface(seed=41):
+    """Decorations standing on the ground, 24x24 frames, bottom-aligned (drawn behind the player)."""
+    fw, fh = 24, 24
+    frames = []
+    base = fh - 1
+    # 0 bone spikes poking out
+    f = new(fw, fh); px = f.load()
+    for x, ht, ln in ((6, 12, -2), (11, 18, 1), (16, 10, 3)):
+        for i in range(ht):
+            t = i / ht
+            half = 1.6 * (1 - t) + 0.3
+            for dx in range(int(-half), int(half) + 1):
+                put(px, fw, fh, int(round(x + ln * t * t + dx)), base - i,
+                    DIM_BONE[1] if dx < 0 else DIM_BONE[2] if dx == 0 else DIM_BONE[3])
+    frames.append(f)
+    # 1 skull impaled on a stake
+    f = new(fw, fh); px = f.load()
+    line(px, fw, fh, 12, base, 12, 4, OBSIDIAN[3])
+    line(px, fw, fh, 13, base, 13, 6, OBSIDIAN[4])
+    put(px, fw, fh, 12, 2, OBSIDIAN[2]); put(px, fw, fh, 12, 3, OBSIDIAN[2])
+    skull(px, fw, fh, 12.5, 9)
+    for y in range(13, 17):
+        put(px, fw, fh, 12 + (y % 2), y, CRIMSON[3])
+    frames.append(f)
+    # 2 black thorns
+    f = new(fw, fh); px = f.load()
+    for x, ht, ln in ((4, 9, -3), (8, 15, -1), (12, 20, 1), (16, 13, 3), (20, 8, 4)):
+        for i in range(ht):
+            t = i / ht
+            half = 1.8 * (1 - t) + 0.2
+            for dx in range(int(-half), int(half) + 1):
+                put(px, fw, fh, int(round(x + ln * t * t + dx)), base - i,
+                    hexc('#5a1e1e') if dx < 0 else OBSIDIAN[3] if dx == 0 else OBSIDIAN[4])
+    frames.append(f)
+    # 3 glowing crystal shards
+    f = new(fw, fh); px = f.load()
+    for x, ht, ln in ((7, 9, -3), (11, 16, -1), (14, 12, 2), (18, 7, 3)):
+        crystal(px, fw, fh, x, base, ht, ln)
+    frames.append(f)
+    # 4 broken stake with a hanging chain
+    f = new(fw, fh); px = f.load()
+    for y in range(6, fh):
+        put(px, fw, fh, 9, y, BLACK_IRON[2]); put(px, fw, fh, 10, y, BLACK_IRON[3]); put(px, fw, fh, 11, y, BLACK_IRON[4])
+    put(px, fw, fh, 10, 5, BLACK_IRON[2]); put(px, fw, fh, 11, 4, BLACK_IRON[3])
+    for i in range(10):
+        a = i / 9
+        cx, cy = 12 + 8 * a, 8 + 9 * math.sin(a * math.pi * 0.8)
+        put(px, fw, fh, int(cx), int(cy), BLACK_IRON[1] if i % 2 else BLACK_IRON[3])
+    frames.append(f)
+    # 5 rib bones curling up out of the ground
+    f = new(fw, fh); px = f.load()
+    for x, ht, d in ((5, 14, 1), (10, 18, 1), (15, 17, -1), (20, 12, -1)):
+        for i in range(ht):
+            t = i / ht
+            cx = x + d * 5 * math.sin(t * math.pi * 0.55)
+            put(px, fw, fh, int(round(cx)), base - i, DIM_BONE[2])
+            put(px, fw, fh, int(round(cx)) + 1, base - i, DIM_BONE[3])
+    frames.append(f)
+    return frames
+
+
+# ---------------------------------------------------------------- floating platforms (3 variants)
+def _bricks(W, H, bh, bw, pal, mortar, seed, stagger=True):
     img = new(W, H)
     px = img.load()
     rng = random.Random(seed)
-    bh, bw = 8, 16
     tones = {}
     for y in range(H):
         row = y // bh
-        off = (bw // 2) * (row % 2)
+        off = (bw // 2) * (row % 2) if stagger else 0
         for x in range(W):
             col = ((x + off) % W) // bw
             lx, ly = (x + off) % bw, y % bh
@@ -113,36 +271,167 @@ def platform_tile(W=32, H=32, seed=3):
             if key not in tones:
                 tones[key] = rng.choice((0, 0, 1, -1))
             if ly == bh - 1 or lx == bw - 1:
-                px[x, y] = BRICK[4]
+                px[x, y] = mortar
                 continue
             s = 2 + tones[key]
             if ly == 0 or lx == 0:
                 s -= 1
             elif ly == bh - 2 or lx == bw - 2:
                 s += 1
-            if rng.random() < 0.08:
+            if rng.random() < 0.07:
                 s += rng.choice((-1, 1))
-            px[x, y] = BRICK[max(0, min(4, s))]
+            px[x, y] = pal[max(0, min(4, s))]
     return img
 
 
-def platform_top(W=32, H=8):
+def platform_iron(W=32, H=32):
+    """Riveted black iron plates with red heat glowing through the seams."""
+    img = _bricks(W, H, 16, 16, BLACK_IRON, GLOW[3], 3, stagger=False)
+    px = img.load()
+    for y in range(H):
+        for x in range(W):
+            if x % 16 == 15 and y % 16 == 7:
+                px[x, y] = GLOW[2]
+    for y0 in (0, 16):
+        for x0 in (0, 16):
+            for rx, ry in ((2, 2), (12, 2), (2, 12), (12, 12)):
+                put(px, W, H, x0 + rx, y0 + ry, BLACK_IRON[0])
+                put(px, W, H, x0 + rx + 1, y0 + ry + 1, BLACK_IRON[4])
+            # scratches
+            line(px, W, H, x0 + 5, y0 + 9, x0 + 9, y0 + 6, BLACK_IRON[1])
+    return img
+
+
+def platform_iron_top(W=32, H=8):
     img = new(W, H)
     px = img.load()
     for y in range(H):
         for x in range(W):
-            lx = x % 16
-            if lx == 15:
-                c = BRICK[4]
-            elif y == 0:
-                c = BRICK[0]
-            elif y == 1:
-                c = BRICK[1]
-            elif y >= H - 2:
-                c = BRICK[4] if y == H - 1 else BRICK[3]
-            else:
-                c = BRICK[2] if lx else BRICK[1]
+            c = BLACK_IRON[0] if y == 0 else BLACK_IRON[1] if y == 1 else BLACK_IRON[2] if y < H - 2 else BLACK_IRON[4]
+            if 2 <= y <= 5 and x % 8 == 4:
+                c = BLACK_IRON[0] if y == 3 else BLACK_IRON[4] if y == 4 else c
             px[x, y] = c
+    return img
+
+
+def platform_iron_under(W=32, H=10):
+    """Short chains and a hook hanging under the iron platforms."""
+    img = new(W, H)
+    px = img.load()
+    for cx, ln in ((7, 8), (24, 6)):
+        for y in range(ln):
+            if (y // 2) % 2:
+                put(px, W, H, cx, y, BLACK_IRON[2])
+            else:
+                put(px, W, H, cx - 1, y, BLACK_IRON[2]); put(px, W, H, cx + 1, y, BLACK_IRON[3])
+        put(px, W, H, cx, ln, BLACK_IRON[1]); put(px, W, H, cx + 1, ln + 1, BLACK_IRON[2])
+    return img
+
+
+def platform_obsidian(W=32, H=32):
+    """Obsidian bricks set in bone-white mortar, with a sheen streak on each brick."""
+    img = _bricks(W, H, 8, 16, OBSIDIAN, DIM_BONE[3], 7)
+    px = img.load()
+    for y in range(H):
+        row = y // 8
+        off = 8 * (row % 2)
+        for x in range(W):
+            lx, ly = (x + off) % 16, y % 8
+            if ly < 7 and lx < 15 and lx - ly == 3:
+                px[x, y] = OBSIDIAN[0] if ly < 2 else OBSIDIAN[1]
+    # a small skull keystone
+    skull(px, W, H, 16, 19, eyes=True)
+    return img
+
+
+def platform_obsidian_top(W=32, H=8):
+    """Cap of vertebrae."""
+    img = new(W, H)
+    px = img.load()
+    for x in range(W):
+        for y in range(H):
+            px[x, y] = OBSIDIAN[3] if y >= 5 else (0, 0, 0, 0)
+    for i in range(W // 4):
+        cx = i * 4 + 2
+        ellipse(px, W, H, cx, 3, 1.8, 2.2, DIM_BONE[2])
+        put(px, W, H, cx - 1, 1, DIM_BONE[0]); put(px, W, H, cx, 1, DIM_BONE[1])
+        put(px, W, H, cx + 1, 5, DIM_BONE[4])
+    for x in range(W):
+        px[x, H - 1] = OBSIDIAN[4]
+    return img
+
+
+def platform_obsidian_under(W=32, H=10):
+    """Bone tips poking out of the underside."""
+    img = new(W, H)
+    px = img.load()
+    for x, ln in ((5, 6), (13, 9), (21, 5), (27, 7)):
+        for i in range(ln):
+            t = i / ln
+            put(px, W, H, x, i, DIM_BONE[2] if t < 0.7 else DIM_BONE[1])
+            if t < 0.4:
+                put(px, W, H, x + 1, i, DIM_BONE[3])
+    return img
+
+
+RUNES = [
+    [(0, 0), (0, 1), (0, 2), (0, 3), (0, 4), (1, 1), (2, 2), (1, 3)],
+    [(0, 0), (1, 1), (2, 2), (2, 0), (0, 2), (1, 3), (1, 4)],
+    [(1, 0), (1, 1), (1, 2), (1, 3), (1, 4), (0, 1), (2, 1), (0, 3), (2, 3)],
+    [(0, 4), (1, 3), (1, 2), (1, 1), (2, 0), (0, 0), (2, 4)],
+]
+
+
+def platform_runes(W=32, H=32):
+    """Cracked dark stone blocks carved with glowing runes."""
+    img = _bricks(W, H, 16, 16, HELLROCK, HELLROCK[4], 11)
+    px = img.load()
+    k = 0
+    for y0 in (0, 16):
+        for x0 in (0, 16):
+            off = 8 * ((y0 // 16) % 2)
+            rx = (x0 + off + 6) % W
+            for dx, dy in RUNES[k % len(RUNES)]:
+                put(px, W, H, (rx + dx) % W, y0 + 5 + dy, GLOW[2])
+                put(px, W, H, (rx + dx + 1) % W, y0 + 6 + dy, mix(px[(rx + dx + 1) % W, y0 + 6 + dy], GLOW[3], 0.5))
+            k += 1
+    # crack with heat inside
+    for i, (x, y) in enumerate(((3, 20), (4, 21), (5, 21), (6, 22), (7, 24), (8, 25))):
+        put(px, W, H, x, y, GLOW[3] if i % 2 else GLOW[2])
+    return img
+
+
+def platform_runes_top(W=32, H=8):
+    img = new(W, H)
+    px = img.load()
+    for y in range(H):
+        for x in range(W):
+            if x % 16 == 15:
+                c = HELLROCK[4]
+            elif y == 0:
+                c = HELLROCK[0]
+            elif y == 1:
+                c = HELLROCK[1]
+            elif y >= H - 2:
+                c = HELLROCK[4] if y == H - 1 else HELLROCK[3]
+            else:
+                c = HELLROCK[2]
+            px[x, y] = c
+    for x in (4, 11, 20, 27):
+        put(px, W, H, x, 3, GLOW[2]); put(px, W, H, x, 4, GLOW[3])
+    return img
+
+
+def platform_runes_under(W=32, H=10):
+    """Rock drips with molten tips."""
+    img = new(W, H)
+    px = img.load()
+    for x, ln in ((6, 7), (17, 9), (26, 5)):
+        for i in range(ln):
+            half = 2 * (1 - i / ln) + 0.3
+            for dx in range(int(-half), int(half) + 1):
+                put(px, W, H, x + dx, i, HELLROCK[2] if dx <= 0 else HELLROCK[3])
+        put(px, W, H, x, ln - 1, GLOW[2]); put(px, W, H, x, ln, GLOW[3])
     return img
 
 
@@ -372,8 +661,11 @@ def generate(out_dir):
     items = {
         'Ground': [ground_tile()],
         'GroundTop': [ground_top()],
-        'Platform': [platform_tile()],
-        'PlatformTop': [platform_top()],
+        'GroundEmbed': ground_embed(),
+        'GroundSurface': ground_surface(),
+        'Platform': [platform_iron(), platform_obsidian(), platform_runes()],
+        'PlatformTop': [platform_iron_top(), platform_obsidian_top(), platform_runes_top()],
+        'PlatformUnder': [platform_iron_under(), platform_obsidian_under(), platform_runes_under()],
         'bg_far': [bg_far()],
         'bg_mid': [bg_mid()],
     }
