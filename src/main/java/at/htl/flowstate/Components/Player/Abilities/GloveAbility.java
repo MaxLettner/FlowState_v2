@@ -91,6 +91,7 @@ public class GloveAbility extends MeleeAbility {
         punch.setScaleX(side);
         leftHand = !leftHand;
         movement().faceAttack(side, 0.2);
+        sprite().playAttack();
         cooldown(glove.interval);
     }
 

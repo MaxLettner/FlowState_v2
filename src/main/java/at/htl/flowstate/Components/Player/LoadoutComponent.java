@@ -1,5 +1,6 @@
 package at.htl.flowstate.Components.Player;
 
+import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Combat.Element;
 import at.htl.flowstate.Components.Player.Abilities.Ability;
 import at.htl.flowstate.Components.Player.Abilities.AbilityFactory;
@@ -142,6 +143,9 @@ public class LoadoutComponent extends Component {
         if (type == SkillType.MANA_SHIELD) toggleShield();
         else if (type == SkillType.LEVITATION) startLevitation();
         else if (type.isEnchantment()) toggleEnchant(type);
+        if (type == SkillType.MANA_SHIELD && shieldActive || type.isEnchantment() && activeEnchant != null) {
+            entity.getComponent(SpriteComponent.class).playCast();
+        }
     }
 
     private void toggleShield() {

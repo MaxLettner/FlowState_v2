@@ -9,6 +9,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import slimes
+import player_slime
 import weapons
 import ranged
 import projectiles
@@ -29,6 +30,7 @@ OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources'
 def main():
     os.makedirs(OUT, exist_ok=True)
     slimes.generate(OUT)
+    player_slime.generate(OUT)             # the player's extra animations (run, dash, hurt, death, ...)
     weapons.generate(OUT)
     ranged.generate(OUT)
     projectiles.generate(OUT)

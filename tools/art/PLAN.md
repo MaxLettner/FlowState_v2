@@ -64,6 +64,13 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
     white-hot on the first landing frames (`heat()`); stronger lava rim; in-game glow is ember orange
     (SpriteComponent). The old cyan slime + red bandana is kept as `CYAN_PLAYER`. Rejected dark concepts:
     Abyssal, Void Ink, Shadow Ronin, Soul Gel, Venom (too close to the Brute).
+  - Player extra animations (2026-11-19): `player_slime.py` writes Player_takeoff (3), run (8), dash (4),
+    hurt (4), death (10), attack (5), shoot (3), cast (6), levitate (6), glide (4), dive (2), slam (6), block (4),
+    charge (4, frame picked by charge progress) and fidget (16). Expressions go through `draw_slime(mood={...})`
+    (eyes: fierce/squint/shut/wide/dim/off, look, heat, cool, pre/post fx). SpriteComponent counts frames from the
+    strip width; one-shots have a priority (fidget < land < takeoff < attack/shoot/cast < hurt < death) and only
+    stronger states cut them (dash/dive cut attacks; nothing cuts hurt). Review sheet:
+    `python tools/art/player_slime.py sheet tools/art/player_slime_anims.png`.
   - EnemyBrute (melee): green, horns,
     angry eyes, teeth; EnemyHunter (ranged): orange, feather headband, war paint.
   - Strips: `<Name>_idle` (6), `_walk` (8), `_air` (4: rise fast, rise, apex, fall), `_land` (4),

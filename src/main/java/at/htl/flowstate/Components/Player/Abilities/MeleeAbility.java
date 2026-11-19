@@ -149,6 +149,7 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
         movement().faceAttack(facing(), slash.duration() * 0.8);
         if (!slash.down() && lungeMult > 0) movement().lunge(facing(), LUNGE_SPEED * lungeMult, LUNGE_TIME);
         swingLeft = slash.duration() * 0.5;
+        sprite().playAttack();
         return spec.swing(slash.params(), size);
     }
 

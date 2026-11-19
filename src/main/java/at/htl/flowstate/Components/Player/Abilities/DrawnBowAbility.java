@@ -64,6 +64,7 @@ public abstract class DrawnBowAbility extends Ability {
         if (!drawing) return;
         stopDrawing();
         release(drawTime);
+        sprite().playShoot();
     }
 
     @Override

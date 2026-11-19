@@ -48,6 +48,7 @@ public class FireballAbility extends Ability {
         double mana = 25 + 35 * f;
         if (!stats().takeMana(mana)) return;
         loadout.markCast();
+        sprite().playCast();
         cooldown(RELEASE_COOLDOWN);
 
         double damage = 30 + 50 * f;
