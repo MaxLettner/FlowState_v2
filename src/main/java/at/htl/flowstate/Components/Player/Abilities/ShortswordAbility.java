@@ -46,11 +46,4 @@ public class ShortswordAbility extends MeleeAbility {
         comboStep = (comboStep + 1) % 3;
         sinceLastAttack = 0;
     }
-
-    @Override
-    public String getStatusText() {
-        String combo = comboStep > 0 && sinceLastAttack <= COMBO_WINDOW ? "combo " + comboStep + "/3" : "";
-        String f = super.getStatusText();
-        return combo.isEmpty() ? f : f.isEmpty() ? combo : combo + "  " + f;
-    }
 }

@@ -141,11 +141,4 @@ public class GloveAbility extends MeleeAbility {
     public double getMoveSpeedMult() {
         return blocking ? 0.5 : super.getMoveSpeedMult();
     }
-
-    @Override
-    public String getStatusText() {
-        if (blocking) return "blocking";
-        if (glove.dodge && dodgeCooldown > 0) return String.format("dodge %.1fs", dodgeCooldown);
-        return super.getStatusText();
-    }
 }

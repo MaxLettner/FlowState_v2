@@ -194,9 +194,4 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
     public double getMoveSpeedMult() {
         return swingLeft > 0 ? SWING_MOVE_MULT : 1;
     }
-
-    @Override
-    public String getStatusText() {
-        return flow > 0 ? "flow x" + (flow + 1) : "";
-    }
 }

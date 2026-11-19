@@ -14,7 +14,7 @@ import javafx.scene.layout.Pane;
 public final class HudBar extends Pane {
     public static final int SCALE = 2;
     // keep in sync with hudbars.py
-    private static final int TROUGH_X = 18;
+    private static final int TROUGH_X = 18;   // where the HP / mana / XP bars have their trough
     private static final int TROUGH_Y = 5;
     private static final int TROUGH_LEN = 128;
     private static final int TILE = 32;
@@ -42,6 +42,11 @@ public final class HudBar extends Pane {
      * @param drains    false snaps losses away at once (the XP bar empties on a level up)
      */
     public HudBar(String id, double flowSpeed, boolean drains) {
+        this(id, TROUGH_X, TROUGH_Y, flowSpeed, drains);
+    }
+
+    /** A bar whose art has its (TROUGH_LEN long) trough somewhere else, like the combo meter (hotbar.py). */
+    public HudBar(String id, int troughX, int troughY, double flowSpeed, boolean drains) {
         this.flowSpeed = flowSpeed;
         this.drains = drains;
         String strip = "HudFill_" + id + ".png";
@@ -52,8 +57,8 @@ public final class HudBar extends Pane {
         edge.setViewport(new Rectangle2D(0, 0, SCALE, troughH));
 
         Pane trough = new Pane(drain, fill, edge);
-        trough.setLayoutX(TROUGH_X * SCALE);
-        trough.setLayoutY(TROUGH_Y * SCALE);
+        trough.setLayoutX(troughX * SCALE);
+        trough.setLayoutY(troughY * SCALE);
         back = Assets.sprite("HudBar_" + id + ".png", SCALE);
         getChildren().addAll(back, trough);
         setMouseTransparent(true);

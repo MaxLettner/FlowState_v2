@@ -39,6 +39,13 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   ProgressBars and the skill point text. `HudBar_<ID>` = iron trough with a diamond gem socket and a pointed end;
   `HudFill_<ID>` = 3 frames (liquid repeating every 32 px, scrolled by the game / washed-out drain / leading edge).
   Trough at (18, 5), 128 long; keep in sync with HudBar.java. `python tools/art/hudbars.py out.png [screenshot]`.
+- `hotbar.py` (2026-11-19): the 4-slot hotbar at the bottom (`Menu/Hotbar.java`, x2), icons only. `Hotbar.png` =
+  iron beam with pointed ends and four sockets (corner brackets, 24x24 recess); `HotbarRim.png` = 3 bezel overlays
+  (gold = active attack, arcane = toggle on, white-hot = ready flash); `HotbarIcon_<TYPE>` = the skill icon on a
+  dark branch-tinted recess. Cooldown: Java darkens the icon and lights it back up from the bottom.
+  The Fisticuffs combo meter above the sockets is `HudBar_COMBO` / `HudFill_COMBO` (a thin fire trough with
+  pointed ends, trough at (9, 4)), drawn by HudBar and faded in/out by Hotbar.
+  `python tools/art/hotbar.py out.png [screenshot]`.
 - `pixfont.py` → `PixelFont.png` (2026-11-18): the menu's 5x7 font for runtime text. `Menu/PixelText.java` draws it
   with the menu looks (molten, inlaid in any colour, keycaps; `MouseIcon.png` from menu.py). All skill tree text
   uses it: x4 for the skill point count (on the deepened lintel, glyph top at art row 26) and tooltip names, x2 for

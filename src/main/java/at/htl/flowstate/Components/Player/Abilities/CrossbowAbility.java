@@ -163,11 +163,6 @@ public class CrossbowAbility extends Ability {
         return reloadTime();
     }
 
-    @Override
-    public String getStatusText() {
-        return loaded ? "loaded" : cranking ? "cranking" : "empty";
-    }
-
     private void fireBolt() {
         PlayerProjectileComponent bolt = new PlayerProjectileComponent(
                 aim().multiply(crossbow.speed),
