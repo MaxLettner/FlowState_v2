@@ -42,6 +42,9 @@ BARS = {
     'MP': (5, MANA, MANA, 7),
     'XP': (3, MOLTEN_GOLD, TOPAZ, 11),
 }
+# the Pit Lord's health, shown top centre while the boss fight is on (Menu/Hud.java)
+LAVA = ramp('#fff1b0', '#ffb43a', '#ff6a1a', '#c2300f', '#6e140a')
+BOSS_BAR = ('BOSS', 7, LAVA, CRIMSON, 17)
 
 
 def geometry(th):
@@ -232,7 +235,7 @@ def fill_frames(th, liquid, seed):
 
 
 def generate(out_dir):
-    for bid, (th, liquid, gem, seed) in BARS.items():
+    for bid, (th, liquid, gem, seed) in list(BARS.items()) + [(BOSS_BAR[0], BOSS_BAR[1:])]:
         bar(th, gem, seed).save(f'{out_dir}/HudBar_{bid}.png')
         strip(fill_frames(th, liquid, seed)).save(f'{out_dir}/HudFill_{bid}.png')
 

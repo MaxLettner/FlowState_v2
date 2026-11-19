@@ -33,6 +33,7 @@ public class DemonSpriteComponent extends Component {
     private final Map<String, Frames> strips = new HashMap<>();
     private final FrameSprite sprite;
     private final FrameSprite stunStars;
+    private final FrameSprite ward;
 
     private String current;
     private boolean oneShot;
@@ -42,12 +43,13 @@ public class DemonSpriteComponent extends Component {
     private boolean frozen;
     private Color telegraph;
     private double telegraphTime;
+    private Color aura;
 
     public DemonSpriteComponent(DemonType type) {
         this.type = type;
-        Frames first = strip(type.flying ? "fly" : "idle");
+        current = exists("idle") ? "idle" : "fly";
+        Frames first = strip(current);
         sprite = new FrameSprite(first);
-        current = type.flying ? "fly" : "idle";
         sprite.loop(first, 8);
         double anchorY = type.flying ? type.height / 2 : type.height;
         sprite.setTranslateX(type.width / 2 - type.anchorX * SCALE);
@@ -58,6 +60,19 @@ public class DemonSpriteComponent extends Component {
         stunStars.setTranslateX(type.width / 2 - stars.width() / 2);
         stunStars.setTranslateY(-4 - stars.height());
         stunStars.setVisible(false);
+
+        // Hex Priest ward: the mana-shield bubble, scaled up in whole steps to cover the demon, tinted violet
+        int wardScale = (int) Math.max(SCALE, Math.ceil(Math.max(type.width / 40, type.height / 80) * SCALE));
+        Frames bubble = Assets.frames("MagicShield.png", 4, wardScale);
+        ward = new FrameSprite(bubble).loop(bubble, 6);
+        ward.setTranslateX(type.width / 2 - bubble.width() / 2);
+        ward.setTranslateY(type.height / 2 - bubble.height() / 2);
+        ward.setEffect(new ColorAdjust(0.35, 0.2, 0, 0));
+        ward.setVisible(false);
+    }
+
+    private boolean exists(String anim) {
+        return DemonSpriteComponent.class.getResource("/assets/textures/" + type.prefix + "_" + anim + ".png") != null;
     }
 
     private Frames strip(String name) {
@@ -72,6 +87,7 @@ public class DemonSpriteComponent extends Component {
     public void onAdded() {
         entity.getViewComponent().addChild(sprite);
         entity.getViewComponent().addChild(stunStars);
+        entity.getViewComponent().addChild(ward);
     }
 
     @Override
@@ -154,6 +170,16 @@ public class DemonSpriteComponent extends Component {
         stunStars.setVisible(on);
     }
 
+    public void setWard(boolean on) {
+        ward.setVisible(on);
+    }
+
+    /** A steady glow (elites); null for none. The telegraph pulse takes over while it is on. */
+    public void setAura(Color color) {
+        aura = color;
+        refreshEffect();
+    }
+
     /** A pulsing glow in this colour (an attack is coming); null turns it off. */
     public void setTelegraph(Color color) {
         if (color == null && telegraph == null) return;
@@ -172,6 +198,11 @@ public class DemonSpriteComponent extends Component {
             double pulse = 0.5 + 0.5 * Math.sin(telegraphTime * 22);
             DropShadow glow = new DropShadow(10 + 8 * pulse, telegraph);
             glow.setSpread(0.35 + 0.25 * pulse);
+            glow.setInput(e);
+            e = glow;
+        } else if (aura != null) {
+            DropShadow glow = new DropShadow(9, aura);
+            glow.setSpread(0.3);
             glow.setInput(e);
             e = glow;
         }

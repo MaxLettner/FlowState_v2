@@ -1,5 +1,9 @@
 package at.htl.flowstate.Components.Player;
 
+import javafx.scene.paint.Color;
+import javafx.geometry.Point2D;
+import com.almasb.fxgl.core.math.FXGLMath;
+import at.htl.flowstate.Visuals.Particles;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
@@ -36,6 +40,14 @@ public class PlayerStatsComponent extends Component {
     private double skillPoints = 0;
     private double invincibleLeft = 0;
 
+    // debuffs from demons: elite Infernal burn, elite Frostbound chill, Hex Priest curse
+    private static final double BURN_DPS = 4;
+    private static final double CHILL_MOVE = 0.6;
+    private static final double CURSE_JUMP = 0.72;
+    private static final double DEBUFF_FX_INTERVAL = 0.1;
+    private static final Color[] CURSE_MOTES = {Color.web("#f6d8ff"), Color.web("#d08cff"), Color.web("#a050f0")};
+    private double burnLeft, chillLeft, curseLeft, debuffFx;
+
     private final List<Runnable> skillPointListeners = new ArrayList<>();
 
     @Override
@@ -43,7 +55,8 @@ public class PlayerStatsComponent extends Component {
         LoadoutComponent loadout = entity.getComponent(LoadoutComponent.class);
         double maxMana = getMaxMana();
 
-        if (!loadout.isManaRegenPaused() && mana < maxMana) {
+        tickDebuffs(tpf);
+        if (!loadout.isManaRegenPaused() && curseLeft <= 0 && mana < maxMana) {
             double rate = MANA_REGEN + MANA_REGEN_PER_RANK * rank(Branch.MAGIC);
             if (loadout.isArcaneFlowActive()) rate *= ARCANE_FLOW_MULT;
             mana = Math.min(maxMana, mana + maxMana * rate * tpf);
@@ -109,6 +122,34 @@ public class PlayerStatsComponent extends Component {
         if (source == null) return false;
         int side = source.getCenter().getX() >= entity.getCenter().getX() ? 1 : -1;
         return side == entity.getComponent(PlayerMovementComponent.class).getCurrentWatchDirection();
+    }
+
+    //-----Debuffs-----
+    public void burn(double seconds) { burnLeft = Math.max(burnLeft, seconds); }
+    public void chill(double seconds) { chillLeft = Math.max(chillLeft, seconds); }
+    /** Hex Priest: jumps are lower and mana doesn't regenerate. */
+    public void curse(double seconds) {
+        if (curseLeft <= 0) Sfx.CURSE.play();
+        curseLeft = Math.max(curseLeft, seconds);
+    }
+    public boolean isCursed() { return curseLeft > 0; }
+    public double getMoveMult() { return chillLeft > 0 ? CHILL_MOVE : 1; }
+    public double getJumpMult() { return curseLeft > 0 ? CURSE_JUMP : 1; }
+
+    private void tickDebuffs(double tpf) {
+        if (burnLeft > 0) {
+            burnLeft -= tpf;
+            health -= BURN_DPS * tpf;           // burning ignores i-frames, like the enemies' Burn
+        }
+        chillLeft = Math.max(0, chillLeft - tpf);
+        curseLeft = Math.max(0, curseLeft - tpf);
+        debuffFx -= tpf;
+        if (debuffFx > 0) return;
+        debuffFx = DEBUFF_FX_INTERVAL;
+        Point2D c = entity.getCenter();
+        if (burnLeft > 0) Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(-4, 30)), Particles.EMBER, 1, -90, 15, 40, 90, 0.6, 4, -80);
+        if (chillLeft > 0) Particles.burst(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-20, 30)), Particles.ICE, 1, 90, 30, 10, 40, 0.6, 4, 60);
+        if (curseLeft > 0) Particles.burst(c.add(FXGLMath.random(-18, 18), FXGLMath.random(-30, 20)), CURSE_MOTES, 1, -90, 40, 20, 50, 0.7, 4, -30);
     }
 
     public void grantInvulnerability(double seconds) {

@@ -228,7 +228,8 @@ public class PlayerMovementComponent extends Component {
 
     private void move(int direction) {
         if (dashLeft > 0) return;
-        double speedMult = entity.getComponent(LoadoutComponent.class).getMoveSpeedMult();
+        double speedMult = entity.getComponent(LoadoutComponent.class).getMoveSpeedMult()
+                * entity.getComponent(PlayerStatsComponent.class).getMoveMult();
         double speed = (MAX_MOVE_SPEED * speedMult / 100.0)
                 * (START_MOVE_SPEED_PCT + ((100.0 - START_MOVE_SPEED_PCT) / 100.0) * (currentRunningFrames / MAX_SPEED_FRAMES) * 100.0);
 
@@ -247,7 +248,7 @@ public class PlayerMovementComponent extends Component {
             isLevitatingUp = true;
         } else {
             if ((isGrounded || coyoteTimer > 0) && !jumpConsumed) {
-                physics.setVelocityY(-JUMP_FORCE);
+                physics.setVelocityY(-JUMP_FORCE * entity.getComponent(PlayerStatsComponent.class).getJumpMult());
                 entity.getComponent(SpriteComponent.class).playTakeoff();
                 Sfx.JUMP.play();
                 jumpConsumed = true;

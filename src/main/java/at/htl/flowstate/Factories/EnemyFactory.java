@@ -1,14 +1,6 @@
 package at.htl.flowstate.Factories;
 
-import at.htl.flowstate.Components.Enemies.BatBehaviour;
-import at.htl.flowstate.Components.Enemies.BruteBehaviour;
-import at.htl.flowstate.Components.Enemies.CultistBehaviour;
-import at.htl.flowstate.Components.Enemies.DemonBehaviour;
-import at.htl.flowstate.Components.Enemies.DemonType;
-import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
-import at.htl.flowstate.Components.Enemies.HoundBehaviour;
-import at.htl.flowstate.Components.Enemies.HurlerBehaviour;
-import at.htl.flowstate.Components.Enemies.ImpBehaviour;
+import at.htl.flowstate.Components.Enemies.*;
 import at.htl.flowstate.Components.Identifier.EnemyIdentifierComponent;
 import at.htl.flowstate.Components.SpriteComponents.DemonSpriteComponent;
 import com.almasb.fxgl.dsl.FXGL;
@@ -59,11 +51,49 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.CULTIST, new CultistBehaviour());
     }
 
+    @Spawns("warden")
+    public Entity warden(SpawnData data) {
+        return demon(data, DemonType.WARDEN, new WardenBehaviour());
+    }
+
+    @Spawns("bloater")
+    public Entity bloater(SpawnData data) {
+        return demon(data, DemonType.BLOATER, new BloaterBehaviour());
+    }
+
+    @Spawns("gargoyle")
+    public Entity gargoyle(SpawnData data) {
+        return demon(data, DemonType.GARGOYLE, new GargoyleBehaviour());
+    }
+
+    @Spawns("watcher")
+    public Entity watcher(SpawnData data) {
+        return demon(data, DemonType.WATCHER, new WatcherBehaviour());
+    }
+
+    @Spawns("gatekeeper")
+    public Entity gatekeeper(SpawnData data) {
+        return demon(data, DemonType.GATEKEEPER, new GatekeeperBehaviour());
+    }
+
+    @Spawns("priest")
+    public Entity priest(SpawnData data) {
+        return demon(data, DemonType.PRIEST, new PriestBehaviour());
+    }
+
+    @Spawns("lord")
+    public Entity lord(SpawnData data) {
+        return demon(data, DemonType.LORD, new PitLordBehaviour());
+    }
+
+    /** SpawnData "elite" (an EliteAffix) makes it an elite. */
     private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour) {
-        return FXGL.entityBuilder(data)
+        var builder = FXGL.entityBuilder(data)
                 .bbox(new HitBox(BoundingShape.box(type.width, type.height)))
                 .with(physics(type.flying))
-                .with(behaviour)
+                .with(behaviour);
+        if (data.hasKey("elite")) builder.with(new EliteComponent(data.<EliteAffix>get("elite")));
+        return builder
                 .with(new EnemyStatsComponent(type))
                 .with(new HealthDoubleComponent(type.hp))
                 .with(new EnemyIdentifierComponent())

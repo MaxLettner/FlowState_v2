@@ -68,6 +68,11 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   (`BRUTE_K = 2`: the pose stays in design units, every primitive is drawn x2, so outlines, cracks, wrinkles,
   horn ridges, knuckles, rivets and chain links come out at the finer pixel size; 160x168 frames, 4x on screen).
 
+- `demons2.py` (wave 2): `DemonWarden` (with `_bare` strips once the shield breaks), `DemonBloater`, `DemonGargoyle`
+  (stone / wake / fly / swoop), `DemonWatcher` (`look` = 8 pupil directions at k * 45 deg), `DemonGatekeeper`,
+  `DemonPriest` and the boss `DemonLord` (352x280 so the cleaver fits at full swing, twice the pixel detail like the Brute, molten cleaver). Effects:
+  `Portal`, `HexBolt`, `BossGate` (tile). hudbars.py has a `BOSS` bar. `python tools/art/demons2.py sheet out.png`.
+
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
 - Projectile trails were not added (only fireball embers via burning ground / blasts).

@@ -10,6 +10,7 @@ sys.path.insert(0, HERE)
 
 import slimes
 import demons
+import demons2
 import player_slime
 import weapons
 import ranged
@@ -34,6 +35,7 @@ def main():
     slimes.generate(OUT)
     player_slime.generate(OUT)             # the player's extra animations (run, dash, hurt, death, ...)
     demons.generate(OUT)                   # the enemies: demons, their projectiles and effects
+    demons2.generate(OUT)                  # wave 2 demons, the Pit Lord boss and their effects
     weapons.generate(OUT)
     ranged.generate(OUT)
     projectiles.generate(OUT)

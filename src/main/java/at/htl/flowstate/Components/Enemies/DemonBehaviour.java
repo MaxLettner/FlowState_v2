@@ -1,5 +1,6 @@
 package at.htl.flowstate.Components.Enemies;
 
+import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Components.SpriteComponents.DemonSpriteComponent;
 import at.htl.flowstate.Game;
@@ -80,6 +81,27 @@ public abstract class DemonBehaviour extends Component {
     /** Called by the stats right before the entity is removed. */
     public void onDeath() {}
 
+    /**
+     * How much of a player hit gets through (1 = all, 0 = blocked): Combat.hit asks before applying it.
+     * DoT ticks never come here.
+     */
+    public double guard(Hit h, Entity player) {
+        return 1;
+    }
+
+    /** Whether the hit comes from the side the demon faces (from the attacker's x, else the player's). */
+    protected boolean fromFront(Hit h) {
+        double x = Double.isNaN(h.getSourceX()) ? player.getCenter().getX() : h.getSourceX();
+        return (x >= entity.getCenter().getX() ? 1 : -1) == sprite.getFacing();
+    }
+
+    /** Damages the player (and applies this demon's elite effect). @return true if damage was dealt */
+    protected boolean hurtPlayer(double damage) {
+        boolean hurt = player.getComponent(PlayerStatsComponent.class).takeDamage(damage, entity, false);
+        if (hurt) EliteComponent.onHit(entity);
+        return hurt;
+    }
+
     //-----helpers-----
     /** Frame time scaled by Slow, for attack timers. */
     protected double dt(double tpf) {
@@ -89,7 +111,7 @@ public abstract class DemonBehaviour extends Component {
     /** Hurts the player if they overlap. @return true if damage was dealt */
     protected boolean touch(double damage) {
         if (damage <= 0 || !entity.isColliding(player)) return false;
-        return player.getComponent(PlayerStatsComponent.class).takeDamage(damage, entity, false);
+        return hurtPlayer(damage);
     }
 
     protected double dxToPlayer() {
