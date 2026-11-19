@@ -78,6 +78,19 @@ public final class BossArena {
         return Math.max(lockX + margin, Math.min(lockX + WIDTH - margin, x));
     }
 
+    /** How far x is from the inner face of the gate in direction dir; unbounded while the arena is open. */
+    public static double wallGap(double x, int dir) {
+        if (phase != Phase.CUTSCENE && phase != Phase.FIGHT) return Double.MAX_VALUE;
+        double gate = BossGateComponent.WIDTH;
+        return dir > 0 ? lockX + WIDTH - gate - x : x - (lockX + gate);
+    }
+
+    /** A random x at least margin px inside the closed arena; without one, somewhere around fallback. */
+    public static double randomX(double margin, double fallback) {
+        if (phase != Phase.CUTSCENE && phase != Phase.FIGHT) return fallback + (Math.random() - 0.5) * 1400;
+        return lockX + margin + Math.random() * (WIDTH - 2 * margin);
+    }
+
     /** Where the camera may go: it locks onto the arena once it gets there and stays until the fight is over. */
     public static double clampCamera(double cameraX) {
         if (phase == Phase.PENDING && cameraX >= lockX) close();
@@ -163,7 +176,9 @@ public final class BossArena {
                         || e.hasComponent(ShockwaveComponent.class)
                         || e.hasComponent(MagmaPoolComponent.class)
                         || e.hasComponent(GravityWellComponent.class)
-                        || e.hasComponent(PortalComponent.class)));
+                        || e.hasComponent(PortalComponent.class)
+                        || e.hasComponent(FissureComponent.class)
+                        || e.hasComponent(MeteorComponent.class)));
         // no AI, timers or animation, and out of the physics simulation (no falling, no drifting)
         for (Entity e : frozen) setFrozen(e, true);
     }
