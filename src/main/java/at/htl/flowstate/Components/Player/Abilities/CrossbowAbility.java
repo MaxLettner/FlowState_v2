@@ -56,6 +56,7 @@ public class CrossbowAbility extends Ability {
     private static final double BURST_GAP = 0.1;
     private static final double PIN_DURATION = 2.0;
     private static final int POISON_STACKS = 2;
+    private static final int SCALE = 3;              // pixel upscale of the held crossbow sprite
 
     private final Crossbow crossbow;
     private int pendingShots = 0;
@@ -92,10 +93,10 @@ public class CrossbowAbility extends Ability {
     private void startCrank() {
         cranking = true;
         crankTime = 0;
-        crossbowFrames = Assets.frames(crossbow.texture, 2, 2);
+        crossbowFrames = Assets.frames(crossbow.texture, 2, SCALE);
         crossbowSprite = new FrameSprite(crossbowFrames);
         crossbowSprite.show(crossbowFrames, 1); // empty
-        heldCrossbow = HeldWeaponComponent.spawnAimed(crossbowSprite, crossbow.gripX * 2, crossbow.gripY * 2, 16, 0);
+        heldCrossbow = HeldWeaponComponent.spawnAimed(crossbowSprite, crossbow.gripX * SCALE, crossbow.gripY * SCALE, 16, 0);
     }
 
     private void stopCrank(boolean done) {
@@ -116,9 +117,9 @@ public class CrossbowAbility extends Ability {
         pendingShots = crossbow.burst - 1;
         burstTimer = BURST_GAP;
         // loaded -> empty, stays empty while the reload runs
-        Frames frames = Assets.frames(crossbow.texture, 2, 2);
+        Frames frames = Assets.frames(crossbow.texture, 2, SCALE);
         FrameSprite held = new FrameSprite(frames).play(frames, new int[]{0, 1}, 20, false, null);
-        HeldWeaponComponent.spawnAimed(held, crossbow.gripX * 2, crossbow.gripY * 2, 16,
+        HeldWeaponComponent.spawnAimed(held, crossbow.gripX * SCALE, crossbow.gripY * SCALE, 16,
                 0.15 + BURST_GAP * (crossbow.burst - 1) + 0.2);
     }
 

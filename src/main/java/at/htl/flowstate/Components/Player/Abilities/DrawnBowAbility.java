@@ -16,6 +16,7 @@ public abstract class DrawnBowAbility extends Ability {
     private static final double DRAW_MOVE_MULT = 0.5;
     private static final double HALF_FRAME_AT = 0.2;   // draw fraction where the sprite switches to half drawn
     private static final double RELEASE_SHOW = 0.2;    // seconds the bow stays out after the shot
+    private static final int SCALE = 4;                // pixel upscale of the held bow sprite
 
     private final String texture;
     private final double gripX, gripY, offset;
@@ -45,9 +46,9 @@ public abstract class DrawnBowAbility extends Ability {
         if (!ready() || drawing) return;
         drawing = true;
         drawTime = 0;
-        bowFrames = Assets.frames(texture, 3, 2);
+        bowFrames = Assets.frames(texture, 3, SCALE);
         bowSprite = new FrameSprite(bowFrames);
-        heldBow = HeldWeaponComponent.spawnAimed(bowSprite, gripX * 2, gripY * 2, offset, 0);
+        heldBow = HeldWeaponComponent.spawnAimed(bowSprite, gripX * SCALE, gripY * SCALE, offset, 0);
     }
 
     @Override
