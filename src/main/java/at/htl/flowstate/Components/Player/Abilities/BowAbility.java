@@ -19,9 +19,9 @@ import javafx.geometry.Point2D;
  */
 public class BowAbility extends DrawnBowAbility {
     public enum Bow {
-        BASIC("BasicBow.png", 16.5, 13, "Arrow.png", 14, 0.8, 1000, 0, false),
-        SHORT("ShortBow.png", 13.5, 11, "Arrow.png", 8, 0.4, 900, 0, false),
-        BONE("BoneBow.png", 16.5, 13, "BoneArrow.png", 15, 0.8, 1000, 1, true);
+        BASIC("BasicBow.png", 33, 26, "Arrow.png", 14, 0.8, 1000, 0, false),
+        SHORT("ShortBow.png", 27, 22, "Arrow.png", 8, 0.4, 900, 0, false),
+        BONE("BoneBow.png", 33, 26, "BoneArrow.png", 15, 0.8, 1000, 1, true);
 
         final String texture, arrow;
         final double gripX, gripY; // grip inside a native frame (tools/art/ranged.py)

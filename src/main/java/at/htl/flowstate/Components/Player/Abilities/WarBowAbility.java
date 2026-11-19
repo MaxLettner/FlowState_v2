@@ -18,7 +18,7 @@ public class WarBowAbility extends DrawnBowAbility {
     private static final double WEAK_SPEED = 600;
 
     public WarBowAbility(Entity player, LoadoutComponent loadout) {
-        super(player, loadout, "WarBow.png", 20.5, 16, 24);
+        super(player, loadout, "WarBow.png", 41, 32, 24);
     }
 
     @Override
