@@ -45,7 +45,6 @@ public abstract class Ability {
     public double getChargeProgress() { return -1; }
     public double getMoveSpeedMult() { return 1; }
     public boolean isBlocking() { return false; }
-    public String getStatusText() { return ""; }
 
     /**
      * Hotbar fill for an ability with its own reload instead of the branch cooldown:

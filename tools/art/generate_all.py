@@ -20,6 +20,7 @@ import skilltree
 import menu
 import cursor
 import hudbars
+import hotbar
 import pixfont
 
 OUT = os.path.normpath(os.path.join(HERE, '..', '..', 'src', 'main', 'resources', 'assets', 'textures'))
@@ -39,6 +40,7 @@ def main():
     menu.generate(OUT)
     cursor.generate(OUT)
     hudbars.generate(OUT)
+    hotbar.generate(OUT)
     pixfont.generate(OUT)
     print('textures written to', OUT)
 

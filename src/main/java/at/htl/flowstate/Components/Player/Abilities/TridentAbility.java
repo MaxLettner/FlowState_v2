@@ -166,10 +166,4 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
     public double getMoveSpeedMult() {
         return windingUp ? 0.5 : 1;
     }
-
-    @Override
-    public String getStatusText() {
-        if (thrown != null) return variant == Variant.RECALL ? "thrown (RMB recall)" : "thrown";
-        return reunion ? "reunion x2" : "";
-    }
 }

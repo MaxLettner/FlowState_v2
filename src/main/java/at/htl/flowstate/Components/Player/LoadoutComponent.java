@@ -300,27 +300,4 @@ public class LoadoutComponent extends Component {
         if (type == SkillType.LEVITATION) return levitationLeft > 0;
         return type.isEnchantment() && activeEnchant == type;
     }
-
-    /** Short status line shown under the skill name in the hotbar. */
-    public String getSlotStatus(SkillType type) {
-        if (type == SkillType.MANA_SHIELD) {
-            if (shieldActive) return "ON";
-            return shieldBreakCooldown > 0 ? "broken " + seconds(shieldBreakCooldown) : "";
-        }
-        if (type == SkillType.LEVITATION) {
-            if (levitationLeft > 0) return "flying " + seconds(levitationLeft);
-            if (slowFallLeft > 0) return "gliding";
-            return levitationCooldown > 0 ? seconds(levitationCooldown) : "";
-        }
-        if (type.isEnchantment()) {
-            if (activeEnchant == type) return type == SkillType.IMBUE ? imbueElement.getDisplayName() : "ON";
-            return type == SkillType.IMBUE && ownedElements().isEmpty() ? "needs Elemental skill" : "";
-        }
-        Ability a = abilities.get(type);
-        return a == null ? "" : a.getStatusText();
-    }
-
-    private static String seconds(double s) {
-        return String.format("%.1fs", Math.max(0, s));
-    }
 }

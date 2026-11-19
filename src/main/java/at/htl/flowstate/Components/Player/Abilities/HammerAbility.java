@@ -64,9 +64,4 @@ public class HammerAbility extends MeleeAbility {
                             .impact(SLAM_IMPACT)));
         }
     }
-
-    @Override
-    public String getStatusText() {
-        return slamming ? "slam!" : super.getStatusText();
-    }
 }
