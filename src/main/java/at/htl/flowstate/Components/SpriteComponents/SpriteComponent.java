@@ -70,7 +70,7 @@ public class SpriteComponent extends Component {
         shield.setVisible(false);
 
         if (glow) {
-            DropShadow shadow = new DropShadow(14, Color.rgb(90, 230, 255, 0.55));
+            DropShadow shadow = new DropShadow(14, Color.rgb(255, 130, 40, 0.5));   // ember glow of the tar slime
             shadow.setSpread(0.25);
             baseEffect = shadow;
         } else {

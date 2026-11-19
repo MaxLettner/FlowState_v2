@@ -52,7 +52,12 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 - `pixel.py` — helpers (ramps, band-dithering, outline, strip, ellipse, line).
 - `materials.py` — colour ramps (steel, rust, wood, gold, bone, ice, crimson, teal, purple, ...).
 - `slimes.py` — reviewed & approved look. 64x64 frames, bottom anchor at (32, 62), intended display x2.
-  - Player: cyan slime + red bandana with fluttering tails (stands out); EnemyBrute (melee): green, horns,
+  - Player (since 2026-11-19, branch feat/dark-slime-player): "Tar & Ember" - glossy black tar slime, no mouth,
+    molten eyes under a sagging tar lid, glowing cracks that follow the squash, pulse while idle and flare
+    white-hot on the first landing frames (`heat()`); stronger lava rim; in-game glow is ember orange
+    (SpriteComponent). The old cyan slime + red bandana is kept as `CYAN_PLAYER`. Rejected dark concepts:
+    Abyssal, Void Ink, Shadow Ronin, Soul Gel, Venom (too close to the Brute).
+  - EnemyBrute (melee): green, horns,
     angry eyes, teeth; EnemyHunter (ranged): orange, feather headband, war paint.
   - Strips: `<Name>_idle` (6), `_walk` (8), `_air` (4: rise fast, rise, apex, fall), `_land` (4),
     `EnemyHunter_attack` (4), plus `FrozenOverlay.png`.
