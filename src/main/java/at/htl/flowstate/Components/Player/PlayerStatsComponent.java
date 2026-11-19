@@ -141,11 +141,16 @@ public class PlayerStatsComponent extends Component {
 
     //-----Experience & skill points-----
     public void addExperience() {
-        experience++;
-        if (experience >= maxExperience) {
+        addExperience(1);
+    }
+
+    /** Kills give experience by how tough the demon was; leftover experience carries into the next level. */
+    public void addExperience(double amount) {
+        experience += amount;
+        if (experience >= maxExperience - 1e-9) {
+            experience = Math.max(0, experience - maxExperience);
             skillPoints++;
             maxExperience++;
-            experience = 0;
             Sfx.LEVEL_UP.play();
             fireSkillPointsChanged();
         }

@@ -34,6 +34,14 @@ The Maven wrapper works too: `./mvnw javafx:run`.
 
 `FLOWSTATE_FPS=1 ./mvnw javafx:run` prints the frame rate and the game speed (game time vs real time) every 2 seconds.
 
+Testing switches (combine freely):
+
+|Variable|Effect|
+|---|---|
+|`FLOWSTATE_DEMONS=imp,bat`|Only these demons spawn (imp, hound, brute, hurler, bat, cultist), from the start, with a full danger budget|
+|`FLOWSTATE_AUTOSTART=1`|Skips the main menu|
+|`FLOWSTATE_SHOTS=<dir>`|Saves a screenshot every `FLOWSTATE_SHOTS_EVERY` s (default 1), at most `FLOWSTATE_SHOTS_MAX` (default 30)|
+
 ### Standalone jar (Linux + Windows)
 
 ```bash
@@ -87,12 +95,15 @@ src/main/java/
     ├── Components/
     │   ├── Chests/ChestComponent         # +1 skill point on touch
     │   ├── Enemies/
-    │   │   ├── EnemyBehaviourComponent   # Chase, step-up, jump-over; respects stun/freeze/pin/slow
-    │   │   ├── Melee/RangedEnemyBehaviourComponent
+    │   │   ├── DemonType                 # Per-demon data: HP, hitbox, sprite rig, XP, knockback/stun resistance
+    │   │   ├── DemonBehaviour            # AI base: think vs. disabled (stun/freeze/pin/knockback interrupts attacks)
+    │   │   ├── GroundDemonBehaviour      # Walking: step-up, jump-over
+    │   │   ├── Imp/Hound/Brute/Hurler/Cultist/BatBehaviour
     │   │   ├── EnemyStatsComponent       # HP, death, XP, stun/freeze/slow/burn/poison/bleed/pin, knockback, bounce
-    │   │   ├── EnemyProjectileComponent, BallisticProjectileComponent
+    │   │   ├── EnemyProjectileComponent, BallisticProjectileComponent, Ballistics, HomingOrbComponent
+    │   │   ├── ShockwaveComponent, MagmaPoolComponent
     │   ├── Identifier/                   # Marker components (enemy, platform)
-    │   ├── SpriteComponents/SpriteComponent
+    │   ├── SpriteComponents/             # SpriteComponent (player), DemonSpriteComponent (demons)
     │   └── Player/
     │       ├── PlayerMovementComponent   # Run, jump, coyote, step-up, levitation, dash, slam
     │       ├── PlayerStatsComponent      # HP, mana, XP, SP, damage multipliers, block/shield/i-frames
@@ -128,7 +139,18 @@ Segment types:
 
 **Challenge structure** — four floating platforms in a zigzag stack up to 800 px tall, chest at the summit.
 
-**Enemy generation** — every normal ground segment has a 20 % chance to spawn enemies: 80 % chance of melee (with a 5 % gang-of-five roll), 20 % chance of a ranged enemy.
+**Enemy generation** — a danger budget: every ground segment past x = 1200 adds danger in proportion to its width (+100 % every 12 000 px). When the budget covers the next group, picked by weight from the groups unlocked at that distance, the group spawns on the segment:
+
+|Group|Cost|From x|
+|---|---|---|
+|3–5 Imps|2.5|start|
+|Hellhound|2|2 000|
+|Brimstone Hurler|2.5|4 000|
+|4–6 Cinderbats|3|7 000|
+|Pit Brute|5.5|10 000|
+|Hellfire Cultist|4|13 000|
+|6–8 Imps, Hellhound pair|4|15 000|
+|Brute + Hurler, Cultist + Imps, Bats + Hurler|6.5–8|18 000–22 000|
 
 Entities more than 3500 px behind the viewport are removed each frame to keep Box2D stable.
 
@@ -182,21 +204,20 @@ Shared by every melee weapon (`MeleeAbility`, `MeleeSwingComponent`, `PunchCompo
 |Perfect release|Zweihander: releasing within 0.22 s after the charge completes (blade flash) adds flow and impact|
 |Freeze frames|Every melee hit freezes the game briefly (more for damage, crits, kills), shakes the camera and makes the target tremble. Taking damage also freezes briefly|
 
-### Enemy AI
+### Enemy AI (demons)
 
-Both enemy types share the `EnemyBehaviourComponent` base:
+Every demon extends `DemonBehaviour`: each frame it either thinks (moves and attacks) or, while stunned, frozen, pinned or knocked back, is disabled. Becoming disabled interrupts any wind-up, so a stun always cancels an attack. Slow scales movement and attack timers alike. Attacks are telegraphed by a pose and a pulsing glow (red melee, orange thrown, green spell). Walkers (`GroundDemonBehaviour`) step up ledges ≤ 20 px and jump obstacles up to 300 px; flyers have kinematic bodies (no gravity).
 
-- Chase the player along the X axis at a randomised speed (±10 % variance)
-- Automatically step up ledges ≤ 20 px
-- Jump over obstacles between 20 px and 300 px tall
-- Stop all movement while stunned, frozen or pinned; move and attack 40 % slower while slowed
-- Knockback velocity decays via friction (600 units/s²)
-- Die when falling into a pit (counts as a kill)
-- Sprite states mirror the player's (idle / walk / jump)
+|Demon|HP|Kind|Behaviour|Counter|
+|---|---|---|---|---|
+|Imp|34|ground melee, packs|Runs at you (each aims a bit to the side), crouches and hops claws-first|Wide swings, pierce|
+|Hellhound|70|ground melee|Fast; crouches growling, then lunges ~400 px; pants for 0.9 s after|Jump the lunge, punish the pant|
+|Pit Brute|520|ground heavy|Raises both fists, slams: fists in front plus a shockwave rolling both ways along the floor. Half knockback, half stun duration|Jump the shockwave; freeze + shatter|
+|Brimstone Hurler|80|ground ranged|Keeps 330–650 px away, lobs magma that leaves a burning pool|Close the gap|
+|Cinderbat|18|flying, swarms|Flutters around its own spot above you, shrieks, dives at where you were, climbs back|Any hit kills; sinks when stunned|
+|Hellfire Cultist|90|ground mage|Keeps its distance, casts 3 slow homing orbs; teleports 450–600 px away when you get close|Cut the orbs (swings deflect them), catch it after a teleport, pin it|
 
-`MeleeEnemyBehaviourComponent` deals contact damage on every overlapping frame.
-
-`RangedEnemyBehaviourComponent` stops within 500 px, faces the player, and fires a spear on a 2-second cooldown. The launch velocity is solved analytically from a ballistic trajectory equation (discriminant check, minimum-time solution). **Do not modify the math in `calculateBallisticVelocity` unless you fully understand it.**
+The lob is solved analytically in `Ballistics.velocity` (discriminant check, minimum-time solution). **Do not modify that math unless you fully understand it.**
 
 ### HUD
 

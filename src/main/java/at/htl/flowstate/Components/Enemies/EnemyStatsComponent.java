@@ -9,7 +9,7 @@ import at.htl.flowstate.Game;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillManager;
 import at.htl.flowstate.Skills.SkillType;
-import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
+import at.htl.flowstate.Components.SpriteComponents.DemonSpriteComponent;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
@@ -17,7 +17,6 @@ import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
 import com.almasb.fxgl.physics.PhysicsComponent;
 import javafx.geometry.Point2D;
-import javafx.scene.paint.Color;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -35,12 +34,13 @@ public class EnemyStatsComponent extends Component {
     private static final double ELEMENTAL_MASTERY = 1.25;
     private static final double KNOCKBACK_FRICTION = 600;
     private static final double BOUNCE_DAMAGE = 10;
-    private static final Color[] BRUTE_SPLAT = {Color.web("#9be84f"), Color.web("#5bb42c"), Color.web("#357a1d")};
-    private static final Color[] HUNTER_SPLAT = {Color.web("#ffb35c"), Color.web("#f07a24"), Color.web("#b84e14")};
+    /** Stuns shorter than this (after the demon's stun resistance) don't register at all. */
+    private static final double MIN_STUN = 0.15;
 
     private final Entity player;
+    private final DemonType type;
     private PhysicsComponent physics;
-    private SpriteComponent sprite;
+    private DemonSpriteComponent sprite;
 
     private double stunLeft, freezeLeft, slowLeft, burnLeft, pinLeft;
     private int poisonStacks, bleedStacks;
@@ -55,8 +55,13 @@ public class EnemyStatsComponent extends Component {
     private double statusFxTimer = 0;
     private static final double STATUS_FX_INTERVAL = 0.12;
 
-    public EnemyStatsComponent() {
+    public EnemyStatsComponent(DemonType type) {
         player = Game.getPlayer();
+        this.type = type;
+    }
+
+    public DemonType getType() {
+        return type;
     }
 
     @Override
@@ -86,7 +91,7 @@ public class EnemyStatsComponent extends Component {
     private void resolveComponents() {
         if (sprite != null) return;
         physics = entity.getComponent(PhysicsComponent.class);
-        sprite = entity.getComponent(SpriteComponent.class);
+        sprite = entity.getComponent(DemonSpriteComponent.class);
     }
 
     //-----Damage & death-----
@@ -107,11 +112,15 @@ public class EnemyStatsComponent extends Component {
     private void die() {
         if (dead) return;
         dead = true;
-        player.getComponent(PlayerStatsComponent.class).addExperience();
+        player.getComponent(PlayerStatsComponent.class).addExperience(type.xp);
         player.getComponent(LoadoutComponent.class).onKill();
-        boolean hunter = entity.hasComponent(RangedEnemyBehaviourComponent.class);
-        Sfx.ENEMY_DEATH.at(entity.getCenter(), 1, hunter ? 1.15 : 0.95);
-        Particles.splat(entity.getCenter().add(0, 20), hunter ? HUNTER_SPLAT : BRUTE_SPLAT);
+        Point2D c = entity.getCenter();
+        double size = Math.min(2.2, Math.sqrt(type.width * type.height) / 60);   // 1 = player sized
+        Sfx.ENEMY_DEATH.at(c, Math.min(1, 0.6 + size * 0.4), type.deathPitch);
+        Particles.splat(c.add(0, type.height * 0.25), type.splat);
+        // demons burn away: embers rising out of the body
+        Particles.burst(c, Particles.EMBER, (int) (8 + 10 * size), -90, 70, 60, 220 * Math.max(1, size), 0.9, 5, -120);
+        entity.getComponentOptional(DemonBehaviour.class).ifPresent(DemonBehaviour::onDeath);
         entity.removeFromWorld();
     }
 
@@ -144,7 +153,9 @@ public class EnemyStatsComponent extends Component {
     }
 
     public void stun(double duration) {
-        if (duration > 0 && !isStunned()) Sfx.STUN.at(entity.getCenter());
+        duration *= type.stunMult;
+        if (duration < MIN_STUN) return;
+        if (!isStunned()) Sfx.STUN.at(entity.getCenter());
         stunLeft = Math.max(stunLeft, duration);
     }
     public void freeze(double duration) { freezeLeft = Math.max(freezeLeft, duration * mastery()); }
@@ -184,6 +195,8 @@ public class EnemyStatsComponent extends Component {
         if (direction != 1 && direction != -1) return;
         if (pinLeft > 0) return;
         resolveComponents();
+        strength *= type.knockbackMult;
+        if (strength < 1) return;
         knockbackVelocity = strength * direction;
         launched = launch;
         bounced.clear();
