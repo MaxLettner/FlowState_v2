@@ -3,6 +3,7 @@
 slimes.py writes the base strips (Player_idle/walk/air/land); this module writes the rest:
   takeoff (3)  run (8)  dash (4)  hurt (4)  death (10)  attack (5)  shoot (3)  cast (6)
   levitate (6)  glide (4)  dive (2)  slam (6)  block (4)  charge (4, picked by charge progress)  fidget (16)
+  airflow (35: a 7 x 5 grid picked by velocity, see anim_airflow)
 SpriteComponent reads the frame count from the strip width (64 px per frame).
 
 Review sheet:  python tools/art/player_slime.py sheet out.png
@@ -18,10 +19,13 @@ FRAME = SIZE
 
 
 # ---------- frame helper ----------
-def frame(w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, **mood):
-    """One player frame. mood keys: eyes, look, heat, cool (see slimes.eyes_ember / ember_cracks),
+def frame(w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, round=0.0, form=None, **mood):
+    """One player frame. round (0..1) rounds the bottom off for airborne frames (slimes.half_width),
+    form = airflow shape (slimes.draw_slime: drop tails and how far they sweep sideways).
+    mood keys: eyes, look, heat, cool (see slimes.eyes_ember / ember_cracks),
     pre = [fn(img, px, info)] drawn before the outline (tar bits), post = [fn(img)] drawn after (glow, sparks)."""
-    img = draw_slime(PLAYER, w, h, lift=lift, lean=lean, eye_dy=eye_dy, blink=blink, phase=phase, mood=mood)
+    img = draw_slime(PLAYER, w, h, lift=lift, lean=lean, eye_dy=eye_dy, blink=blink, phase=phase, mood=mood,
+                     round=round, form=form)
     for fx in mood.get('post', []):
         fx(img)
     return img
@@ -43,9 +47,11 @@ def strands(*items):
     """Tar strands hanging from the bottom of a floating body: (nx, length, drop) - drop > 0 adds a
     detached droplet that far below the strand."""
     def fx(img, px, info):
-        bottom = info['bottom']
         for nx, length, drop in items:
             x = int(CX + nx * info['w'] * 0.5)
+            bottom = int(info['bottom'])                  # hang from the body's edge (a round bottom curves up)
+            while bottom > 0 and px[x, bottom - 1][3] == 0:
+                bottom -= 1
             for k in range(int(length)):                 # 1 px strand thinning into a teardrop
                 put(px, SIZE, SIZE, x, int(bottom + k), TAR[2])
             ellipse(px, SIZE, SIZE, x + 0.5, bottom + length + 0.5, 1.4, 1.6, TAR[1])
@@ -117,8 +123,8 @@ def anim_takeoff():
     """Jump launch (played once when leaving the ground): stretched, tar splashing off the base."""
     return [
         frame(34, 46, eyes='wide', heat=0.5, pre=[droplets((CX - 15, 59, 1.6), (CX + 15, 59, 1.4), (CX - 8, 61, 1))]),
-        frame(32, 48, heat=0.4, pre=[droplets((CX - 19, 58, 1.4), (CX + 19, 57, 1.6), (CX - 11, 62, 1))]),
-        frame(33, 47, heat=0.3, pre=[droplets((CX - 22, 60, 1.1), (CX + 22, 60, 1.1))]),
+        frame(32, 48, heat=0.4, round=0.5, pre=[droplets((CX - 19, 58, 1.4), (CX + 19, 57, 1.6), (CX - 11, 62, 1))]),
+        frame(33, 47, heat=0.3, round=0.9, pre=[droplets((CX - 22, 60, 1.1), (CX + 22, 60, 1.1))]),
     ]
 
 
@@ -228,7 +234,7 @@ def anim_levitate(n=6):
         s = math.sin(p * 2 * math.pi)
         lift = 9 + s * 1.5
         drop = (i % 3) * 2
-        frames.append(frame(38 - s, 40 + s, lift=lift, phase=p, heat=0.45 + 0.15 * s,
+        frames.append(frame(38 - s, 40 + s, lift=lift, phase=p, round=0.8, heat=0.45 + 0.15 * s,
                             pre=[strands((-0.3, 2 + (i % 2), 0), (0.25, 2 + ((i + 1) % 3), drop))],
                             post=[sparks((CX - 6 + (i % 3), BASE_Y - 1 - (i % 2), 1, 3), (CX + 9, BASE_Y - 4 + (i % 3), 1, 4))]))
     return frames
@@ -240,9 +246,40 @@ def anim_glide(n=4):
     for i in range(n):
         p = i / n
         s = math.sin(p * 2 * math.pi)
-        frames.append(frame(54 + s, 24 - s, lift=8, phase=p, look=(0, -0.6), heat=0.3,
+        frames.append(frame(54 + s, 24 - s, lift=8, phase=p, round=0.6, look=(0, -0.6), heat=0.3,
                             pre=[strands((-0.9, 2 + (i % 2), 0), (0.9, 3 - (i % 2), 0))]))
     return frames
+
+
+# airflow grid: rows = vertical speed (rising fast .. falling fast), columns = sideways speed relative to the
+# way the face looks (backwards fast .. forwards fast). SpriteComponent picks the frame from the velocity
+# with the same numbers, so keep them in sync (AIRFLOW_VY / AIRFLOW_VX there).
+AIRFLOW_VY = [-620, -400, -180, 0, 180, 400, 620]
+AIRFLOW_VX = [-1.0, -0.5, 0.0, 0.5, 1.0]          # x the max move speed (400)
+
+
+def airflow_frame(vy, hx):
+    """The body pulled into a water drop by the air streaming past: the leading end stays round and the
+    trailing end draws out into a tail (falling: tail up, rising: tail down), sideways motion sweeps the
+    tail back and, when not rising, pulls a tail out of the top like a flame."""
+    d = max(-1.0, min(1.0, vy / 620))
+    rise, fall = max(0.0, -d), max(0.0, d)
+    side = abs(hx)
+    # kept soft (a full drop tail looked too pointy): at most ~2/3 of the way from the egg to a drop
+    tip_top = min(0.65, 0.6 * fall + 0.4 * side * (1 - rise))
+    tip_bot = min(0.65, 0.55 * rise)
+    sweep = -hx * 13                                  # the tail trails opposite to the motion (~30 deg at full speed)
+    form = dict(tip_top=tip_top, tip_bot=tip_bot,
+                sweep_top=sweep * (1 - rise * 0.7), sweep_bot=sweep * rise)
+    w = 41 - 8 * abs(d) - 2 * side
+    h = 40 + 9 * abs(d) + 3 * side * (1 - abs(d))
+    eye_dy = 3 * rise - 4 * fall                     # eyes stay in the round bulb, away from the tail
+    return frame(w, h, lean=hx * 1.5, eye_dy=eye_dy, phase=(vy + 620) / 1240, round=1.0, form=form,
+                 look=(0, 0.8 * fall - 0.6 * rise), heat=0.3 + 0.25 * abs(d))
+
+
+def anim_airflow():
+    return [airflow_frame(vy, hx) for vy in AIRFLOW_VY for hx in AIRFLOW_VX]
 
 
 def anim_dive():
@@ -252,7 +289,8 @@ def anim_dive():
         top = BASE_Y - 54
         lines = [(CX - 7, max(0, top - 14 + 3 * i), top - 1, 3), (CX + 6, max(0, top - 10 - 3 * i), top + 1, 2),
                  (CX - 1, max(0, top - 6), top - 2, 1)]
-        frames.append(frame(26 + i, 54 - i, eyes='squint', look=(0, 1), heat=0.85, phase=i / 2,
+        frames.append(frame(26 + i, 54 - i, eyes='squint', look=(0, 1), round=1.0, heat=0.85, phase=i / 2,
+                            form=dict(tip_top=0.6),
                             post=[vlines(*lines)]))
     return frames
 
@@ -332,7 +370,7 @@ ANIMS = {
     'takeoff': anim_takeoff, 'run': anim_run, 'dash': anim_dash, 'hurt': anim_hurt, 'death': anim_death,
     'attack': anim_attack, 'shoot': anim_shoot, 'cast': anim_cast, 'levitate': anim_levitate,
     'glide': anim_glide, 'dive': anim_dive, 'slam': anim_slam, 'block': anim_block, 'charge': anim_charge,
-    'fidget': anim_fidget,
+    'fidget': anim_fidget, 'airflow': anim_airflow,
 }
 
 

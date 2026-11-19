@@ -20,26 +20,58 @@ class Look:
         self.rim = rim
 
 
-def half_width(v, w):
-    """Half width of the slime at relative height v (0 bottom .. 1 top)."""
+ROUND_FROM = 0.45   # with round > 0 the body below this height curves in like the top half
+DROP_M = 0.8        # teardrop tail sharpness (0 = ellipse, 1 = classic drop, higher = thinner tail)
+_DROP_MAX = {}
+
+
+def drop_profile(v, m=None):
+    """Teardrop half width (0..1) at v: round end at v=0, tail tip at v=1  (x = sin t * sin(t/2)^m)."""
+    m = DROP_M if m is None else m
+    if m not in _DROP_MAX:
+        _DROP_MAX[m] = max(math.sin(t) * math.sin(t / 2) ** m for t in (i * math.pi / 2000 for i in range(2001)))
+    t = math.acos(max(-1.0, min(1.0, 2 * v - 1)))
+    return math.sin(t) * math.sin(t / 2) ** m / _DROP_MAX[m]
+
+
+def half_width(v, w, round=0.0, tip_top=0.0, tip_bot=0.0, **_):
+    """Half width of the slime at relative height v (0 bottom .. 1 top).
+    round 0: sat on the ground, flat bottom spreading into a foot; 1: airborne, an egg with a round bottom.
+    tip_top / tip_bot (0..1): airflow pulls that end out into a water-drop tail (falling: tail up, rising: down)."""
     if v < 0 or v > 1:
         return -1
     hw = (w / 2) * (1 - v ** 2.4) ** 0.5
     if v < 0.18:
-        hw *= 1 + 0.10 * (1 - v / 0.18)
+        hw *= 1 + 0.10 * (1 - v / 0.18) * (1 - round)
+    if round > 0 and v < ROUND_FROM:
+        t = (ROUND_FROM - v) / ROUND_FROM
+        ball = (w / 2) * (1 - ROUND_FROM ** 2.4) ** 0.5 * max(0.0, 1 - t ** 2.2) ** (1 / 2.2)
+        hw += (ball - hw) * round
+    if tip_top > 0:
+        hw += ((w / 2) * drop_profile(v) - hw) * tip_top
+    if tip_bot > 0:
+        hw += ((w / 2) * drop_profile(1 - v) - hw) * tip_bot
     return hw
 
 
-def body_mask(w, h, lift, lean):
-    """lean shifts the top of the body forward (+x) for motion."""
+def row_cx(v, lean, sweep_top=0.0, sweep_bot=0.0, **_):
+    """Body centre x at height v: lean tilts the whole body forward (+x), the sweeps bend the top / bottom
+    end sideways (px at the tip), so a drop tail trails behind when it moves sideways."""
+    return CX + lean * v + sweep_top * max(0.0, v) ** 2.5 + sweep_bot * max(0.0, 1 - v) ** 2.5
+
+
+def body_mask(w, h, lift, lean, round=0.0, form=None):
+    """lean shifts the top of the body forward (+x) for motion; form = airflow shape (see draw_slime)."""
+    form = dict(form or {})
+    form.setdefault('round', round)
     mask = {}
     bottom = BASE_Y - lift
     for y in range(SIZE):
         v = (bottom - (y + 0.5)) / h
-        hw = half_width(v, w)
+        hw = half_width(v, w, **form)
         if hw <= 0:
             continue
-        cx = CX + lean * v
+        cx = row_cx(v, lean, **form)
         for x in range(SIZE):
             d = (x + 0.5 - cx)
             if abs(d) <= hw:
@@ -47,10 +79,13 @@ def body_mask(w, h, lift, lean):
     return mask
 
 
-def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, mood=None):
+def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, mood=None, round=0.0, form=None):
+    """round (0..1) rounds off the flat bottom for airborne frames (see half_width).
+    form: airflow shape {tip_top, tip_bot (0..1 drop tail), sweep_top, sweep_bot (px the tail bends sideways)}."""
+    form = dict(form or {}, round=round)
     img = new(SIZE, SIZE)
     px = img.load()
-    mask = body_mask(w, h, lift, lean)
+    mask = body_mask(w, h, lift, lean, form=form)
     bottom = BASE_Y - lift
     light = (-0.55, -0.7, 0.45)
     ll = math.sqrt(sum(c * c for c in light))
@@ -76,27 +111,28 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
     # inner bubbles
     if look.bubbles:
         for i, (bx, bv, r) in enumerate([(-0.35, 0.25, 1.6), (0.25, 0.18, 1.1), (0.05, 0.4, 0.9)]):
-            hw = half_width(bv, w)
-            cx = CX + lean * bv + bx * hw
+            hw = half_width(bv, w, **form)
+            cx = row_cx(bv, lean, **form) + bx * hw
             cy = bottom - bv * h - math.sin(phase * 2 * math.pi + i) * 1.2
             ellipse(px, SIZE, SIZE, cx, cy, r, r, look.body[1])
             put(px, SIZE, SIZE, int(cx - 0.5), int(cy - 0.8), look.body[0])
 
     # specular highlight
-    hv = 0.78
-    hx = CX + lean * hv - half_width(hv, w) * 0.42
+    hv = 0.78 - 0.3 * form.get('tip_top', 0.0)          # slides down off a thin drop tail, into the bulb
+    hhw = half_width(hv, w, **form)
+    hx = row_cx(hv, lean, **form) - hhw * 0.42
     hy = bottom - hv * h
     shine = mix(look.body[0], (255, 255, 255, 255), 0.75)
-    ellipse(px, SIZE, SIZE, hx, hy, max(1.5, w * 0.07), max(1.2, h * 0.06), shine)
+    ellipse(px, SIZE, SIZE, hx, hy, max(1.5, min(w * 0.07, hhw * 0.3)), max(1.2, h * 0.06), shine)
     put(px, SIZE, SIZE, int(hx - 1), int(hy - 1), (255, 255, 255, 255))
     put(px, SIZE, SIZE, int(hx + w * 0.11), int(hy - 1), shine)
 
-    info = dict(w=w, h=h, bottom=bottom, lean=lean, phase=phase, px=px, mood=mood)
+    info = dict(w=w, h=h, bottom=bottom, lean=lean, phase=phase, px=px, mood=mood, round=round, form=form)
 
     # face
     ev = 0.55 + eye_dy / max(h, 1)
     ey = bottom - ev * h
-    ecx = CX + lean * ev + w * 0.12   # face looks to the right (+x)
+    ecx = row_cx(ev, lean, **form) + min(w * 0.12, half_width(ev, w, **form) * 0.6)   # face looks to the right (+x)
     look.eye_style(px, ecx, ey, w, h, blink, info)
     look.mouth(px, ecx, ey, w, h, info)
 
@@ -264,8 +300,9 @@ EMBER = ramp('#fff6c0', '#ffd25a', '#ff8a2a', '#ff5a1a', '#c2300f')   # white-ho
 
 def rel(info, nx, v):
     """Body-relative point (nx -1 back .. 1 front, v 0 bottom .. 1 top) -> pixel coords."""
-    hw = half_width(v, info['w'])
-    return CX + info['lean'] * v + nx * hw, info['bottom'] - v * info['h']
+    form = info.get('form') or {'round': info.get('round', 0.0)}
+    hw = half_width(v, info['w'], **form)
+    return row_cx(v, info['lean'], **form) + nx * hw, info['bottom'] - v * info['h']
 
 
 def inside(px, x, y):
@@ -439,14 +476,18 @@ def anim_walk(look, n=8):
 
 
 def anim_air(look):
-    # rising fast, rising, apex, falling
-    params = [(33, 47, 1.5), (36, 43, 1), (41, 38, 0), (35, 45, -1.5)]
-    return [draw_slime(look, w, h, lean=l, eye_dy=-1 if i < 2 else 1, phase=i / 4) for i, (w, h, l) in enumerate(params)]
+    # rising fast (stretched teardrop), rising, apex (rounded out into a ball), falling (stretched again);
+    # off the ground the bottom is round, it only flattens when it touches down
+    params = [(33, 47, 1.5, 0.9), (36, 43, 1, 1.0), (42, 39, 0, 1.0), (35, 45, -1.5, 1.0)]
+    return [draw_slime(look, w, h, lean=l, eye_dy=-1 if i < 2 else 1, phase=i / 4, round=r)
+            for i, (w, h, l, r) in enumerate(params)]
 
 
 def anim_land(look):
-    params = [(54, 26), (50, 31), (44, 37), (41, 39)]
-    return [draw_slime(look, w, h, phase=i / 4) for i, (w, h) in enumerate(params)]
+    # touch-down: the round bottom flattens and the body splats wide, then wobbles back up to rest.
+    # SpriteComponent starts later in the strip for small drops (only a light squash).
+    params = [(54, 26), (50, 31), (44, 37), (38, 41), (41, 39)]
+    return [draw_slime(look, w, h, phase=i / len(params)) for i, (w, h) in enumerate(params)]
 
 
 def anim_attack(look):
