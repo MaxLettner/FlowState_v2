@@ -102,6 +102,8 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
 
     for extra in look.extras:
         extra(img, px, info)
+    for extra in (mood or {}).get('pre', []):   # per-frame extras that get the outline (tar droplets, bubbles)
+        extra(img, px, info)
 
     return outline(img, look.outline)
 
@@ -281,32 +283,79 @@ def halo(px, cx, cy, r, col, strength):
                     px[x, y] = mix(px[x, y], col, t)
 
 
+def mood_of(info, key, default=None):
+    """Per-frame expression settings passed to draw_slime(mood={...}) by the player animations."""
+    return (info.get('mood') or {}).get(key, default)
+
+
 def heat(info):
-    """0 at rest .. 1 when squashed flat (landing impact): the cracks and eyes flare up."""
+    """0 at rest .. 1 when squashed flat (landing impact): the cracks and eyes flare up.
+    mood 'heat' overrides it."""
+    forced = mood_of(info, 'heat')
+    if forced is not None:
+        return forced
     squash = max(0.0, min(1.0, (info['w'] / info['h'] - 1.15) / 0.8))
     pulse = (math.sin(info['phase'] * 2 * math.pi) + 1) / 2
     return max(squash, 0.35 * pulse)
 
 
 def eyes_ember(px, ecx, ey, w, h, blink, info):
-    """Molten eyes, no pupils; a heavy tar lid sags over the top so they look tired-dangerous."""
+    """Molten eyes, no pupils; a heavy tar lid sags over the top so they look tired-dangerous.
+    mood 'eyes': normal | fierce (lid slants down to the front) | squint | shut (>  <) | wide | dim | off;
+    mood 'look': (dx, dy) shift of the hot core (glancing back / up)."""
     gap = max(5, w * 0.17)
     hot = heat(info)
+    style = mood_of(info, 'eyes', 'normal')
+    lx, ly = mood_of(info, 'look', (0, 0))
+    if blink:
+        style = 'blink'
+    glow = {'blink': 0.2, 'off': 0.0, 'dim': 0.2, 'squint': 0.35, 'shut': 0.4}.get(style, 0.5 + 0.25 * hot)
+    if style == 'wide':
+        glow = 0.85
     for sx in (-gap / 2, gap / 2):
-        halo(px, ecx + sx, ey, 5.5, EMBER[3], 0.2 if blink else 0.5 + 0.25 * hot)
-    for sx in (-gap / 2, gap / 2):
+        if glow > 0:
+            halo(px, ecx + sx, ey, 6.5 if style == 'wide' else 5.5, EMBER[3], glow)
+    for i, sx in enumerate((-gap / 2, gap / 2)):
         x = ecx + sx
-        if blink:
+        if style == 'blink':
             for dx in range(-2, 2):
                 put(px, SIZE, SIZE, int(x + dx), int(ey + 1), EMBER[2])
             continue
-        ellipse(px, SIZE, SIZE, x, ey, 2.2, 3.0, EMBER[2])
-        ellipse(px, SIZE, SIZE, x + 0.4, ey + 0.4, 1.4, 2.0, EMBER[1])
-        ellipse(px, SIZE, SIZE, x + 0.7, ey + 0.2, 0.7, 1.0, EMBER[0])
+        if style == 'off':
+            for dx in range(-1, 1):
+                put(px, SIZE, SIZE, int(x + dx), int(ey + 1), TAR[0])
+            continue
+        if style == 'dim':
+            ellipse(px, SIZE, SIZE, x, ey + 1, 1.4, 1.6, EMBER[4])
+            put(px, SIZE, SIZE, int(x), int(ey + 1), EMBER[3])
+            continue
+        if style == 'squint':
+            for dx in range(-2, 3):
+                put(px, SIZE, SIZE, int(x + dx), int(ey), EMBER[2])
+                put(px, SIZE, SIZE, int(x + dx), int(ey + 1), EMBER[1] if -1 <= dx <= 1 else EMBER[3])
+            for dx in range(-3, 4):
+                put(px, SIZE, SIZE, int(x + dx), int(ey - 1), TAR[3])
+            continue
+        if style == 'shut':                           # > <  squeezed shut
+            d = -1 if i == 0 else 1
+            for k in range(-2, 3):
+                put(px, SIZE, SIZE, int(x + d * (abs(k) - 1)), int(ey + k), EMBER[1])
+            continue
+        rx, ry = (2.6, 3.4) if style == 'wide' else (2.2, 3.0)
+        ellipse(px, SIZE, SIZE, x, ey, rx, ry, EMBER[2])
+        ellipse(px, SIZE, SIZE, x + 0.4 + lx, ey + 0.4 + ly, 1.4, 2.0, EMBER[1])
+        ellipse(px, SIZE, SIZE, x + 0.7 + lx, ey + 0.2 + ly, 0.7, 1.0, EMBER[0])
+        if style == 'wide':
+            continue                                  # lids pulled back
         for dx in range(-3, 3):                       # tar lid
-            put(px, SIZE, SIZE, int(x + dx), int(ey - 3), TAR[3])
+            slant = 0
+            if style == 'fierce':                     # angry lids: lower toward the gap between the eyes
+                slant = (1 if dx >= 0 else 0) if i == 0 else (1 if dx <= -2 else 0)
+                if slant:
+                    put(px, SIZE, SIZE, int(x + dx), int(ey - 3), TAR[3])
+            put(px, SIZE, SIZE, int(x + dx), int(ey - 3 + slant), TAR[3])
             if -2 <= dx <= 1:
-                put(px, SIZE, SIZE, int(x + dx), int(ey - 2), TAR[3] if dx < 1 else EMBER[4])
+                put(px, SIZE, SIZE, int(x + dx), int(ey - 2 + slant), TAR[3] if dx < 1 and not slant else EMBER[4] if not slant else TAR[3])
 
 
 def no_mouth(px, ecx, ey, w, h, info):
@@ -336,10 +385,11 @@ def _crack_pixels(info, path):
 def ember_cracks(img, px, info):
     """Molten cracks in the tar that follow the squash, pulse while idle and flare white-hot on landing."""
     hot = heat(info)
+    cool = mood_of(info, 'cool', 0.0)              # 0 molten .. 1 cold, dead stone (blocking, dying)
     paths = [_crack_pixels(info, p) for p in CRACKS]
     for pts in paths:
         for x, y in pts:
-            if inside(px, x, y):
+            if inside(px, x, y) and cool < 0.5:
                 halo(px, x + 0.5, y + 0.5, 2.4 + 1.2 * hot, EMBER[4] if hot < 0.6 else EMBER[3], 0.3 + 0.35 * hot)
     for pts in paths:
         for k, (x, y) in enumerate(pts):
@@ -350,9 +400,12 @@ def ember_cracks(img, px, info):
                 c = EMBER[0] if k % 3 == 1 else EMBER[1]
             elif k % 4 == 1:
                 c = EMBER[1]
+            if cool > 0:
+                c = mix(c, COLD_CRACK, cool)
             px[x, y] = c
 
 
+COLD_CRACK = hexc('#3a1a14')
 TAR = ramp('#5e5552', '#342d2b', '#211b1a', '#141010', '#090707')
 PLAYER = Look(TAR, hexc('#000000'), eyes_ember, no_mouth, [ember_cracks], bubbles=False, rim=0.75)
 # the previous player (cyan slime with the red bandana), kept for a possible skin

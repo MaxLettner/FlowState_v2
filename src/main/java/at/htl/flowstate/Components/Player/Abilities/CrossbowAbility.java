@@ -112,6 +112,7 @@ public class CrossbowAbility extends Ability {
     private void fire() {
         loaded = false;
         fireBolt();
+        sprite().playShoot();
         pendingShots = crossbow.burst - 1;
         burstTimer = BURST_GAP;
         // loaded -> empty, stays empty while the reload runs

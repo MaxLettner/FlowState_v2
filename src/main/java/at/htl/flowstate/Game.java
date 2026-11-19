@@ -8,6 +8,7 @@ import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
 import javafx.geometry.Point2D;
+import javafx.util.Duration;
 import at.htl.flowstate.Factories.EnemyFactory;
 import at.htl.flowstate.Factories.LevelFactory;
 import at.htl.flowstate.Generation.LevelGeneration;
@@ -54,12 +55,14 @@ public class Game extends GameApplication {
 
     // parallax layers (tools/art/terrain.py): 480x216 art shown at x5 = 2400x1080, seamless horizontally
     private static final int BG_SCALE = 5;
+    private static final double DEATH_EXIT_DELAY = 0.8; // puddle stays on screen before the run ends
     private static final double EMBER_INTERVAL = 0.35; // faint embers rising out of the abyss
     private final List<ParallaxLayer> layers = new ArrayList<>();
     private double emberTimer = 0;
     private double cleanupTimer = 0;
     private static final double CLEANUP_INTERVAL = 0.5;
     private PlayerStatsComponent playerStats;
+    private boolean dying = false;
     private double cameraX = 0;
     // the viewport may move this far vertically for camera shake
     private static final int SHAKE_MARGIN = 40;
@@ -217,7 +220,7 @@ public class Game extends GameApplication {
                 .with(new PlayerMovementComponent())
                 .with(new PlayerStatsComponent())
                 .with(new LoadoutComponent())
-                .with(new SpriteComponent("Player", false, true))
+                .with(new SpriteComponent("Player", true, true, true))
                 .collidable()
                 .buildAndAttach();
     }
@@ -251,8 +254,13 @@ public class Game extends GameApplication {
         levelGeneration.generateLevel(player.getX());
         cleanupPlatforms(tpf);
         scrollBg(tpf);
-        if (playerStats.isDead()) {
-            getGameController().exit();
+        if (playerStats.isDead() && !dying) {
+            // melt into a puddle first, then end the run
+            dying = true;
+            getInput().setProcessInput(false);
+            movement().die();
+            player.getComponent(SpriteComponent.class).playDeath(
+                    () -> runOnce(() -> getGameController().exit(), Duration.seconds(DEATH_EXIT_DELAY)));
         }
         hud.update();
     }

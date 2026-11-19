@@ -7,6 +7,7 @@ import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
+import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Skills.Branch;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
@@ -60,6 +61,7 @@ public abstract class Ability {
     protected PlayerStatsComponent stats() { return player.getComponent(PlayerStatsComponent.class); }
     protected PlayerMovementComponent movement() { return player.getComponent(PlayerMovementComponent.class); }
     protected int facing() { return movement().getCurrentWatchDirection(); }
+    protected SpriteComponent sprite() { return player.getComponent(SpriteComponent.class); }
 
     /** Normalized direction from the player to the mouse cursor. */
     protected Point2D aim() {

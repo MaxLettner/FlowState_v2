@@ -24,6 +24,7 @@ public class PlayerMovementComponent extends Component {
     private static final double DASH_TIME = 0.2;
     private static final double SLAM_SPEED = 900.0;
     private static final double POGO_FORCE = 560.0;
+    private static final double RUN_FRAMES = 50;          // running frames before the walk turns into a run
 
 
     private static final double PLAYER_WIDTH = 40.0;
@@ -49,6 +50,8 @@ public class PlayerMovementComponent extends Component {
     private double dashSpeed = DASH_SPEED;
     private boolean dodging = false;
     private double facingLock = 0;
+    private boolean diving = false;                        // hammer slam fall
+    private boolean dead = false;
 
     @Override
     public void onAdded() {
@@ -97,20 +100,50 @@ public class PlayerMovementComponent extends Component {
 
     private void updateSprite() {
         SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
+        LoadoutComponent loadout = entity.getComponent(LoadoutComponent.class);
 
         sprite.setFacing(currentWatchDirection);
         if (!wasGrounded && isGrounded) {
-            sprite.playLand();
+            if (diving) sprite.playSlam();
+            else sprite.playLand();
+            diving = false;
             Particles.landingDust(new Point2D(entity.getCenter().getX(), entity.getY() + PLAYER_HEIGHT));
         }
+        if (isLevitationActive) diving = false;
 
-        if (!isGrounded) {
-            sprite.setState(SpriteComponent.State.AIR, physics.getVelocityY());
+        double charge = loadout.getChargeProgress();
+        if (dodging) {
+            sprite.setState(SpriteComponent.State.DASH, 0);
+        } else if (isLevitationActive) {
+            sprite.setState(SpriteComponent.State.LEVITATE, 0);
+        } else if (!isGrounded) {
+            if (diving) {
+                sprite.setState(SpriteComponent.State.DIVE, 0);
+            } else if (loadout.isSlowFalling() && physics.getVelocityY() >= SLOW_FALL_SPEED - 1) {
+                sprite.setState(SpriteComponent.State.GLIDE, 0);
+            } else {
+                sprite.setState(SpriteComponent.State.AIR, physics.getVelocityY());
+            }
+        } else if (loadout.isBlocking()) {
+            sprite.setState(SpriteComponent.State.BLOCK, 0);
         } else if (lastMoveDirection != 0) {
-            sprite.setState(SpriteComponent.State.WALK, 0);
+            sprite.setState(currentRunningFrames >= RUN_FRAMES ? SpriteComponent.State.RUN : SpriteComponent.State.WALK, 0);
+        } else if (charge >= 0) {
+            sprite.setState(SpriteComponent.State.CHARGE, charge);
         } else {
             sprite.setState(SpriteComponent.State.IDLE, 0);
         }
+    }
+
+    /** Death: input stops moving the player, who just falls and melts. */
+    public void die() {
+        dead = true;
+        lastMoveDirection = 0;
+        isLevitatingUp = false;
+        isLevitatingDown = false;
+        dashLeft = 0;
+        dodging = false;
+        physics.setVelocityX(0);
     }
 
     private void tryStep(int direction) {
@@ -152,12 +185,14 @@ public class PlayerMovementComponent extends Component {
     }
 
     public void startMoveRight() {
+        if (dead) return;
         lastMoveDirection = 1;
         move(1);
         if (facingLock <= 0) currentWatchDirection = 1;
     }
 
     public void startMoveLeft() {
+        if (dead) return;
         lastMoveDirection = -1;
         move(-1);
         if (facingLock <= 0) currentWatchDirection = -1;
@@ -185,11 +220,13 @@ public class PlayerMovementComponent extends Component {
     }
 
     public void startJump() {
+        if (dead) return;
         if (isLevitationActive) {
             isLevitatingUp = true;
         } else {
             if ((isGrounded || coyoteTimer > 0) && !jumpConsumed) {
                 physics.setVelocityY(-JUMP_FORCE);
+                entity.getComponent(SpriteComponent.class).playTakeoff();
                 jumpConsumed = true;
                 isGrounded = false;
                 coyoteTimer = 0;
@@ -214,6 +251,7 @@ public class PlayerMovementComponent extends Component {
 
     /** Leather Gloves dodge: short dash in the movement (or facing) direction. */
     public void startDash() {
+        if (dead) return;
         dashDirection = lastMoveDirection != 0 ? lastMoveDirection : currentWatchDirection;
         dashLeft = DASH_TIME;
         dashSpeed = DASH_SPEED;
@@ -238,6 +276,8 @@ public class PlayerMovementComponent extends Component {
     /** Bounce up after a downward strike connects (pogo). */
     public void pogo() {
         physics.setVelocityY(-POGO_FORCE);
+        diving = false;
+        entity.getComponent(SpriteComponent.class).playTakeoff();
         isGrounded = false;
         jumpConsumed = true;
     }
@@ -245,6 +285,7 @@ public class PlayerMovementComponent extends Component {
     /** Hammer ground slam: fall fast. */
     public void startSlam() {
         physics.setVelocityY(SLAM_SPEED);
+        diving = true;
         isGrounded = false;
     }
 

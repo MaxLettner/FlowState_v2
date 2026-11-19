@@ -68,6 +68,7 @@ public class SpellAbility extends Ability {
         if (!ready()) return;
         if (!stats().takeMana(spell.mana)) return;
         loadout.markCast();
+        sprite().playCast();
         cooldown(spell.interval);
 
         Point2D dir = aim();

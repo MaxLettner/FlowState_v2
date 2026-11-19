@@ -89,7 +89,9 @@ public class PlayerStatsComponent extends Component {
             }
         }
         health -= amount;
-        entity.getComponent(SpriteComponent.class).flash();
+        SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
+        sprite.flash();
+        sprite.playHurt();
         Impact.hitStop(HURT_HITSTOP);
         Impact.shake(HURT_SHAKE);
         return true;

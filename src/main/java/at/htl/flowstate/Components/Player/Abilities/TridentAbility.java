@@ -88,6 +88,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
                 .buildAndAttach();
         stab.setScaleOrigin(new Point2D(STAB_WIDTH / 2, STAB_HEIGHT / 2));
         stab.setScaleX(facing());
+        sprite().playAttack();
         cooldown(variant.stabInterval);
     }
 
@@ -131,6 +132,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
                 .with(thrown)
                 .zIndex(-1)
                 .buildAndAttach();
+        sprite().playShoot();
         cooldown(THROW_COOLDOWN);
     }
 
