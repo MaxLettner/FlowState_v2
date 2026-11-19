@@ -38,7 +38,7 @@ Testing switches (combine freely):
 
 |Variable|Effect|
 |---|---|
-|`FLOWSTATE_DEMONS=imp,bat`|Only these demons spawn (imp, hound, brute, hurler, bat, cultist, warden, bloater, gargoyle, watcher, gatekeeper, priest), from the start, with a full danger budget; `lord` brings the Pit Lord right away|
+|`FLOWSTATE_DEMONS=imp,bat`|Only these demons spawn (imp, hound, brute, hurler, bat, cultist, warden, gargoyle, watcher, gatekeeper, priest), from the start, with a full danger budget; `lord` brings the Pit Lord right away|
 |`FLOWSTATE_ELITES=1`|Every single demon is an elite|
 |`FLOWSTATE_AUTOSTART=1`|Skips the main menu|
 |`FLOWSTATE_SHOTS=<dir>`|Saves a screenshot every `FLOWSTATE_SHOTS_EVERY` s (default 1), at most `FLOWSTATE_SHOTS_MAX` (default 30)|
@@ -100,7 +100,7 @@ src/main/java/
     │   │   ├── DemonBehaviour            # AI base: think vs. disabled (stun/freeze/pin/knockback interrupts attacks)
     │   │   ├── GroundDemonBehaviour      # Walking: step-up, jump-over
     │   │   ├── Imp/Hound/Brute/Hurler/Cultist/BatBehaviour
-    │   │   ├── Warden/Bloater/Gargoyle/Watcher/Gatekeeper/Priest/PitLordBehaviour
+    │   │   ├── Warden/Gargoyle/Watcher/Gatekeeper/Priest/PitLordBehaviour
     │   │   ├── EliteAffix, EliteComponent, PortalComponent, BossGateComponent
     │   │   ├── EnemyStatsComponent       # HP, death, XP, stun/freeze/slow/burn/poison/bleed/pin, knockback, bounce
     │   │   ├── EnemyProjectileComponent, BallisticProjectileComponent, Ballistics, HomingOrbComponent
@@ -154,13 +154,12 @@ Segment types:
 |Hellfire Cultist|4|13 000|
 |6–8 Imps, Hellhound pair|4|15 000|
 |Brute + Hurler, Cultist + Imps, Bats + Hurler|6.5–8|18 000–22 000|
-|2–3 Tar Bloaters|3|6 000|
 |Chainwarden|3.5|8 000|
 |1–2 Gargoyles|3|9 000|
 |Watcher|3.5|11 000|
 |Gatekeeper; Hex Priest + Imps|5–6|14 000|
 |Hex Priest + Chainwarden|7.5|16 000|
-|Bloaters + Bats, 2 Wardens + Hurler, 2 Watchers + Gargoyle|7–8.5|18 000–21 000|
+|2 Wardens + Hurler, 2 Watchers + Gargoyle|7–8.5|20 000–21 000|
 
 Single demons can be **elites** (chance grows from 0 at x = 9 000 to 22 %): ×1.8 HP, ×2 XP, a coloured aura and one affix: *Infernal* (sets you on fire, can't be burned), *Frostbound* (chills you, can't be frozen or slowed), *Vampiric* (heals 15 % on every hit), *Swift* (+35 % speed and attack speed).
 
@@ -231,7 +230,6 @@ Every demon extends `DemonBehaviour`: each frame it either thinks (moves and att
 |Cinderbat|18|flying, swarms|Flutters around its own spot above you, shrieks, dives at where you were, climbs back|Any hit kills; sinks when stunned|
 |Hellfire Cultist|90|ground mage|Keeps its distance, casts 3 slow homing orbs; teleports 450–600 px away when you get close|Cut the orbs (swings deflect them), catch it after a teleport, pin it|
 |Chainwarden|150|ground shield|Tower shield always faces you: blocks arrows and spells from the front, melee only scratches through (25 %). Flail swing with ~190 px reach|Hit from behind or above; blunt hits and heavy knockback break the shield (it staggers, then fights faster without it)|
-|Tar Bloater|45|ground bomber|Waddles at you, swells for 1.5 s and bursts; also bursts on death. The blast hurts demons too and sets off other Bloaters. A lit fuse can't be put out|Kill it in a crowd, knock it away|
 |Gargoyle|95|flying|An invulnerable statue on the ground until you come within ~330 px; circles, swoops, lands and turns back to stone for 2.6 s|Hit it while it flies|
 |Watcher|60|flying ranged|Hovers ~420 px away at your height, traces an aim line (1.2 s), locks it (0.35 s), fires a beam stopped by terrain|Step out of the locked line, use terrain, stun it|
 |Gatekeeper|200|summoner|Stays put and opens portals that let imps through (up to 4 of its own; they give no XP)|Kill it first|

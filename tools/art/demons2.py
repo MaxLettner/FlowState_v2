@@ -1,9 +1,8 @@
-"""Demons wave 2: Chainwarden, Tar Bloater, Gargoyle, Watcher, Gatekeeper, Hex Priest and the Pit Lord boss,
+"""Demons wave 2: Chainwarden, Gargoyle, Watcher, Gatekeeper, Hex Priest and the Pit Lord boss,
 plus their effects. Same Rig as demons.py (wave 1). Faces right, shown at x2. Must match DemonType.java:
 
   name             frame     anchor        strips
   DemonWarden      64x60     (32, 59)      idle 4, walk 6, swing 5 (+ _bare versions once the shield breaks)
-  DemonBloater     52x48     (26, 47)      idle 4, walk 6, fuse 4
   DemonGargoyle    56x48     (28, 24)*     stone 1, wake 3, fly 4, swoop 2        (* centre anchor, it flies)
   DemonWatcher     48x48     (24, 24)*     idle 4, look 8 (pupil at k * 45 deg), charge 2
   DemonGatekeeper  56x72     (28, 71)      idle 4, summon 4
@@ -173,83 +172,6 @@ def warden_anims(shield=True):
     ]
     sfx = '' if shield else '_bare'
     return {'idle' + sfx: idle, 'walk' + sfx: walk, 'swing' + sfx: swing}
-
-
-# =====================================================================================================
-# Tar Bloater: a swollen sack of oily tar with molten blisters; bursts when it reaches you or dies
-# =====================================================================================================
-BLOAT_W, BLOAT_H, BLOAT_FEET = 52, 48, 46
-OIL = ramp('#a8987a', '#786a50', '#524634', '#352c20', '#1e1912')
-
-
-def draw_bloater(bob=0.0, lean=0.0, legs=(0.0, 0.0), swell=0.0, hot=0.3, mouth=0.0, phase=0.0):
-    r = Rig(BLOAT_W, BLOAT_H, rim=0.5)
-    rx, ry = 15.5 + swell * 3.5, 14 + swell * 2.8
-    body = (25.0 + lean, BLOAT_FEET - 4 - ry + bob)
-    # stubby legs
-    for i, bias in ((1, 0.3), (0, 0.0)):
-        root = (body[0] + (3 if i == 0 else -5), body[1] + ry - 3)
-        foot = (root[0] + math.sin(legs[i]) * 3, BLOAT_FEET - 1.2)
-        r.part(limb(root[0], root[1], foot[0], foot[1] - 0.6, 3.0, 2.4), OIL, bias=bias)
-        r.part(ell(foot[0] + 1, foot[1] - 0.4, 2.8, 1.3), OIL, bias=bias)
-    r.part(ell(body[0], body[1], rx, ry), OIL)
-    r.part(ell(body[0] + 3, body[1] + 4, rx * 0.55, ry * 0.5), OIL, edge=False, bias=-0.08)
-    # stitched seams straining over the bulk
-    for (a0, a1) in ((-2.4, -0.9), (0.6, 1.7)):
-        pts = [(body[0] + math.cos(a) * rx * 0.8, body[1] + math.sin(a) * ry * 0.8) for a in
-               (a0 + (a1 - a0) * t / 6 for t in range(7))]
-        for a, b in zip(pts, pts[1:]):
-            r.stroke(a[0], a[1], b[0], b[1], OIL[4])
-        for k in range(1, 6, 2):
-            p = pts[k]
-            r.stroke(p[0] - 1, p[1] - 1, p[0] + 1, p[1] + 1, BONE[2])
-    # molten blisters
-    rng = random.Random(9)
-    for k in range(7):
-        a = rng.uniform(-math.pi, math.pi)
-        d = rng.uniform(0.25, 0.8)
-        bx, by = body[0] + math.cos(a) * rx * d, body[1] + math.sin(a) * ry * d
-        rad = rng.uniform(1.4, 2.4) * (1 + swell * 0.35)
-        lvl = clamp(hot + 0.15 * math.sin(phase * 6.28 + k))
-        rmp = [EMBER[0], EMBER[1], EMBER[2], EMBER[3]] if lvl > 0.6 else [EMBER[1], EMBER[2], EMBER[3], EMBER[4]]
-        r.part(ell(bx, by, rad, rad), rmp, edge=False)
-        r.glow(bx, by, rad + 2.5 + lvl * 2, EMBER[2], 0.25 + lvl * 0.4)
-    # oily shine
-    r.part(ell(body[0] - rx * 0.45, body[1] - ry * 0.5, rx * 0.18, ry * 0.12, -0.5), [mix(OIL[0], (255, 255, 255, 255), 0.5)], edge=False)
-    # little arms
-    for side, bias in ((-1, 0.3), (1, 0.0)):
-        root = (body[0] + side * rx * 0.85, body[1] + 1)
-        hand = (root[0] + side * 3, root[1] + 3.5 - abs(math.sin(phase * 6.28)) * 1)
-        r.part(limb(root[0], root[1], hand[0], hand[1], 1.6, 1.3), OIL, bias=bias)
-    # tiny head sunk on top, stitched grin, beady eyes
-    hd = (body[0] + rx * 0.45, body[1] - ry * 0.82)
-    r.part(ell(hd[0], hd[1], 4.6, 4.0), OIL)
-    for ex in (hd[0] + 0.2, hd[0] + 2.6):
-        r.dot(ex, hd[1] - 0.8, hexc('#ffe14d'))
-    r.glow(hd[0] + 1.4, hd[1] - 0.8, 3, hexc('#ffe14d'), 0.35)
-    my = hd[1] + 1.8
-    if mouth > 0.3:
-        r.part(ell(hd[0] + 1.6, my + 0.6, 2.4, 1.0 + mouth), [EMBER[1], EMBER[3]], edge=False)
-    r.stroke(hd[0] - 0.8, my, hd[0] + 3.8, my, OUTLINE)
-    for k in range(3):
-        r.dot(hd[0] + k * 1.4, my + (1 if mouth <= 0.3 else 0), BONE[2])
-    # tar drips
-    for k, dx in enumerate((-6, 2, 8)):
-        ln = 1.5 + (math.sin(phase * 6.28 + k * 2) + 1) * 1.2
-        x0, y0 = body[0] + dx, body[1] + ry * math.sqrt(max(0, 1 - (dx / rx) ** 2)) - 0.5
-        r.part(limb(x0, y0, x0, y0 + ln, 0.8, 0.6), OIL, edge=False, bias=0.3)
-    return r.render()
-
-
-def bloater_anims():
-    idle = [draw_bloater(bob=math.sin(i / 4 * 6.28) * 0.6, swell=0.05 * math.sin(i / 4 * 6.28), phase=i / 4) for i in range(4)]
-    walk = []
-    for i in range(6):
-        p = i / 6 * 2 * math.pi
-        walk.append(draw_bloater(bob=-abs(math.sin(p)) * 1.2, lean=math.sin(p) * 1.4, legs=(math.sin(p) * 0.7, -math.sin(p) * 0.7),
-                                 phase=i / 6))
-    fuse = [draw_bloater(swell=0.25 + k * 0.25, hot=0.6 + k * 0.13, mouth=0.4 + k * 0.2, phase=k / 4) for k in range(4)]
-    return dict(idle=idle, walk=walk, fuse=fuse)
 
 
 # =====================================================================================================
@@ -884,8 +806,6 @@ def all_strips():
     for shield in (True, False):
         for anim, frames in warden_anims(shield).items():
             out[f'DemonWarden_{anim}'] = frames
-    for anim, frames in bloater_anims().items():
-        out[f'DemonBloater_{anim}'] = frames
     for anim, frames in gargoyle_anims().items():
         out[f'DemonGargoyle_{anim}'] = frames
     for anim, frames in watcher_anims().items():

@@ -153,14 +153,6 @@ public class EnemyStatsComponent extends Component {
         return dead;
     }
 
-    /** Dies without giving experience (a Bloater bursting on its own). The behaviour's onDeath still runs. */
-    public void selfDestruct() {
-        if (dead) return;
-        dead = true;
-        entity.getComponentOptional(DemonBehaviour.class).ifPresent(DemonBehaviour::onDeath);
-        entity.removeFromWorld();
-    }
-
     public void markSummoned() { summoned = true; }
 
     /** Stone skin: no damage, no status effects, no knockback. */

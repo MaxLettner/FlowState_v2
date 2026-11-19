@@ -56,11 +56,6 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.WARDEN, new WardenBehaviour());
     }
 
-    @Spawns("bloater")
-    public Entity bloater(SpawnData data) {
-        return demon(data, DemonType.BLOATER, new BloaterBehaviour());
-    }
-
     @Spawns("gargoyle")
     public Entity gargoyle(SpawnData data) {
         return demon(data, DemonType.GARGOYLE, new GargoyleBehaviour());

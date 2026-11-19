@@ -24,8 +24,6 @@ public enum DemonType {
     // wave 2
     WARDEN("DemonWarden", 150, 46, 100, 64, 60, 32, 59, false, 2.0, 0.8, 1.0, 0.85,
             "#a9b2c4", "#555e75", "#d23e34"),
-    BLOATER("DemonBloater", 45, 56, 66, 52, 48, 26, 47, false, 0.6, 1.4, 1.0, 0.8,
-            "#786a50", "#352c20", "#ff8a2a"),
     GARGOYLE("DemonGargoyle", 95, 50, 50, 56, 48, 28, 24, true, 1.6, 0.8, 1.0, 0.9,
             "#9a958c", "#55524d", "#ff8a2a"),
     WATCHER("DemonWatcher", 60, 40, 40, 48, 48, 24, 24, true, 1.4, 1.2, 1.0, 1.3,

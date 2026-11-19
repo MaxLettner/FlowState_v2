@@ -550,16 +550,6 @@ def flail_swing():
 
 
 @sound
-def bloater_fuse():
-    """Hissing, bubbling tar swelling up to burst."""
-    dur = 1.4
-    hiss = amp(highpass(noise(dur, seed=232), 3000), lambda t: 0.3 + 0.7 * t / dur)
-    bubbles = mix(*[(squelch(0.06, 500 + k * 60, 1400 + k * 80, 4, seed=233 + k), 0.5, k * dur / 14) for k in range(14)])
-    groan = env(tone(dur, sweep(70, 140, dur), 'saw', vibrato=5, vib_rate=9), 0.2, dur, hold=dur * 0.7)
-    return mix((hiss, 0.4), (bubbles, 0.8), (lowpass(groan, 600), 0.5))
-
-
-@sound
 def stone_crack():
     rng = random.Random(250)
     cracks = mix(*[(highpass(env(noise(0.03, seed=251 + k), 0.0005, 0.025), 1500), rng.uniform(0.4, 1.0), k * rng.uniform(0.02, 0.05))
