@@ -55,7 +55,7 @@ public class Game extends GameApplication {
 
     // parallax layers (tools/art/terrain.py): 480x216 art shown at x5 = 2400x1080, seamless horizontally
     private static final int BG_SCALE = 5;
-    private static final double DEATH_EXIT_DELAY = 0.8; // puddle stays on screen before the run ends
+    private static final double DEATH_EXIT_DELAY = 0.8; // puddle stays on screen before returning to the main menu
     private static final double EMBER_INTERVAL = 0.35; // faint embers rising out of the abyss
     private final List<ParallaxLayer> layers = new ArrayList<>();
     private double emberTimer = 0;
@@ -188,6 +188,11 @@ public class Game extends GameApplication {
         Combat.init();
         Impact.reset();
         cameraX = 0;
+        // a new game keeps the viewport: left where the last run ended, keepOnScreen would drag the new player there
+        getGameScene().getViewport().setX(0);
+        getGameScene().getViewport().setY(0);
+        dying = false;
+        getInput().setProcessInput(true);   // a death turned it off
         SkillManager.reset();   // initGame runs again for "Start New Game"; before the player caches it
         setupPlayer();
         playerStats = player.getComponent(PlayerStatsComponent.class);
@@ -246,8 +251,11 @@ public class Game extends GameApplication {
 
     @Override
     protected void onUpdate(double tpf) {
-        if (player.getY() > WINDOW_HEIGHT + 100) {
-            getGameController().exit();
+        if (!dying && player.getY() > WINDOW_HEIGHT + 100) {
+            // fell into the abyss: nothing left to animate
+            dying = true;
+            getGameController().gotoMainMenu();
+            return;
         }
         Impact.update(tpf);
         updateCamera();
@@ -255,12 +263,12 @@ public class Game extends GameApplication {
         cleanupPlatforms(tpf);
         scrollBg(tpf);
         if (playerStats.isDead() && !dying) {
-            // melt into a puddle first, then end the run
+            // melt into a puddle first, then back to the main menu
             dying = true;
             getInput().setProcessInput(false);
             movement().die();
             player.getComponent(SpriteComponent.class).playDeath(
-                    () -> runOnce(() -> getGameController().exit(), Duration.seconds(DEATH_EXIT_DELAY)));
+                    () -> runOnce(() -> getGameController().gotoMainMenu(), Duration.seconds(DEATH_EXIT_DELAY)));
         }
         hud.update();
     }
