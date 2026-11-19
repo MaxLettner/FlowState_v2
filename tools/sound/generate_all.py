@@ -458,6 +458,90 @@ def stun():
     return mix(*[(env(tone(0.1, sweep(2000 + k * 250, 3000 + k * 250, 0.08)), 0.005, 0.1), 0.5, k * 0.11) for k in range(3)])
 
 
+#=====Demons=====
+@sound
+def imp_leap():
+    """A shrill little chitter as the imp coils to hop."""
+    chit = mix(*[(env(tone(0.05, sweep(1500 + k * 260, 2300 + k * 200, 0.04), 'saw'), 0.002, 0.05), 0.45, k * 0.045)
+                 for k in range(3)])
+    return mix((bandpass(chit, 2200, 1.2), 1.0), (whoosh(0.16, 600, 2400, 1.6, 0.5, seed=200), 0.4, 0.1))
+
+
+@sound
+def hound_growl():
+    """Low rattling growl while the hound crouches."""
+    dur = 0.55
+    base = tremolo(tone(dur, sweep(85, 105, dur), 'saw', vibrato=4, vib_rate=7), 26, 0.7)
+    rasp = tremolo(bandpass(noise(dur, seed=201), 500, 1.5), 31, 0.8)
+    return env(lowpass(drive(mix((base, 0.8), (rasp, 0.6)), 1.6), 1300), 0.06, dur)
+
+
+@sound
+def hound_lunge():
+    snarl = env(bandpass(drive(tone(0.25, sweep(240, 120, 0.25), 'saw', vibrato=6, vib_rate=30), 2), 900, 1.2), 0.005, 0.25)
+    return mix((snarl, 0.8), (whoosh(0.3, 300, 1800, 1.4, 0.35, seed=202), 0.7))
+
+
+@sound
+def brute_roar():
+    dur = 0.8
+    voice = mix((tone(dur, sweep(70, 55, dur), 'saw', vibrato=3, vib_rate=6), 0.7),
+                (tone(dur, sweep(105, 82, dur), 'saw', vibrato=4, vib_rate=5), 0.4))
+    throat = bandpass(noise(dur, 'pink', seed=203), lambda t: 380 + 220 * math.sin(math.pi * min(1.0, t / dur)), 1.3)
+    sig = lowpass(drive(mix((voice, 0.8), (throat, 0.7)), 2.2), 1500)
+    return amp(sig, lambda t: min(1.0, t / 0.12) * math.exp(-max(0.0, t - 0.4) / 0.25))
+
+
+@sound
+def brute_slam():
+    boom = drive(mix((thump(0.9, 70, 24), 1.0), (lowpass(env(noise(0.9, 'brown', seed=204), 0.001, 0.8), 400), 1.0)), 2.8)
+    crack = highpass(env(noise(0.08, seed=205), 0.0005, 0.07), 1500)
+    rng = random.Random(206)
+    rubble = mix(*[(lowpass(env(noise(0.06, seed=207 + k), 0.001, 0.05), rng.uniform(800, 2500)), rng.uniform(0.2, 0.5),
+                    0.08 + k * rng.uniform(0.03, 0.07)) for k in range(10)])
+    return mix((boom, 1.0), (crack, 0.6), (rubble, 0.6))
+
+
+@sound
+def magma_splash():
+    hiss = env(highpass(noise(0.6, seed=208), 2500), 0.003, 0.5)
+    glop = squelch(0.25, 900, 200, 2.5, seed=209)
+    pops = lowpass(clicks(0.5, 30, 0.006, (600, 2500), seed=210), 4000)
+    return mix((glop, 1.0), (hiss, 0.45), (amp(pops, lambda t: math.exp(-t / 0.2)), 0.5, 0.03))
+
+
+@sound
+def bat_screech():
+    dur = 0.22
+    sq = env(tone(dur, sweep(3200, 4800, dur), 'square', vibrato=90, vib_rate=45), 0.004, dur)
+    return bandpass(mix((sq, 0.8), (highpass(env(noise(dur, seed=211), 0.004, dur), 4000), 0.3)), 3800, 1.0)
+
+
+@sound
+def cultist_cast():
+    """An eerie, rising hum with whispers while the hellfire gathers."""
+    dur = 0.85
+    hum = mix((tone(dur, sweep(110, 220, dur), 'saw'), 0.4), (tone(dur, sweep(165, 330, dur)), 0.5),
+              (tone(dur, sweep(116, 232, dur)), 0.3))
+    whisper = bandpass(noise(dur, 'pink', seed=212), lambda t: 1200 + 1800 * t / dur, 2.5)
+    sig = mix((lowpass(hum, 1600), 0.7), (tremolo(whisper, 13, 0.6), 0.45), (shimmer(dur, 1800, 3600, seed=213), 0.25))
+    return amp(sig, lambda t: (t / dur) ** 1.2)
+
+
+@sound
+def hellfire_launch():
+    roar = env(lowpass(noise(0.4, 'pink', seed=214), sweep(800, 3000, 0.25)), 0.01, 0.35)
+    zap = env(tone(0.25, sweep(300, 900, 0.2), 'saw'), 0.003, 0.22)
+    return mix((roar, 0.8), (bandpass(zap, 900, 1.5), 0.5), (whoosh(0.3, 500, 2500, 1.5, 0.3, seed=215), 0.6))
+
+
+@sound
+def teleport():
+    up = env(tone(0.35, sweep(200, 1600, 0.3), 'sine', vibrato=20, vib_rate=25), 0.01, 0.35)
+    puff = whoosh(0.4, 400, 3500, 1.2, 0.25, seed=216)
+    return mix((up, 0.5), (puff, 0.8), (shimmer(0.35, 2000, 5000, seed=217), 0.35, 0.05))
+
+
 #=====World=====
 @sound
 def chest_open():

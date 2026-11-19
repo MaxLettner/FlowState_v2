@@ -519,11 +519,10 @@ def frozen_overlay(look):
 
 
 def generate(out_dir):
-    for name, look in [('Player', PLAYER), ('EnemyBrute', BRUTE), ('EnemyHunter', HUNTER)]:
+    # the slime enemies (BRUTE, HUNTER) were replaced by the demons in demons.py; their looks stay for reference
+    for name, look in [('Player', PLAYER)]:
         strip(anim_idle(look)).save(f'{out_dir}/{name}_idle.png')
         strip(anim_walk(look)).save(f'{out_dir}/{name}_walk.png')
         strip(anim_air(look)).save(f'{out_dir}/{name}_air.png')
         strip(anim_land(look)).save(f'{out_dir}/{name}_land.png')
-        if look is HUNTER:
-            strip(anim_attack(look)).save(f'{out_dir}/{name}_attack.png')
     frozen_overlay(BRUTE).save(f'{out_dir}/FrozenOverlay.png')

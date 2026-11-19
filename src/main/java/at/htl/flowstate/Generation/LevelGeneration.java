@@ -76,7 +76,7 @@ public class LevelGeneration {
         currentY = nextTerrainY(segmentW);
 
         spawnGroundSegment(lastGeneratedX, currentY, segmentW);
-        enemyGeneration.trySpawn(lastGeneratedX, currentY);
+        enemyGeneration.trySpawn(lastGeneratedX, currentY, segmentW);
         lastGeneratedX += segmentW;
     }
 

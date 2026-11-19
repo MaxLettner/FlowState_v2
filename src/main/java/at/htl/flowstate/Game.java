@@ -109,7 +109,7 @@ public class Game extends GameApplication {
         settings.setFullScreenAllowed(true);
         settings.setFullScreenFromStart(true);
         // the game starts in the rune menu; the world is only built once "Start New Game" is pressed
-        settings.setMainMenuEnabled(true);
+        settings.setMainMenuEnabled(!DevShots.AUTOSTART);
         settings.setSceneFactory(new SceneFactory() {
             @NotNull
             @Override
@@ -316,6 +316,7 @@ public class Game extends GameApplication {
                     () -> runOnce(() -> getGameController().gotoMainMenu(), Duration.seconds(DEATH_EXIT_DELAY)));
         }
         hud.update();
+        DevShots.update(tpf, getPrimaryStage().getScene());
     }
 
 

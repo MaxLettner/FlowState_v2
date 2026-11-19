@@ -56,6 +56,15 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   uses it: x4 for the skill point count (on the deepened lintel, glyph top at art row 26) and tooltip names, x2 for
   the rest.
 
+- `demons.py` (2026-11-19): the enemies, replacing the slime Brute/Hunter (their looks stay in slimes.py, no longer
+  generated). Six demons posed from shaded primitives on a small `Rig` (ellipses, tapered limbs, polygons; top-left
+  light, dark inner lines where parts overlap, lava rim light, outline, emissive glows after the outline):
+  `DemonImp` (crimson, pack hopper), `DemonHound` (skull-faced, burning mane, ember ribs), `DemonBrute` (ash-violet,
+  ram horns, shackled fists, magma scars), `DemonHurler` (sulfur skin, volcanic shell, holds a magma ball),
+  `DemonBat` (coal body, ember-edged wings), `DemonCultist` (violet robe, gold trim, goat horns, fel-green eyes and
+  hellfire). Plus `MagmaBall`, `HellfireOrb`, `BruteShockwave`, `MagmaPool` (tile). Frame sizes + anchors are listed
+  at the top of demons.py and must match `DemonType.java`. `python tools/art/demons.py sheet out.png` = review sheet.
+
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
 - Projectile trails were not added (only fireball embers via burning ground / blasts).
