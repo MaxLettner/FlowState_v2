@@ -122,7 +122,7 @@ public class PlayerMovementComponent extends Component {
             } else if (loadout.isSlowFalling() && physics.getVelocityY() >= SLOW_FALL_SPEED - 1) {
                 sprite.setState(SpriteComponent.State.GLIDE, 0);
             } else {
-                sprite.setState(SpriteComponent.State.AIR, physics.getVelocityY());
+                sprite.setAirVelocity(physics.getVelocityX(), physics.getVelocityY());
             }
         } else if (loadout.isBlocking()) {
             sprite.setState(SpriteComponent.State.BLOCK, 0);
