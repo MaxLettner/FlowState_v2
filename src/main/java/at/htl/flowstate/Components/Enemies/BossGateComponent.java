@@ -19,11 +19,12 @@ import javafx.scene.shape.Rectangle;
 import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 
 /**
- * A wall of chained hellfire that bars the way on while the Pit Lord lives, so the fight can't be skipped by
- * running past. A static terrain body (it collides like the ground); far taller than the screen.
+ * A wall of chained hellfire that boxes the player into the Pit Lord's arena (BossArena) while it lives. A static
+ * terrain body (it collides like the ground); far taller than the screen.
  */
 public class BossGateComponent extends Component {
-    private static final double W = 48, H = 1600;
+    public static final double WIDTH = 48;
+    private static final double W = WIDTH, H = 1600;
     private static final int FRAMES = 4;
     private static final double TILE_W = 48, TILE_H = 128;      // BossGate.png 24x64 at x2
     private static final double FPS = 10;

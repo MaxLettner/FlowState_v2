@@ -16,13 +16,14 @@ import static com.almasb.fxgl.dsl.FXGL.runOnce;
 import static com.almasb.fxgl.dsl.FXGL.spawn;
 
 /**
- * Pit Lord, the mini-boss. A gate of hellfire bars the way on until it dies. Three phases by health:
+ * Pit Lord, the mini-boss. Fought in a walled-off arena (BossArena): it drops in behind the player, lands with
+ * a crash and roars, then fights in three phases by health:
  * <ol>
  *   <li>Cleaver slam (direct hit plus shockwaves both ways) up close, magma volleys from range.</li>
  *   <li>Below 60 %: roars and also tears open portals full of imps.</li>
  *   <li>Below 30 %: enraged; faster, double shockwaves, bigger volleys.</li>
  * </ol>
- * No knockback, stuns are cut to a third. Killing it opens the gate and grants two skill points.
+ * No knockback, stuns are cut to a third. Killing it opens the arena and grants two skill points.
  */
 public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double SPEED = 80;
@@ -33,7 +34,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double SLAM_REACH = 260;
     private static final double BALL_DAMAGE = 14;
     private static final double BALL_SPEED = 780;
-    private static final double GATE_AHEAD = 1000;
+    private static final double DROP_SPEED = 500;      // it doesn't drift down, it's hurled in
     private static final int REWARD_SP = 2;
     // slam timeline (s)
     private static final double S_RAISE = 0.35, S_HOLD = 0.9, S_DOWN = 0.98, S_IMPACT = 1.2, S_SETTLE = 1.4, S_END = 1.75;
@@ -43,15 +44,15 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     private static Entity current;
 
-    private enum State { WALK, SLAM, VOLLEY, SUMMON, ROAR, RECOVER }
+    private enum State { DROP, WALK, SLAM, VOLLEY, SUMMON, ROAR, RECOVER }
 
-    private State state = State.WALK;
+    private State state = State.DROP;
     private double timer;
     private double cooldown = 1.5;
     private double summonCooldown = 4;
     private boolean fired;
     private int phase = 1;
-    private Entity gate;
+    private boolean falling;
 
     /** The living Pit Lord, if any (the HUD shows its health bar). */
     public static Entity current() {
@@ -61,12 +62,9 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     @Override
     protected void onReady() {
         current = entity;
-        double gx = entity.getCenter().getX() + GATE_AHEAD;
-        double ground = Combat.groundYBelow(gx + 24, entity.getY());
-        gate = BossGateComponent.spawn(gx, Double.isNaN(ground) ? entity.getBottomY() : ground);
-        state = State.ROAR;
+        state = State.DROP;
         timer = 0;
-        roar();
+        physics.setVelocityY(DROP_SPEED);
     }
 
     private double hpFraction() {
@@ -86,6 +84,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
             roar();
         }
         switch (state) {
+            case DROP -> drop(t);
             case WALK -> walkState();
             case SLAM -> slam(t);
             case VOLLEY -> volley(t);
@@ -110,7 +109,34 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         }
     }
 
+    /** Falling in from above the screen, cleaver raised; crashes down and roars. */
+    private void drop(double t) {
+        stop();
+        face(dirToPlayer());
+        timer += t;
+        if (physics.getVelocityY() > 50) falling = true;
+        sprite.show("slam", falling && !grounded ? 1 : 4);
+        // landed (or spawned standing on the ground: nothing to fall from)
+        if (grounded && (falling || timer > 0.3)) {
+            Point2D feet = new Point2D(entity.getCenter().getX(), entity.getBottomY() - 4);
+            Sfx.BRUTE_SLAM.at(entity.getCenter(), 1, 0.6);
+            Impact.shake(26);
+            Particles.burst(feet, Particles.DUST, 44, -90, 85, 200, 640, 0.9, 9, 900);
+            Particles.burst(feet, Particles.EMBER, 26, -90, 70, 160, 520, 0.8, 6, 600);
+            BossArena.landed(entity);
+            state = State.ROAR;
+            timer = 0;
+            roar();
+        }
+    }
+
     private void walkState() {
+        if (BossArena.inCutscene()) {          // the intro roar is over but the player can't move yet
+            stop();
+            face(dirToPlayer());
+            sprite.loop("idle", 6);
+            return;
+        }
         double dx = dxToPlayer();
         double adx = Math.abs(dx);
         walk(adx < 170 ? 0 : dx > 0 ? 1 : -1, SPEED * (phase == 3 ? RAGE : 1));
@@ -203,7 +229,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private void summon() {
         summonCooldown = phase == 3 ? 7 : 9;
         for (int side : new int[]{-1, 1}) {
-            double x = entity.getCenter().getX() + side * 260;
+            double x = BossArena.insideX(entity.getCenter().getX() + side * 260, 120);
             double ground = Combat.groundYBelow(x, entity.getY());
             if (Double.isNaN(ground)) continue;
             double gy = ground;
@@ -225,6 +251,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     @Override
     protected void interrupt() {
+        if (state == State.DROP) return;      // nothing cuts the entrance short
         state = State.RECOVER;
         timer = 0.3;
     }
@@ -236,7 +263,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     @Override
     public void onDeath() {
-        BossGateComponent.open(gate);
+        BossArena.end();
         PlayerStatsComponent stats = player.getComponent(PlayerStatsComponent.class);
         for (int i = 0; i < REWARD_SP; i++) stats.addSkillPoint();
         Sfx.LEVEL_UP.play();
@@ -251,7 +278,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     /** Gone without dying (fell into a pit, a new game): never leave the way barred. */
     @Override
     public void onRemoved() {
-        BossGateComponent.open(gate);
+        BossArena.end();
         if (current == entity) current = null;
     }
 }

@@ -1,5 +1,6 @@
 package at.htl.flowstate.Generation;
 
+import at.htl.flowstate.Components.Enemies.BossArena;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.scene.paint.Color;
@@ -30,6 +31,12 @@ public class LevelGeneration {
 
     //how far ahead the world is generated
     private static final double SPAWN_DISTANCE = 1400;
+
+    //the Pit Lord's arena: a long empty flat run-up, the arena (one screen), then more flat ground past the
+    //right gate, long enough that nothing generated while the player is boxed in reaches past it
+    private static final double ARENA_RUNWAY = 2400;
+    private static final double ARENA_MARGIN = SPAWN_DISTANCE + 200;
+    private static final double ARENA_SEGMENT = 400;
 
     //generation state
     private double lastGeneratedX = 0;
@@ -63,6 +70,11 @@ public class LevelGeneration {
         //the start (player spawns at x = 300) is always plain ground
         boolean safeStart = lastGeneratedX < SAFE_START;
 
+        if (!safeStart && enemyGeneration.bossDue(lastGeneratedX)) {
+            spawnArena();
+            return;
+        }
+
         Double structureEnd = safeStart ? null : structureGeneration.trySpawn(lastGeneratedX, currentY);
         if (structureEnd != null) {
             lastGeneratedX = structureEnd;
@@ -78,6 +90,24 @@ public class LevelGeneration {
         spawnGroundSegment(lastGeneratedX, currentY, segmentW);
         enemyGeneration.trySpawn(lastGeneratedX, currentY, segmentW);
         lastGeneratedX += segmentW;
+    }
+
+    /**
+     *the Pit Lord's arena: flat ground at the current height with no structures and no demons on it;
+     *BossArena closes it once the camera reaches lockX
+     */
+    private void spawnArena() {
+        double start = lastGeneratedX;
+        double lockX = start + ARENA_RUNWAY;
+        double end = lockX + BossArena.WIDTH + ARENA_MARGIN;
+        for (double x = start; x < end; x += ARENA_SEGMENT) {
+            spawnGroundSegment(x, currentY, Math.min(ARENA_SEGMENT, end - x));
+        }
+        lastGeneratedX = end;
+        terrainDrift = 0;
+        slopeSegmentsLeft = 0;
+        BossArena.plan(lockX, currentY);
+        enemyGeneration.bossPlaced(end);
     }
 
     /**
