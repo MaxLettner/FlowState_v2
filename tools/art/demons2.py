@@ -8,7 +8,7 @@ plus their effects. Same Rig as demons.py (wave 1). Faces right, shown at x2. Mu
   DemonWatcher     48x48     (24, 24)*     idle 4, look 8 (pupil at k * 45 deg), charge 2
   DemonGatekeeper  56x72     (28, 71)      idle 4, summon 4
   DemonPriest      48x56     (24, 55)      idle 4, walk 6, cast 4
-  DemonLord        240x240   (120, 237)    idle 4, walk 6, slam 6, cast 4, roar 2   (twice the pixel detail)
+  DemonLord        352x280   (176, 269)    idle 4, walk 6, slam 6, cast 4, roar 2   (twice the pixel detail)
 
 Effects: Portal (6f 40x56, bottom-anchored), HexBolt (4f 14x14, flies right), BossGate (4f 24x64 tile, repeats
 upward).
@@ -598,23 +598,26 @@ def priest_anims():
 LORD_SKIN = ramp('#ea8a6a', '#c04a3e', '#8c2a2e', '#5c1622', '#360b16', '#1c050b')
 LORD_FUR = ramp('#6a4a44', '#4a302e', '#33201f', '#221414', '#140b0b')
 LORD_K = 2
-LORD_W, LORD_H, LORD_FEET = 240, 240, 118         # LORD_FEET in design units (x LORD_K = pixel row 236)
+# The frame is wide and tall enough for the cleaver at full swing (raised overhead, swept forward, roar): the
+# body is drawn LORD_OX design units in from the left so it stays centred (the sprite flips around its centre).
+LORD_W, LORD_H, LORD_FEET, LORD_OX = 352, 280, 134, 28    # LORD_FEET in design units (x LORD_K = pixel row 268)
 
 
 def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.9), far=(1.4, 1.6), sword=1.05,
               mouth=0.0, head_up=0.0, fire=0.0, heat=0.4, phase=0.0, grip2=False):
-    """Design units: a 120 x 100 frame drawn x2. near/far: (upper, fore) arm angles; sword: blade angle from the
+    """Design units (x2 to pixels), offset LORD_OX to the right inside the frame. near/far: (upper, fore) arm angles; sword: blade angle from the
     near hand; fire: radius of a fireball in the far hand (0 = none); grip2: both hands on the hilt (the slam)."""
     K = LORD_K
     r = Rig(LORD_W, LORD_H, rim=0.5)
-    E = lambda cx, cy, rx, ry, a=0.0: ell(cx * K, cy * K, rx * K, ry * K, a)
-    L = lambda x0, y0, x1, y1, r0, r1=None: limb(x0 * K, y0 * K, x1 * K, y1 * K, r0 * K, (r0 if r1 is None else r1) * K)
-    C = lambda pts, r0, r1: chain([(x * K, y * K) for x, y in pts], r0 * K, r1 * K)
-    PG = lambda pts, b=0.6: poly([(x * K, y * K) for x, y in pts], b)
-    D = lambda x, y, c: r.dot(x * K, y * K, c)
-    S = lambda x0, y0, x1, y1, c: r.stroke(x0 * K, y0 * K, x1 * K, y1 * K, c)
-    G = lambda x, y, rad, c, st: r.glow(x * K, y * K, rad * K, c, st)
-    FL = lambda x, y, h, w, ph, rmp=EMBER, ln=0.0: flame(r, x * K, y * K, h * K, w * K, ph, rmp=rmp, lean=ln)
+    X = lambda x: (x + LORD_OX) * K
+    E = lambda cx, cy, rx, ry, a=0.0: ell(X(cx), cy * K, rx * K, ry * K, a)
+    L = lambda x0, y0, x1, y1, r0, r1=None: limb(X(x0), y0 * K, X(x1), y1 * K, r0 * K, (r0 if r1 is None else r1) * K)
+    C = lambda pts, r0, r1: chain([(X(x), y * K) for x, y in pts], r0 * K, r1 * K)
+    PG = lambda pts, b=0.6: poly([(X(x), y * K) for x, y in pts], b)
+    D = lambda x, y, c: r.dot(X(x), y * K, c)
+    S = lambda x0, y0, x1, y1, c: r.stroke(X(x0), y0 * K, X(x1), y1 * K, c)
+    G = lambda x, y, rad, c, st: r.glow(X(x), y * K, rad * K, c, st)
+    FL = lambda x, y, h, w, ph, rmp=EMBER, ln=0.0: flame(r, X(x), y * K, h * K, w * K, ph, rmp=rmp, lean=ln)
     skin, crease = LORD_SKIN, LORD_SKIN[4]
     hot = EMBER[0] if heat > 0.7 else EMBER[1]
 

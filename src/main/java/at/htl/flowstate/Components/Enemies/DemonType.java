@@ -34,7 +34,7 @@ public enum DemonType {
             "#ff7aa8", "#64323e", "#555966"),
     PRIEST("DemonPriest", 85, 40, 84, 48, 56, 24, 55, false, 1.6, 1.0, 1.0, 1.15,
             "#d08cff", "#82283e", "#ece2c6"),
-    LORD("DemonLord", 1600, 150, 320, 240, 240, 120, 237, false, 20, 0.0, 0.3, 0.5,
+    LORD("DemonLord", 1600, 150, 320, 352, 280, 176, 269, false, 20, 0.0, 0.3, 0.5,
             "#ff8a2a", "#c04a3e", "#fff6c0");
 
     public final String prefix;

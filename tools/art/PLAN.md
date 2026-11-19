@@ -70,7 +70,7 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
 
 - `demons2.py` (wave 2): `DemonWarden` (with `_bare` strips once the shield breaks), `DemonBloater`, `DemonGargoyle`
   (stone / wake / fly / swoop), `DemonWatcher` (`look` = 8 pupil directions at k * 45 deg), `DemonGatekeeper`,
-  `DemonPriest` and the boss `DemonLord` (240x240, twice the pixel detail like the Brute, molten cleaver). Effects:
+  `DemonPriest` and the boss `DemonLord` (352x280 so the cleaver fits at full swing, twice the pixel detail like the Brute, molten cleaver). Effects:
   `Portal`, `HexBolt`, `BossGate` (tile). hudbars.py has a `BOSS` bar. `python tools/art/demons2.py sheet out.png`.
 
 ### Possible follow-ups
