@@ -256,8 +256,108 @@ def feather(img, px, info):
         put(px, SIZE, SIZE, int(x), int(y), shaft if k < length - 3 else vane[0])
 
 
-PLAYER = Look(ramp('#c8fbff', '#6fe3ff', '#2fb4f5', '#1f7ad1', '#16479a'), hexc('#0b1a3a'),
-              eyes_hero, mouth_smile, [headband], rim=0.45)
+# ---------- player: Tar & Ember (2026-11-19, replaces the cyan bandana slime) ----------
+EMBER = ramp('#fff6c0', '#ffd25a', '#ff8a2a', '#ff5a1a', '#c2300f')   # white-hot .. deep red
+
+
+def rel(info, nx, v):
+    """Body-relative point (nx -1 back .. 1 front, v 0 bottom .. 1 top) -> pixel coords."""
+    hw = half_width(v, info['w'])
+    return CX + info['lean'] * v + nx * hw, info['bottom'] - v * info['h']
+
+
+def inside(px, x, y):
+    return 0 <= x < SIZE and 0 <= y < SIZE and px[x, y][3] > 0
+
+
+def halo(px, cx, cy, r, col, strength):
+    """Tints body pixels around (cx, cy) toward col in 4 steps (a glow that stays inside the body)."""
+    for y in range(int(cy - r) - 1, int(cy + r) + 2):
+        for x in range(int(cx - r) - 1, int(cx + r) + 2):
+            d = math.hypot(x + 0.5 - cx, y + 0.5 - cy) / r
+            if d < 1 and inside(px, x, y):
+                t = round(strength * (1 - d) ** 1.3 * 4) / 4
+                if t > 0:
+                    px[x, y] = mix(px[x, y], col, t)
+
+
+def heat(info):
+    """0 at rest .. 1 when squashed flat (landing impact): the cracks and eyes flare up."""
+    squash = max(0.0, min(1.0, (info['w'] / info['h'] - 1.15) / 0.8))
+    pulse = (math.sin(info['phase'] * 2 * math.pi) + 1) / 2
+    return max(squash, 0.35 * pulse)
+
+
+def eyes_ember(px, ecx, ey, w, h, blink, info):
+    """Molten eyes, no pupils; a heavy tar lid sags over the top so they look tired-dangerous."""
+    gap = max(5, w * 0.17)
+    hot = heat(info)
+    for sx in (-gap / 2, gap / 2):
+        halo(px, ecx + sx, ey, 5.5, EMBER[3], 0.2 if blink else 0.5 + 0.25 * hot)
+    for sx in (-gap / 2, gap / 2):
+        x = ecx + sx
+        if blink:
+            for dx in range(-2, 2):
+                put(px, SIZE, SIZE, int(x + dx), int(ey + 1), EMBER[2])
+            continue
+        ellipse(px, SIZE, SIZE, x, ey, 2.2, 3.0, EMBER[2])
+        ellipse(px, SIZE, SIZE, x + 0.4, ey + 0.4, 1.4, 2.0, EMBER[1])
+        ellipse(px, SIZE, SIZE, x + 0.7, ey + 0.2, 0.7, 1.0, EMBER[0])
+        for dx in range(-3, 3):                       # tar lid
+            put(px, SIZE, SIZE, int(x + dx), int(ey - 3), TAR[3])
+            if -2 <= dx <= 1:
+                put(px, SIZE, SIZE, int(x + dx), int(ey - 2), TAR[3] if dx < 1 else EMBER[4])
+
+
+def no_mouth(px, ecx, ey, w, h, info):
+    pass
+
+
+CRACKS = [[(-0.62, 0.14), (-0.32, 0.3), (-0.48, 0.5), (-0.22, 0.63)],
+          [(-0.32, 0.3), (-0.1, 0.36)],
+          [(0.18, 0.06), (0.34, 0.22), (0.6, 0.28)],
+          [(-0.08, 0.84), (0.12, 0.95)]]
+
+
+def _crack_pixels(info, path):
+    pts = []
+    for a, b in zip(path, path[1:]):
+        x0, y0 = rel(info, *a)
+        x1, y1 = rel(info, *b)
+        n = int(max(abs(x1 - x0), abs(y1 - y0))) + 1
+        for k in range(n + 1):
+            t = k / n
+            p = (int(x0 + (x1 - x0) * t), int(y0 + (y1 - y0) * t))
+            if not pts or pts[-1] != p:
+                pts.append(p)
+    return pts
+
+
+def ember_cracks(img, px, info):
+    """Molten cracks in the tar that follow the squash, pulse while idle and flare white-hot on landing."""
+    hot = heat(info)
+    paths = [_crack_pixels(info, p) for p in CRACKS]
+    for pts in paths:
+        for x, y in pts:
+            if inside(px, x, y):
+                halo(px, x + 0.5, y + 0.5, 2.4 + 1.2 * hot, EMBER[4] if hot < 0.6 else EMBER[3], 0.3 + 0.35 * hot)
+    for pts in paths:
+        for k, (x, y) in enumerate(pts):
+            if not inside(px, x, y):
+                continue
+            c = EMBER[3]
+            if hot > 0.6:                              # landing impact: white-hot cracks
+                c = EMBER[0] if k % 3 == 1 else EMBER[1]
+            elif k % 4 == 1:
+                c = EMBER[1]
+            px[x, y] = c
+
+
+TAR = ramp('#5e5552', '#342d2b', '#211b1a', '#141010', '#090707')
+PLAYER = Look(TAR, hexc('#000000'), eyes_ember, no_mouth, [ember_cracks], bubbles=False, rim=0.75)
+# the previous player (cyan slime with the red bandana), kept for a possible skin
+CYAN_PLAYER = Look(ramp('#c8fbff', '#6fe3ff', '#2fb4f5', '#1f7ad1', '#16479a'), hexc('#0b1a3a'),
+                   eyes_hero, mouth_smile, [headband], rim=0.45)
 BRUTE = Look(ramp('#d8ff9a', '#8fd94a', '#4fa52a', '#2f6e1f', '#1b4016'), hexc('#0e1f0b'),
              eyes_angry, mouth_teeth, [horns], rim=0.6)
 HUNTER = Look(ramp('#ffd6a8', '#f3964a', '#c9562a', '#8e3220', '#561a17'), hexc('#2a0b0b'),
