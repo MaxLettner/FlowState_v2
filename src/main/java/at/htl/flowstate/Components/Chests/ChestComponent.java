@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Chests;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
 import at.htl.flowstate.Visuals.Particles;
@@ -37,6 +38,7 @@ public class ChestComponent extends Component {
     public void onUpdate(double tpf) {
         if (isClosed && entity.isColliding(player)) {
             isClosed = false;
+            Sfx.CHEST_OPEN.play();
             player.getComponent(PlayerStatsComponent.class).addSkillPoint();
             sprite.play(frames, OPEN, 12, false, () -> sprite.show(frames, 7));
             Point2D top = entity.getPosition().add(entity.getWidth() / 2, entity.getHeight() - 30);

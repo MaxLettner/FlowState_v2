@@ -1,6 +1,7 @@
 package at.htl.flowstate.Components.Player;
 
 import at.htl.flowstate.Combat.Combat;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.dsl.FXGL;
@@ -25,6 +26,8 @@ public class PlayerMovementComponent extends Component {
     private static final double SLAM_SPEED = 900.0;
     private static final double POGO_FORCE = 560.0;
     private static final double RUN_FRAMES = 50;          // running frames before the walk turns into a run
+    private static final double WALK_STEP = 0.32;         // seconds between footstep squelches
+    private static final double RUN_STEP = 0.22;
 
 
     private static final double PLAYER_WIDTH = 40.0;
@@ -52,6 +55,7 @@ public class PlayerMovementComponent extends Component {
     private double facingLock = 0;
     private boolean diving = false;                        // hammer slam fall
     private boolean dead = false;
+    private double stepTimer = 0;
 
     @Override
     public void onAdded() {
@@ -96,6 +100,20 @@ public class PlayerMovementComponent extends Component {
 
         keepOnScreen();
         updateSprite();
+        updateSteps(tpf);
+    }
+
+    private void updateSteps(double tpf) {
+        if (!isGrounded || lastMoveDirection == 0 || dashLeft > 0 || dead || isLevitationActive) {
+            stepTimer = 0.08;   // the first step lands shortly after starting to move
+            return;
+        }
+        stepTimer -= tpf;
+        if (stepTimer <= 0) {
+            boolean running = currentRunningFrames >= RUN_FRAMES;
+            stepTimer = running ? RUN_STEP : WALK_STEP;
+            Sfx.STEP.play(running ? 1.2 : 1, 1);
+        }
     }
 
     private void updateSprite() {
@@ -104,8 +122,12 @@ public class PlayerMovementComponent extends Component {
 
         sprite.setFacing(currentWatchDirection);
         if (!wasGrounded && isGrounded) {
-            if (diving) sprite.playSlam();
-            else sprite.playLand();
+            if (diving) {
+                sprite.playSlam();   // the hammer plays the slam's boom
+            } else {
+                sprite.playLand();
+                Sfx.LAND.play();
+            }
             diving = false;
             Particles.landingDust(new Point2D(entity.getCenter().getX(), entity.getY() + PLAYER_HEIGHT));
         }
@@ -227,6 +249,7 @@ public class PlayerMovementComponent extends Component {
             if ((isGrounded || coyoteTimer > 0) && !jumpConsumed) {
                 physics.setVelocityY(-JUMP_FORCE);
                 entity.getComponent(SpriteComponent.class).playTakeoff();
+                Sfx.JUMP.play();
                 jumpConsumed = true;
                 isGrounded = false;
                 coyoteTimer = 0;
@@ -256,6 +279,7 @@ public class PlayerMovementComponent extends Component {
         dashLeft = DASH_TIME;
         dashSpeed = DASH_SPEED;
         dodging = true;
+        Sfx.DASH.play();
     }
 
     /** Turns the player towards an attack and keeps them facing it for {@code seconds}. */
@@ -276,6 +300,7 @@ public class PlayerMovementComponent extends Component {
     /** Bounce up after a downward strike connects (pogo). */
     public void pogo() {
         physics.setVelocityY(-POGO_FORCE);
+        Sfx.JUMP.play(1, 1.25);
         diving = false;
         entity.getComponent(SpriteComponent.class).playTakeoff();
         isGrounded = false;
@@ -285,6 +310,7 @@ public class PlayerMovementComponent extends Component {
     /** Hammer ground slam: fall fast. */
     public void startSlam() {
         physics.setVelocityY(SLAM_SPEED);
+        Sfx.SLAM_DIVE.play();
         diving = true;
         isGrounded = false;
     }

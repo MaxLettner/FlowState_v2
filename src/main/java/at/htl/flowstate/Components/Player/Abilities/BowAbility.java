@@ -8,6 +8,7 @@ import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
@@ -67,6 +68,11 @@ public class BowAbility extends DrawnBowAbility {
     }
 
     @Override
+    protected double twangPitch() {
+        return bow == Bow.SHORT ? 1.25 : bow == Bow.BONE ? 0.9 : 1;
+    }
+
+    @Override
     protected void release(double drawTime) {
         double f = Math.min(drawTime / bow.fullDraw, 1);
         double damage = bow.damage * Math.max(MIN_POWER, f);
@@ -78,11 +84,13 @@ public class BowAbility extends DrawnBowAbility {
                 (e, i) -> Hit.of(damage, DamageKind.RANGED).family(SkillType.BOW))
                 .gravity(ARROW_GRAVITY * EAGLE_EYE_GRAVITY);
         if (bow.shatter) arrow.onStop(this::shatter);
+        else arrow.terrainSound(Sfx.ARROW_THUNK, 1);
         spawnProjectile(projectileSprite(bow.arrow, 28, 3), 28, 3, arrow);
     }
 
     /** Bone Bow: the arrow splinters into 3 short-range bone shards. */
     private void shatter(Point2D position, Point2D velocity, Entity lastEnemy, boolean terrain) {
+        Sfx.BONE_SHATTER.at(position);
         Point2D base = velocity.magnitude() < 1e-3 ? new Point2D(facing(), 0) : velocity.normalize();
         if (terrain) base = base.multiply(-1);
         for (double angle : SHARD_ANGLES) {

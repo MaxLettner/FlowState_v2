@@ -2,6 +2,7 @@ package at.htl.flowstate.Components.Enemies;
 
 import at.htl.flowstate.Components.Player.Helpers.DeleteAfterTimeComponent;
 import at.htl.flowstate.Assets;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.dsl.components.OffscreenCleanComponent;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
@@ -72,6 +73,7 @@ public class RangedEnemyBehaviourComponent extends EnemyBehaviourComponent {
         spear.setTranslateX(7 - spear.getImage().getWidth() / 2);
         spear.setTranslateY(2 - spear.getImage().getHeight() / 2);
         entity.getComponent(SpriteComponent.class).playAttack();
+        Sfx.ENEMY_THROW.at(entity.getCenter());
 
         entityBuilder()
                 .from(new SpawnData(spawnX, spawnY))

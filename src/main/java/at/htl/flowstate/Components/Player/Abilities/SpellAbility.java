@@ -6,6 +6,7 @@ import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
@@ -66,7 +67,17 @@ public class SpellAbility extends Ability {
     @Override
     public void primaryPress() {
         if (!ready()) return;
-        if (!stats().takeMana(spell.mana)) return;
+        if (!stats().takeMana(spell.mana)) {
+            Sfx.NO_MANA.play();
+            return;
+        }
+        switch (spell) {
+            case ARCANE_BOLT -> Sfx.CAST_ARCANE.play();
+            case MAGIC_MISSILE -> Sfx.CAST_ARCANE.play(1, 1.3);
+            case SPARK -> Sfx.CAST_SPARK.play();
+            case ICICLE -> Sfx.CAST_ICICLE.play();
+            case POISON_DARTS -> Sfx.CAST_POISON.play();
+        }
         loadout.markCast();
         sprite().playCast();
         cooldown(spell.interval);

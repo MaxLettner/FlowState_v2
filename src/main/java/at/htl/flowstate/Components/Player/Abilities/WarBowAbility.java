@@ -4,6 +4,7 @@ import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
 
@@ -24,6 +25,11 @@ public class WarBowAbility extends DrawnBowAbility {
     @Override
     protected double fullDraw() {
         return FULL_DRAW;
+    }
+
+    @Override
+    protected double twangPitch() {
+        return 0.75;
     }
 
     @Override
@@ -48,7 +54,8 @@ public class WarBowAbility extends DrawnBowAbility {
                 aim().multiply(speed * BowAbility.EAGLE_EYE_SPEED),
                 pierce(pierce),
                 (e, i) -> Hit.of(finalDamage, DamageKind.RANGED).family(SkillType.BOW))
-                .gravity(gravity * BowAbility.EAGLE_EYE_GRAVITY);
+                .gravity(gravity * BowAbility.EAGLE_EYE_GRAVITY)
+                .terrainSound(Sfx.ARROW_THUNK, 0.85);
         spawnProjectile(projectileSprite("WarArrow.png", 36, 4), 36, 4, arrow);
     }
 }

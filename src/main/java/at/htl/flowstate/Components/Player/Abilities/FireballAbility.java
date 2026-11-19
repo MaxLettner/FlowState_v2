@@ -8,6 +8,7 @@ import at.htl.flowstate.Components.Player.Attacks.BlastComponent;
 import at.htl.flowstate.Components.Player.Attacks.BurningGroundComponent;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
@@ -32,6 +33,7 @@ public class FireballAbility extends Ability {
         if (!ready()) return;
         charging = true;
         chargeTime = 0;
+        Sfx.CHARGE_MAGIC.start();
     }
 
     @Override
@@ -43,10 +45,15 @@ public class FireballAbility extends Ability {
     public void primaryRelease() {
         if (!charging) return;
         charging = false;
+        Sfx.CHARGE_MAGIC.stop();
 
         double f = Math.min(chargeTime / FULL_CHARGE, 1);
         double mana = 25 + 35 * f;
-        if (!stats().takeMana(mana)) return;
+        if (!stats().takeMana(mana)) {
+            Sfx.NO_MANA.play();
+            return;
+        }
+        Sfx.CAST_FIREBALL.play(0.7 + 0.3 * f, 1.1 - 0.2 * f);
         loadout.markCast();
         sprite().playCast();
         cooldown(RELEASE_COOLDOWN);
@@ -57,6 +64,7 @@ public class FireballAbility extends Ability {
 
         PlayerProjectileComponent ball = new PlayerProjectileComponent(aim().multiply(SPEED), 0, (e, i) -> null)
                 .onStop((pos, vel, lastEnemy, terrain) -> {
+                    Sfx.EXPLOSION.at(pos, 0.75 + 0.25 * f, 1.1 - 0.25 * f);
                     BlastComponent.spawn(pos, radius, 0.2, 0.4, BlastComponent.Style.FIRE,
                             e -> Combat.hit(e, Hit.of(damage, DamageKind.SPELL).family(SkillType.FIRE_BALL)));
                     BurningGroundComponent.spawn(pos.getX(), pos.getY(), radius, groundDuration);
@@ -67,6 +75,7 @@ public class FireballAbility extends Ability {
 
     @Override
     public void onDeselect() {
+        if (charging) Sfx.CHARGE_MAGIC.stop();
         charging = false;
     }
 

@@ -5,6 +5,7 @@ import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Enemies.EnemyProjectileComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.dsl.FXGL;
@@ -49,6 +50,8 @@ public class MeleeSwingComponent extends Component {
         double pivotDx = 0, pivotDy = 0;
         Listener listener;
         boolean held;
+        Sfx sound;
+        double soundRate = 1;
 
         /** @param from start angle, @param to end angle; the blade sweeps from one to the other */
         public Params(Hit hit, double duration, double from, double to) {
@@ -69,6 +72,8 @@ public class MeleeSwingComponent extends Component {
         public Params color(Color c) { this.color = c; return this; }
         public Params pivotOffset(double dx, double dy) { this.pivotDx = dx; this.pivotDy = dy; return this; }
         public Params listener(Listener l) { this.listener = l; return this; }
+        /** The whoosh, played when the strike starts (not at the windup). */
+        public Params sound(Sfx s, double rate) { this.sound = s; this.soundRate = rate; return this; }
     }
 
     private static final double PULL_BACK = 28;      // extra degrees of windup
@@ -85,6 +90,7 @@ public class MeleeSwingComponent extends Component {
     private final Set<Entity> alreadyHit = new HashSet<>();
     private boolean connected = false;
     private boolean strikeDone = false;
+    private boolean whooshed = false;
     private double elapsed = 0;
     private double angle;
     private double strikeStart;
@@ -160,6 +166,11 @@ public class MeleeSwingComponent extends Component {
             angle = p.to + sign * OVERSHOOT * (1 - k * (2 - k));
         }
 
+        if (!whooshed && t >= p.windup) {
+            whooshed = true;
+            if (p.sound != null) p.sound.play(1, p.soundRate);
+        }
+
         // hitbox only while the blade moves forward through the strike
         if (!strikeDone && t >= p.windup) {
             sweepHits(previous, angle);
@@ -205,6 +216,7 @@ public class MeleeSwingComponent extends Component {
     private void deflect(Entity proj) {
         Point2D at = proj.getCenter();
         proj.removeFromWorld();
+        Sfx.DEFLECT.play();
         Particles.glint(at, Particles.SPARK, 10);
         Impact.hitStop(DEFLECT_HITSTOP);
         Impact.shake(DEFLECT_SHAKE);

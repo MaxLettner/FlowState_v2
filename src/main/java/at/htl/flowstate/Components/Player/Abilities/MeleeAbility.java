@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Player.Abilities;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.MeleeSwingComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.entity.Entity;
@@ -93,6 +94,7 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
         if (!cueShown && connected && (r || loadout.getCooldown(branch) <= BUFFER)) {
             cueShown = true;
             Particles.glint(hand(), new Color[]{flowColor(Math.min(FLOW_MAX, flow + 1))}, 5);
+            Sfx.FLOW_READY.play(1, Math.pow(2, flow * 2 / 12.0));
         }
 
         if (queued != null && r) {
@@ -150,6 +152,9 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
         if (!slash.down() && lungeMult > 0) movement().lunge(facing(), LUNGE_SPEED * lungeMult, LUNGE_TIME);
         swingLeft = slash.duration() * 0.5;
         sprite().playAttack();
+        // big blades whoosh low and slow; a bigger swing (charge, finisher) is deeper still
+        boolean heavy = spec.width() >= 20 || size > 1.1;
+        slash.params().sound(heavy ? Sfx.SWING_HEAVY : Sfx.SWING_LIGHT, (spec.width() >= 20 ? 1 : 1.1) / size);
         return spec.swing(slash.params(), size);
     }
 
@@ -172,6 +177,9 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
 
     private void flowCue() {
         Color c = flowColor(flow);
+        // each flow level a whole tone higher
+        if (flow == FLOW_MAX) Sfx.FLOW_MAX.play();
+        else Sfx.FLOW_UP.play(1, Math.pow(2, (flow - 1) * 2 / 12.0));
         Particles.glint(hand(), new Color[]{Color.WHITE, c}, 6 + flow * 2);
         Particles.text(new Point2D(player.getCenter().getX(), player.getY() - 10),
                 flow == FLOW_MAX ? "FLOW!" : "x" + (flow + 1), c, 16 + flow * 2);

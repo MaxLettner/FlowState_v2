@@ -6,6 +6,7 @@ import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillManager;
 import at.htl.flowstate.Skills.SkillType;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
@@ -95,6 +96,7 @@ public class EnemyStatsComponent extends Component {
         if (freezeLeft > 0 && kind != DamageKind.DOT) { // shatter
             amount *= 2;
             freezeLeft = 0;
+            Sfx.SHATTER.at(entity.getCenter());
         }
         HealthDoubleComponent hp = entity.getComponent(HealthDoubleComponent.class);
         hp.damage(amount);
@@ -108,6 +110,7 @@ public class EnemyStatsComponent extends Component {
         player.getComponent(PlayerStatsComponent.class).addExperience();
         player.getComponent(LoadoutComponent.class).onKill();
         boolean hunter = entity.hasComponent(RangedEnemyBehaviourComponent.class);
+        Sfx.ENEMY_DEATH.at(entity.getCenter(), 1, hunter ? 1.15 : 0.95);
         Particles.splat(entity.getCenter().add(0, 20), hunter ? HUNTER_SPLAT : BRUTE_SPLAT);
         entity.removeFromWorld();
     }
@@ -140,7 +143,10 @@ public class EnemyStatsComponent extends Component {
         return SkillManager.get().owns(SkillType.ELEMENTAL) ? ELEMENTAL_MASTERY : 1.0;
     }
 
-    public void stun(double duration) { stunLeft = Math.max(stunLeft, duration); }
+    public void stun(double duration) {
+        if (duration > 0 && !isStunned()) Sfx.STUN.at(entity.getCenter());
+        stunLeft = Math.max(stunLeft, duration);
+    }
     public void freeze(double duration) { freezeLeft = Math.max(freezeLeft, duration * mastery()); }
     public void slow(double duration) { slowLeft = Math.max(slowLeft, duration * mastery()); }
     public void burn(double duration) { burnLeft = Math.max(burnLeft, duration * mastery()); }

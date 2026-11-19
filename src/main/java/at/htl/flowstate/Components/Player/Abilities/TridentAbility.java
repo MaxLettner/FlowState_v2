@@ -8,6 +8,7 @@ import at.htl.flowstate.Components.Player.Attacks.BlastComponent;
 import at.htl.flowstate.Components.Player.Attacks.ThrownTridentComponent;
 import at.htl.flowstate.Components.Player.Attacks.ThrustComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
@@ -89,6 +90,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
         stab.setScaleOrigin(new Point2D(STAB_WIDTH / 2, STAB_HEIGHT / 2));
         stab.setScaleX(facing());
         sprite().playAttack();
+        Sfx.STAB.play(1, variant == Variant.HEAVY ? 0.8 : 1);
         cooldown(variant.stabInterval);
     }
 
@@ -96,12 +98,13 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
     @Override
     public void secondaryPress() {
         if (thrown != null) {
-            if (variant == Variant.RECALL) thrown.recall();
+            if (variant == Variant.RECALL && thrown.recall()) Sfx.RECALL.play();
             return;
         }
         if (variant == Variant.HEAVY) {
             windingUp = true;
             windupTime = 0;
+            Sfx.CHARGE_WEAPON.start(false, 1.5 / HEAVY_FULL_WINDUP);
         } else {
             throwTrident(variant.throwDamage, variant.throwSpeed);
         }
@@ -111,6 +114,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
     public void secondaryRelease() {
         if (!windingUp) return;
         windingUp = false;
+        Sfx.CHARGE_WEAPON.stop();
         if (windupTime < HEAVY_MIN_WINDUP) return; // released too early: cancelled
         double f = Math.min((windupTime - HEAVY_MIN_WINDUP) / (HEAVY_FULL_WINDUP - HEAVY_MIN_WINDUP), 1);
         throwTrident(45 + 45 * f, 1000 + 600 * f);
@@ -133,6 +137,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
                 .zIndex(-1)
                 .buildAndAttach();
         sprite().playShoot();
+        Sfx.THROW.play(1, variant == Variant.HEAVY ? 0.75 : 1);
         cooldown(THROW_COOLDOWN);
     }
 
@@ -145,6 +150,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
 
     @Override
     public void onPickedUp() {
+        Sfx.PICKUP.play();
         thrown = null;
         reunion = true;
     }
@@ -156,6 +162,7 @@ public class TridentAbility extends Ability implements ThrownTridentComponent.Ow
 
     @Override
     public void onDeselect() {
+        if (windingUp) Sfx.CHARGE_WEAPON.stop();
         windingUp = false;
     }
 

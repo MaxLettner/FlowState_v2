@@ -1,6 +1,7 @@
 package at.htl.flowstate.Components.Player;
 
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Combat.Element;
 import at.htl.flowstate.Components.Player.Abilities.Ability;
 import at.htl.flowstate.Components.Player.Abilities.AbilityFactory;
@@ -78,6 +79,7 @@ public class LoadoutComponent extends Component {
         if (shieldBreakCooldown > 0) shieldBreakCooldown -= tpf;
         if (activeEnchant != null && !stats.takeMana(enchantDrain(activeEnchant) * EFFICIENT_ENCHANTING * tpf)) {
             activeEnchant = null;
+            Sfx.TOGGLE_OFF.play();
         }
 
         if (levitationLeft > 0) {
@@ -103,6 +105,7 @@ public class LoadoutComponent extends Component {
         SkillType type = skills.getSlot(slot);
         if (type == null) return;
         if (type.getSlotKind() == SlotKind.ATTACK) {
+            if (slot != activeSlot) Sfx.UI_SLOT.play(0.7, 1.1);
             activeSlot = slot;
             syncActiveAttack();
         } else {
@@ -149,23 +152,52 @@ public class LoadoutComponent extends Component {
     }
 
     private void toggleShield() {
-        if (shieldActive) shieldActive = false;
-        else if (shieldBreakCooldown <= 0) shieldActive = true;
+        if (shieldActive) {
+            shieldActive = false;
+            Sfx.SHIELD_OFF.play();
+        } else if (shieldBreakCooldown <= 0) {
+            shieldActive = true;
+            Sfx.SHIELD_ON.play();
+        } else {
+            Sfx.UI_DENY.play();
+        }
     }
 
     public void breakShield() {
         shieldActive = false;
         shieldBreakCooldown = SHIELD_BREAK_COOLDOWN;
+        Sfx.SHIELD_BREAK.play();
     }
 
     private void startLevitation() {
-        if (levitationLeft > 0 || slowFallLeft > 0 || levitationCooldown > 0) return;
-        if (!entity.getComponent(PlayerStatsComponent.class).takeMana(LEVITATION_COST)) return;
+        if (levitationLeft > 0 || slowFallLeft > 0) return;
+        if (levitationCooldown > 0) {
+            Sfx.UI_DENY.play();
+            return;
+        }
+        if (!entity.getComponent(PlayerStatsComponent.class).takeMana(LEVITATION_COST)) {
+            Sfx.NO_MANA.play();
+            return;
+        }
         levitationLeft = LEVITATION_TIME;
+        Sfx.LEVITATE.play();
         markCast();
     }
 
     private void toggleEnchant(SkillType type) {
+        SkillType before = activeEnchant;
+        Element elementBefore = imbueElement;
+        switchEnchant(type);
+        if (activeEnchant == null) {
+            if (before != null) Sfx.TOGGLE_OFF.play();
+        } else if (activeEnchant != before || imbueElement != elementBefore) {
+            // each Imbue element a step higher
+            int step = activeEnchant == SkillType.IMBUE && imbueElement != null ? imbueElement.ordinal() : 0;
+            Sfx.ENCHANT_ON.play(1, Math.pow(2, step * 3 / 12.0));
+        }
+    }
+
+    private void switchEnchant(SkillType type) {
         if (type != SkillType.IMBUE) {
             activeEnchant = activeEnchant == type ? null : type;
             return;

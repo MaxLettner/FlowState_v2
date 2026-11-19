@@ -4,6 +4,7 @@ import at.htl.flowstate.Combat.Combat;
 
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
@@ -148,6 +149,7 @@ public abstract class EnemyBehaviourComponent extends Component {
             if (obstacleHeight <= STEP_HEIGHT || obstacleHeight > MAX_JUMP_HEIGHT) continue;
 
             physics.setVelocityY(-specificJumpForce);
+            Sfx.ENEMY_JUMP.at(entity.getCenter());
             jumpConsumed = true;
             return;
         }

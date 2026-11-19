@@ -2,6 +2,7 @@ package at.htl.flowstate.Components.Player.Attacks;
 
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Combat.Combat;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
 import at.htl.flowstate.Visuals.Particles;
@@ -72,8 +73,12 @@ public class BlastComponent extends Component {
 
         switch (style) {
             case FIRE -> Particles.burst(center, Particles.EMBER, 16, -90, 180, 150, 450, 0.6, 6, 500);
-            case ICE -> Particles.burst(center, Particles.ICE, 14, -90, 180, 150, 400, 0.5, 5, 400);
+            case ICE -> {
+                Sfx.FREEZE.at(center);
+                Particles.burst(center, Particles.ICE, 14, -90, 180, 150, 400, 0.5, 5, 400);
+            }
             case DUST -> {
+                Sfx.SLAM_IMPACT.at(center);
                 Particles.burst(center, Particles.DUST, 8, -160, 20, 150, 350, 0.5, 6, 700);
                 Particles.burst(center, Particles.DUST, 8, -20, 20, 150, 350, 0.5, 6, 700);
             }

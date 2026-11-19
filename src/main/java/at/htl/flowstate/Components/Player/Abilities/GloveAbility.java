@@ -8,6 +8,7 @@ import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.Attacks.PunchComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
@@ -90,6 +91,7 @@ public class GloveAbility extends MeleeAbility {
         punch.setScaleOrigin(new Point2D(FIST_SIZE / 2, FIST_SIZE / 2));
         punch.setScaleX(side);
         leftHand = !leftHand;
+        Sfx.PUNCH.play(1, glove == Glove.SPIKE || glove == Glove.METAL ? 0.85 : 1.1);
         movement().faceAttack(side, 0.2);
         sprite().playAttack();
         cooldown(glove.interval);
@@ -104,6 +106,7 @@ public class GloveAbility extends MeleeAbility {
         }
         if (glove.block && !blocking) {
             blocking = true;
+            Sfx.BLOCK_RAISE.play();
             blockVisual = HeldWeaponComponent.spawn(Assets.sprite("MetalGuard.png", 2), 20, 56, 26, 0, 0);
         }
     }
