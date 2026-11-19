@@ -15,21 +15,22 @@ import javafx.geometry.Point2D;
 /**
  * Basic Bow, Shortbow and Bone Bow: hold to draw, release to shoot an arcing arrow.
  * A partial draw shoots a weaker arrow that is slower, so it drops sooner and doesn't fly as far.
+ * Arrows fly until they hit an enemy or terrain, or leave the screen.
  */
 public class BowAbility extends DrawnBowAbility {
     public enum Bow {
-        BASIC("BasicBow.png", 16.5, 13, "Arrow.png", 14, 0.8, 1000, 900, 0, false),
-        SHORT("ShortBow.png", 13.5, 11, "Arrow.png", 8, 0.4, 900, 500, 0, false),
-        BONE("BoneBow.png", 16.5, 13, "BoneArrow.png", 15, 0.8, 1000, 900, 1, true);
+        BASIC("BasicBow.png", 16.5, 13, "Arrow.png", 14, 0.8, 1000, 0, false),
+        SHORT("ShortBow.png", 13.5, 11, "Arrow.png", 8, 0.4, 900, 0, false),
+        BONE("BoneBow.png", 16.5, 13, "BoneArrow.png", 15, 0.8, 1000, 1, true);
 
         final String texture, arrow;
         final double gripX, gripY; // grip inside a native frame (tools/art/ranged.py)
-        final double damage, fullDraw, speed, range;   // stats at full draw
+        final double damage, fullDraw, speed;   // stats at full draw
         final int pierce;
         final boolean shatter;
 
         Bow(String texture, double gripX, double gripY, String arrow, double damage, double fullDraw, double speed,
-            double range, int pierce, boolean shatter) {
+            int pierce, boolean shatter) {
             this.texture = texture;
             this.gripX = gripX;
             this.gripY = gripY;
@@ -37,7 +38,6 @@ public class BowAbility extends DrawnBowAbility {
             this.damage = damage;
             this.fullDraw = fullDraw;
             this.speed = speed;
-            this.range = range;
             this.pierce = pierce;
             this.shatter = shatter;
         }
@@ -46,10 +46,9 @@ public class BowAbility extends DrawnBowAbility {
     static final double ARROW_GRAVITY = 800;
     static final double EAGLE_EYE_SPEED = 1.25;   // Bow passive
     static final double EAGLE_EYE_GRAVITY = 0.7;
-    // a partial draw: damage scales linearly (so tapping is never better than drawing), speed and range keep a floor
+    // a partial draw: damage scales linearly (so tapping is never better than drawing), speed keeps a floor
     static final double MIN_POWER = 0.1;
     private static final double MIN_SPEED = 0.35;
-    private static final double MIN_RANGE = 0.3;
     private static final double SHARD_DAMAGE = 5;
     private static final double SHARD_SPEED = 600;
     private static final double SHARD_RANGE = 120;
@@ -72,14 +71,12 @@ public class BowAbility extends DrawnBowAbility {
         double f = Math.min(drawTime / bow.fullDraw, 1);
         double damage = bow.damage * Math.max(MIN_POWER, f);
         double speed = bow.speed * (MIN_SPEED + (1 - MIN_SPEED) * f);
-        double range = bow.range * (MIN_RANGE + (1 - MIN_RANGE) * f);
         int basePierce = f >= 1 ? bow.pierce : 0;   // only a full draw pierces
         PlayerProjectileComponent arrow = new PlayerProjectileComponent(
                 aim().multiply(speed * EAGLE_EYE_SPEED),
                 pierce(basePierce),
                 (e, i) -> Hit.of(damage, DamageKind.RANGED).family(SkillType.BOW))
-                .gravity(ARROW_GRAVITY * EAGLE_EYE_GRAVITY)
-                .maxDistance(range);
+                .gravity(ARROW_GRAVITY * EAGLE_EYE_GRAVITY);
         if (bow.shatter) arrow.onStop(this::shatter);
         spawnProjectile(projectileSprite(bow.arrow, 28, 3), 28, 3, arrow);
     }
