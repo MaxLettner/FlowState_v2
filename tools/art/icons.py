@@ -400,7 +400,7 @@ def flail_spin():
 # ----- the icon table -----
 def icons():
     m, r, g = 'MELEE', 'RANGED', 'MAGIC'
-    bow = lambda fn: fit(fn()[2])          # full-draw frame
+    bow = lambda fn: fit(fn(res=1)[2])     # full-draw frame, drawn at icon resolution
     xbow = lambda fn: fit(fn()[0])         # loaded frame
     glove = lambda fn: rotate(fn(), 0)
     trident = trident_icon
