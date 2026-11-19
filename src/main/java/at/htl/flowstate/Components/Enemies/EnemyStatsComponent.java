@@ -115,7 +115,7 @@ public class EnemyStatsComponent extends Component {
         player.getComponent(PlayerStatsComponent.class).addExperience(type.xp);
         player.getComponent(LoadoutComponent.class).onKill();
         Point2D c = entity.getCenter();
-        double size = Math.sqrt(type.width * type.height) / 60;        // 1 = player sized
+        double size = Math.min(2.2, Math.sqrt(type.width * type.height) / 60);   // 1 = player sized
         Sfx.ENEMY_DEATH.at(c, Math.min(1, 0.6 + size * 0.4), type.deathPitch);
         Particles.splat(c.add(0, type.height * 0.25), type.splat);
         // demons burn away: embers rising out of the body

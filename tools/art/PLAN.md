@@ -64,6 +64,9 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   `DemonBat` (coal body, ember-edged wings), `DemonCultist` (violet robe, gold trim, goat horns, fel-green eyes and
   hellfire). Plus `MagmaBall`, `HellfireOrb`, `BruteShockwave`, `MagmaPool` (tile). Frame sizes + anchors are listed
   at the top of demons.py and must match `DemonType.java`. `python tools/art/demons.py sheet out.png` = review sheet.
+  2026-11-19 (user request): the Pit Brute and its shockwave are twice as big and drawn at twice the pixel detail
+  (`BRUTE_K = 2`: the pose stays in design units, every primitive is drawn x2, so outlines, cracks, wrinkles,
+  horn ridges, knuckles, rivets and chain links come out at the finer pixel size; 160x168 frames, 4x on screen).
 
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).

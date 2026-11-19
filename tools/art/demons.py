@@ -9,12 +9,12 @@ All demons face right (+x) and are shown at x2. Frame sizes and anchors must mat
   name            frame    anchor       strips
   DemonImp        40x36    (20, 34)     idle 4, run 6, crouch 1, leap 2
   DemonHound      64x40    (32, 38)     idle 4, run 6, crouch 2, lunge 2, pant 4
-  DemonBrute      80x84    (40, 82)     idle 4, walk 6, slam 6, air 1
+  DemonBrute      160x168  (80, 165)    idle 4, walk 6, slam 6, air 1   (twice the pixel detail: 4x on screen)
   DemonHurler     56x52    (28, 50)     idle 4, walk 6, throw 5, air 1
   DemonBat        48x44    (24, 22)*    fly 4, dive 2           (* centre anchor, it flies)
   DemonCultist    48x60    (24, 58)     idle 4, walk 6, cast 5, air 1
 
-Effects: MagmaBall (4f 14x14), HellfireOrb (4f 16x16, flies right), BruteShockwave (4f 40x24, rolls right,
+Effects: MagmaBall (4f 14x14), HellfireOrb (4f 16x16, flies right), BruteShockwave (4f 80x48, rolls right,
 bottom-anchored), MagmaPool (4f 32x16 tile, bottom-anchored).
 
     python tools/art/demons.py sheet out.png     # review sheet of every strip at x4
@@ -505,32 +505,68 @@ def hound_anims():
 # =====================================================================================================
 # Pit Brute: hulking ash-violet demon with ram horns and shackled fists; slams the ground
 # =====================================================================================================
-BRUTE_SKIN = ramp('#c2abd0', '#8c72a3', '#624a7a', '#402d55', '#251933')
-BRUTE_W, BRUTE_H, BRUTE_FEET = 80, 84, 82
+BRUTE_SKIN = ramp('#d4c0de', '#a88dbd', '#7e649a', '#59447a', '#3a2a55', '#22172f')
+BRUTE_LEATHER = ramp('#8a6a52', '#634a38', '#463224', '#2e2018', '#1c130e')
+BRUTE_K = 2                          # drawn at twice the pixel detail of the other demons
+BRUTE_W, BRUTE_H, BRUTE_FEET = 160, 168, 82     # BRUTE_FEET in design units (x BRUTE_K = pixel row 164)
 
 
 def draw_brute(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), arms=((1.35, 1.5), (1.3, 1.45)),
                mouth=0.0, chains=0.0, heat=0.3, blink=False):
-    """arms: ((upper, fore) near, (upper, fore) far) as absolute screen angles (pi/2 = straight down);
+    """The pose is laid out in design units (the old 80x84 frame) and every primitive is drawn at x BRUTE_K,
+    so outlines, cracks, wrinkles and rivets come out at the finer pixel size.
+    arms: ((upper, fore) near, (upper, fore) far) as absolute screen angles (pi/2 = straight down);
     lean: torso tilt (+ = forward); heat 0..1: how bright the magma cracks glow."""
+    K = BRUTE_K
     r = Rig(BRUTE_W, BRUTE_H, rim=0.5)
+    E = lambda cx, cy, rx, ry, a=0.0: ell(cx * K, cy * K, rx * K, ry * K, a)
+    L = lambda x0, y0, x1, y1, r0, r1=None: limb(x0 * K, y0 * K, x1 * K, y1 * K, r0 * K, (r0 if r1 is None else r1) * K)
+    C = lambda pts, r0, r1: chain([(x * K, y * K) for x, y in pts], r0 * K, r1 * K)
+    PG = lambda pts, b=0.6: poly([(x * K, y * K) for x, y in pts], b)
+    D = lambda x, y, c: r.dot(x * K, y * K, c)
+    S = lambda x0, y0, x1, y1, c: r.stroke(x0 * K, y0 * K, x1 * K, y1 * K, c)
+    G = lambda x, y, rad, c, st: r.glow(x * K, y * K, rad * K, c, st)
+    skin = BRUTE_SKIN
+    crease = skin[4]
+
     bob += BRUTE_FEET - 70           # the pose numbers below are for feet at y = 70
     hip = (31.0, 51 + bob)
     torso = rot((37, 39 + bob), hip, lean * 0.6)
     hump = rot((43, 30 + bob), hip, lean * 0.8)
     head = rot((54, 33 + bob), hip, lean * 0.9)
-    crack = EMBER[2] if heat < 0.6 else EMBER[1]
+    hot = EMBER[1] if heat >= 0.6 else EMBER[2]
+
+    def magma(pts, bright=True, branch=None):
+        """A glowing crack along pts: dark red rim, molten core, a small branch, light spilling out."""
+        for a, b in zip(pts, pts[1:]):
+            S(a[0] + 0.5, a[1] + 0.5, b[0] + 0.5, b[1] + 0.5, EMBER[4])
+        for a, b in zip(pts, pts[1:]):
+            S(a[0], a[1], b[0], b[1], hot if bright else EMBER[3])
+        if branch:
+            S(branch[0][0], branch[0][1], branch[1][0], branch[1][1], EMBER[3])
+        if bright:
+            mid = pts[len(pts) // 2]
+            G(mid[0], mid[1], 4, EMBER[2], 0.2 + heat * 0.35)
 
     def leg(i, bias):
         a = legs[i]
         root = (hip[0] + (2 if i == 0 else -5), hip[1] + 1)
         foot = (root[0] + math.sin(a) * 7 + 1, BRUTE_FEET - 1.5 - lift[i])
         knee = ((root[0] + foot[0]) / 2 + 3.5, (root[1] + foot[1]) / 2 - 1)
-        r.part(union(limb(root[0], root[1], knee[0], knee[1], 6.5, 5.0), limb(knee[0], knee[1], foot[0], foot[1] - 1.5, 4.8, 3.8)),
-               BRUTE_SKIN, bias=bias)
-        r.part(ell(foot[0] + 2, foot[1] - 0.8, 5.0, 2.2), BRUTE_SKIN, bias=bias)
+        r.part(union(L(root[0], root[1], knee[0], knee[1], 6.5, 5.0), L(knee[0], knee[1], foot[0], foot[1] - 1.5, 4.8, 3.8)),
+               skin, bias=bias)
+        # kneecap and calf
+        r.part(E(knee[0] + 1.2, knee[1] - 0.3, 2.6, 2.2), skin, edge=False, bias=bias - 0.08)
+        S(knee[0] - 2.5, knee[1] + 2, knee[0] - 1.5, foot[1] - 4, crease if bias == 0 else skin[5])
+        # foot with three clawed toes
+        r.part(E(foot[0] + 2, foot[1] - 0.8, 5.0, 2.2), skin, bias=bias)
         for k in range(3):
-            r.dot(foot[0] + 5.5 + k * 0.2, foot[1] - 0.2 - k * 1.1, HORN[2 if bias == 0 else 3])
+            tx, ty = foot[0] + 4.6 + k * 0.4, foot[1] - 1.9 + k * 0.85
+            r.part(E(tx, ty, 1.3, 0.9), skin, bias=bias + 0.05)
+            S(tx + 1.0, ty, tx + 2.2, ty + 0.4, HORN[1 if bias == 0 else 3])
+            D(tx + 2.4, ty + 0.5, HORN[2])
+        if i == 0:
+            magma([(knee[0] - 3, knee[1] - 4), (knee[0] - 1.5, knee[1] - 1.5), (knee[0] - 2, knee[1] + 1)], bright=False)
 
     def arm(i, bias):
         a1, a2 = arms[i]
@@ -538,68 +574,144 @@ def draw_brute(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), arms=((1.35,
         el = polar(sh, 13, a1)
         wr = polar(el, 13, a2)
         fist = polar(wr, 3.2, a2)
-        r.part(union(limb(sh[0], sh[1], el[0], el[1], 6.0, 4.6), limb(el[0], el[1], wr[0], wr[1], 6.2, 5.2)),
-               BRUTE_SKIN, bias=bias)
-        # iron shackle round the wrist, broken chain hanging from it
+        r.part(union(L(sh[0], sh[1], el[0], el[1], 6.0, 4.6), L(el[0], el[1], wr[0], wr[1], 6.2, 5.2)), skin, bias=bias)
+        # deltoid cap, biceps line, elbow wrinkles
+        r.part(E(sh[0] + 0.5, sh[1] + 0.5, 5.0, 4.2, a1), skin, edge=False, bias=bias - 0.1)
+        b0, b1 = polar(sh, 5.5, a1), polar(sh, 10.5, a1)
+        S(b0[0] - 2.5, b0[1] + 1, b1[0] - 2.5, b1[1] + 0.5, crease if bias == 0 else skin[5])
+        for k in (-1, 0, 1):
+            w0 = polar(el, 1.2, a2 + math.pi / 2)
+            S(el[0] - 1 + k * 0.8, el[1] - 0.5 + k, w0[0] - 1.5 + k * 0.8, w0[1] + k, crease)
+        # iron shackle round the wrist: band, rims, rivets
         s0 = polar(el, 9.5, a2)
         s1 = polar(el, 12.0, a2)
-        r.part(limb(s0[0], s0[1], s1[0], s1[1], 6.0, 5.8), BLACK_IRON, bias=bias)
-        r.stroke(s0[0] - 2, s0[1] - 1, s0[0] + 2, s0[1] + 1, BLACK_IRON[0] if bias == 0 else BLACK_IRON[2])
-        r.part(ell(fist[0], fist[1], 6.0, 5.4), BRUTE_SKIN, bias=bias)
-        kn = polar(fist, 4.2, a2 - 0.6)
-        r.dot(kn[0], kn[1], BRUTE_SKIN[0] if bias == 0 else BRUTE_SKIN[2])
+        r.part(L(s0[0], s0[1], s1[0], s1[1], 6.0, 5.8), BLACK_IRON, bias=bias)
+        nrm = a2 + math.pi / 2
+        for t in (0.0, 1.0):
+            c = (s0[0] + (s1[0] - s0[0]) * t, s0[1] + (s1[1] - s0[1]) * t)
+            e0, e1 = polar(c, 5.6, nrm), polar(c, -5.6, nrm)
+            S(e0[0], e0[1], e1[0], e1[1], BLACK_IRON[1] if bias == 0 else BLACK_IRON[3])
+        mid = ((s0[0] + s1[0]) / 2, (s0[1] + s1[1]) / 2)
+        for k in (-3.2, 0.0, 3.2):
+            rv = polar(mid, k, nrm)
+            D(rv[0], rv[1], BLACK_IRON[0] if bias == 0 else BLACK_IRON[2])
+        # fist: knuckles, finger lines, thumb
+        r.part(E(fist[0], fist[1], 6.0, 5.4, a2), skin, bias=bias)
+        for k in range(4):
+            kn = polar(fist, 4.4, a2 - 0.9 + k * 0.5)
+            r.part(E(kn[0], kn[1], 1.5, 1.4), skin, edge=False, bias=bias - 0.15)
+            if k:
+                f0, f1 = polar(fist, 2.2, a2 - 1.15 + k * 0.5), polar(fist, 5.4, a2 - 1.15 + k * 0.5)
+                S(f0[0], f0[1], f1[0], f1[1], crease if bias == 0 else skin[5])
+        th = polar(fist, 3.5, a2 + 1.6)
+        r.part(E(th[0], th[1], 2.0, 1.4, a2), skin, bias=bias + 0.05)
         if i == 0:
+            # broken chain: alternating face-on rings and side-on links
             cx_, cy_ = s0[0] - 4.5, s0[1] + 3
-            for k in range(3):
-                lx = cx_ - k * 1.6 - math.sin(chains + k) * 1.2 * k
-                ly = cy_ + k * 3.0
-                ring = {p: n for p, n in ell(lx, ly, 1.8, 2.0).items() if p not in ell(lx, ly, 0.8, 1.0)}
-                r.part(ring, BLACK_IRON, edge=False)
-        # magma crack along the forearm
-        c0, c1 = polar(el, 2.5, a2), polar(el, 7.5, a2)
-        r.stroke(c0[0] - 1, c0[1], c1[0] - 1.5, c1[1] + 0.5, crack if bias == 0 else EMBER[3])
-        if bias == 0:
-            r.glow((c0[0] + c1[0]) / 2 - 1, (c0[1] + c1[1]) / 2, 4, EMBER[2], 0.25 + heat * 0.3)
+            for k in range(5):
+                lx = cx_ - k * 1.3 - math.sin(chains + k * 0.8) * 1.0 * k
+                ly = cy_ + k * 2.4
+                if k % 2 == 0:
+                    outer, inner = E(lx, ly, 1.9, 2.2), E(lx, ly, 0.9, 1.2)
+                    r.part({p: n for p, n in outer.items() if p not in inner}, BLACK_IRON, edge=False)
+                else:
+                    r.part(L(lx, ly - 1.4, lx, ly + 1.4, 0.75), BLACK_IRON, edge=False)
+                D(lx - 0.8, ly - 1.2, BLACK_IRON[0])
+            magma([polar(el, 2.0, a2), polar(el, 4.8, a2 + 0.25), polar(el, 7.5, a2 + 0.1)],
+                  branch=(polar(el, 4.8, a2 + 0.25), polar(el, 5.6, a2 + 0.6)))
+        else:
+            magma([polar(el, 2.5, a2), polar(el, 7, a2 + 0.2)], bright=False)
 
     def horn(dx, dy, bias):
         hb = (head[0] - 1 + dx, head[1] - 4.5 + dy)
-        pts = bezier(hb, (hb[0] - 1, hb[1] - 10), (hb[0] - 7, hb[1] - 7), 6) + \
-            bezier((hb[0] - 7, hb[1] - 7), (hb[0] - 12, hb[1] - 2), (hb[0] - 6.5, hb[1] + 3.5), 5)[1:]
-        r.part(chain(pts, 2.8, 1.0), HORN, bias=bias)
-        for k in range(1, len(pts) - 2, 2):                     # growth ridges
-            r.dot(pts[k][0] + 0.5, pts[k][1] + 0.5, HORN[3])
+        pts = bezier(hb, (hb[0] - 1, hb[1] - 10), (hb[0] - 7, hb[1] - 7), 10) + \
+            bezier((hb[0] - 7, hb[1] - 7), (hb[0] - 12, hb[1] - 2), (hb[0] - 6.5, hb[1] + 3.5), 8)[1:]
+        r.part(C(pts, 2.8, 1.0), HORN, bias=bias)
+        # growth ridges across the horn, getting closer toward the tip
+        for k in range(1, len(pts) - 2):
+            if k % 2:
+                continue
+            a, b = pts[k - 1], pts[k + 1]
+            ang = math.atan2(b[1] - a[1], b[0] - a[0]) + math.pi / 2
+            rad = 2.8 + (1.0 - 2.8) * k / len(pts)
+            e0, e1 = polar(pts[k], rad * 0.85, ang), polar(pts[k], -rad * 0.85, ang)
+            S(e0[0], e0[1], e1[0], e1[1], HORN[3] if bias == 0 else HORN[4])
+        D(pts[-1][0], pts[-1][1], HORN[0])
 
     arm(1, 0.35)
     leg(1, 0.32)
-    r.part(union(ell(torso[0], torso[1], 14.5, 14.0, -0.35 + lean * 0.3), ell(hump[0], hump[1], 13, 9.5, -0.2),
-                 ell(hip[0] + 1, hip[1] - 2, 10, 7)), BRUTE_SKIN)
-    r.part(ell(torso[0] + 5, torso[1] + 6, 8, 7.5), BRUTE_SKIN, edge=False, bias=-0.1)   # belly
-    # magma scars across the chest
-    for (x0, y0, x1, y1) in ((-1, -6, 4, -1), (4, -1, 2, 5), (6, -8, 9, -3)):
-        a, b = rot((torso[0] + x0, torso[1] + y0), hip, 0), rot((torso[0] + x1, torso[1] + y1), hip, 0)
-        r.stroke(a[0], a[1], b[0], b[1], crack)
-    r.glow(torso[0] + 3, torso[1] - 2, 7, EMBER[2], 0.2 + heat * 0.35)
+    # bony spikes along the hump
+    for k, (sx, sy, ln) in enumerate(((-9, -5, 3.2), (-5.5, -8.2, 4.0), (-1.5, -9.6, 4.4), (2.5, -9.4, 3.6))):
+        base = rot((hump[0] + sx, hump[1] + sy), hump, -0.2)
+        tip = (base[0] - 1.8 - ln * 0.3, base[1] - ln)
+        r.part(PG([(base[0] - 1.6, base[1] + 1.5), tip, (base[0] + 1.7, base[1] + 1.2)], 0.4), HORN, bias=0.12)
+    r.part(union(E(torso[0], torso[1], 14.5, 14.0, -0.35 + lean * 0.3), E(hump[0], hump[1], 13, 9.5, -0.2),
+                 E(hip[0] + 1, hip[1] - 2, 10, 7)), skin)
+    r.part(E(torso[0] + 5, torso[1] + 6, 8, 7.5), skin, edge=False, bias=-0.1)   # belly
+    # pecs and abs
+    S(torso[0] + 0.5, torso[1] - 1.5, torso[0] + 5, torso[1] + 0.8, crease)
+    S(torso[0] + 5, torso[1] + 0.8, torso[0] + 9.5, torso[1] - 0.8, crease)
+    for k in range(3):
+        y = torso[1] + 4 + k * 2.6
+        S(torso[0] + 3.2 + k * 0.3, y, torso[0] + 6.2 + k * 0.3, y + 0.4, crease)
+        S(torso[0] + 7.2 + k * 0.3, y + 0.2, torso[0] + 10 + k * 0.2, y - 0.3, crease)
+    S(torso[0] + 6.6, torso[1] + 2.5, torso[0] + 7.2, torso[1] + 11, crease)
+    # warty, scarred hide on the hump (fixed to the body so it moves with it)
+    rng = random.Random(77)
+    for _ in range(26):
+        ox, oy = rng.uniform(-11, 7), rng.uniform(-8, 5)
+        if (ox / 12) ** 2 + (oy / 9) ** 2 > 0.8:
+            continue
+        x, y = hump[0] + ox, hump[1] + oy
+        if (int(x * K), int(y * K)) in r.owner:
+            D(x, y, skin[4] if rng.random() < 0.6 else skin[1])
+    # magma scars across the chest and shoulder
+    magma([(torso[0] - 1, torso[1] - 6), (torso[0] + 1.5, torso[1] - 3.5), (torso[0] + 4, torso[1] - 1), (torso[0] + 2.5, torso[1] + 2.5),
+           (torso[0] + 3, torso[1] + 5)], branch=((torso[0] + 1.5, torso[1] - 3.5), (torso[0] - 1.5, torso[1] - 1.5)))
+    magma([(hump[0] - 6, hump[1] - 3), (hump[0] - 3, hump[1] - 1), (hump[0] - 3.5, hump[1] + 2.5)])
+    G(torso[0] + 3, torso[1] - 2, 7, EMBER[2], 0.15 + heat * 0.3)
     leg(0, 0.0)
-    # head: heavy brow, glowing eyes, underbite with tusks
+    # iron-studded belt and a tattered loincloth
+    belt = rot((hip[0] + 3, hip[1] - 2.5), hip, lean * 0.3)
+    strap = bezier((belt[0] - 6.5, belt[1] - 2.2), (belt[0] + 0.5, belt[1] + 1.6), (belt[0] + 8.5, belt[1] - 0.6), 8)
+    r.part(C(strap, 1.3, 1.3), BRUTE_LEATHER)
+    for k in range(1, len(strap) - 1, 2):
+        D(strap[k][0], strap[k][1] - 0.2, BLACK_IRON[0])
+    cloth = [(belt[0] + 1, belt[1] + 1.2), (belt[0] + 9, belt[1] + 1.6), (belt[0] + 8.5 + lean * 3, belt[1] + 9),
+             (belt[0] + 6.5, belt[1] + 8), (belt[0] + 5 + lean * 3, belt[1] + 11), (belt[0] + 3, belt[1] + 8.5), (belt[0] + 1.5, belt[1] + 10)]
+    r.part(PG(cloth, 0.3), BRUTE_LEATHER)
+    S(belt[0] + 4, belt[1] + 2.5, belt[0] + 4.5, belt[1] + 8, BRUTE_LEATHER[3])
+    # head: heavy wrinkled brow, glowing slit eyes, nostrils, underbite with a row of teeth and two tusks
     jaw = (head[0] + 1, head[1] + 4 + mouth * 2.5)
     if mouth > 0.2:
-        r.part(ell(head[0] + 4, head[1] + 2.5 + mouth, 3.5, 1.5 + mouth * 1.5), [hexc('#3a0a10'), hexc('#24060a')], edge=False)
-        r.glow(head[0] + 4.5, head[1] + 3 + mouth, 4, EMBER[2], 0.3 + mouth * 0.3)
+        r.part(E(head[0] + 4, head[1] + 2.5 + mouth, 3.5, 1.5 + mouth * 1.5), [hexc('#3a0a10'), hexc('#24060a')], edge=False)
+        G(head[0] + 4.5, head[1] + 3 + mouth, 4, EMBER[2], 0.3 + mouth * 0.3)
+        for tx in (2.5, 4.0, 5.5):                                          # upper teeth
+            D(head[0] + tx, head[1] + 2.2, SKULL[1])
     horn(-2.5, -1, 0.35)
-    r.part(ell(head[0], head[1], 7.0, 6.2), BRUTE_SKIN)
-    r.part(limb(jaw[0] - 2, jaw[1], jaw[0] + 6.5, jaw[1] + 0.5, 3.0, 2.4), BRUTE_SKIN, bias=0.1)
-    for tx in (3.0, 6.0):
-        r.dot(jaw[0] + tx, jaw[1] - 2.5, SKULL[1])
-        r.dot(jaw[0] + tx, jaw[1] - 3.5, SKULL[0])
-    r.part(limb(head[0] - 1, head[1] - 2.8, head[0] + 6, head[1] - 2.0, 1.8, 1.4), BRUTE_SKIN, bias=-0.15)  # brow
+    r.part(E(head[0], head[1], 7.0, 6.2), skin)
+    r.part(L(jaw[0] - 2, jaw[1], jaw[0] + 6.5, jaw[1] + 0.5, 3.0, 2.4), skin, bias=0.1)
+    for tx in (1.0, 2.0, 4.5):                                              # little lower teeth
+        D(jaw[0] + tx, jaw[1] - 2.0, SKULL[2])
+    for tx in (3.0, 6.0):                                                   # tusks
+        r.part(L(jaw[0] + tx, jaw[1] - 1.5, jaw[0] + tx + 0.4, jaw[1] - 4.2, 0.8, 0.35), SKULL, edge=False)
+        D(jaw[0] + tx - 0.2, jaw[1] - 3.2, SKULL[0])
+    S(jaw[0] - 1.5, jaw[1] + 1.2, jaw[0] + 4, jaw[1] + 1.8, crease)        # chin fold
+    r.part(L(head[0] - 1, head[1] - 2.8, head[0] + 6, head[1] - 2.0, 1.8, 1.4), skin, bias=-0.15)  # brow
+    for k in range(3):                                                      # forehead wrinkles
+        S(head[0] - 2 + k * 0.4, head[1] - 4.6 - k * 0.8, head[0] + 3.5 + k * 0.2, head[1] - 4.3 - k * 0.9, crease)
     if blink:
-        r.stroke(head[0] + 1.5, head[1] - 0.5, head[0] + 5.5, head[1] - 0.5, OUTLINE)
+        S(head[0] + 1.5, head[1] - 0.5, head[0] + 5.5, head[1] - 0.5, OUTLINE)
     else:
         for ex in (head[0] + 1.5, head[0] + 4.8):
-            r.dot(ex, head[1] - 0.5, hexc('#ff5a2a'))
-            r.dot(ex + 1, head[1] - 0.5, hexc('#ffd25a'))
-        r.glow(head[0] + 3.5, head[1] - 0.5, 4.5, hexc('#ff5a2a'), 0.45)
-    r.dot(head[0] + 6.4, head[1] + 1.2, hexc('#2a1530'))
+            S(ex - 0.6, head[1] - 0.6, ex + 1.6, head[1] - 0.6, hexc('#ff5a2a'))
+            S(ex - 0.3, head[1] - 0.1, ex + 1.3, head[1] - 0.1, hexc('#b8241a'))
+            D(ex + 0.8, head[1] - 0.6, hexc('#fff3a0'))
+            S(ex - 1, head[1] - 1.3, ex + 2, head[1] - 1.5, OUTLINE)       # lid in the brow's shadow
+        G(head[0] + 3.5, head[1] - 0.5, 4.5, hexc('#ff5a2a'), 0.45)
+    D(head[0] + 6.4, head[1] + 1.0, hexc('#2a1530'))
+    D(head[0] + 5.6, head[1] + 1.3, hexc('#2a1530'))
+    S(head[0] - 3.5, head[1] + 1, head[0] - 1, head[1] + 3.5, crease)      # cheek scar
     horn(0, 0, 0.0)
     arm(0, 0.0)
     return r.render()
@@ -941,30 +1053,50 @@ def hellfire_orb_frames():
 
 
 def shockwave_frames():
-    """A crest of rock shards and dust ploughing through the ground to the right, bottom-anchored."""
-    W, H = 40, 24
+    """A crest of rock shards and dust ploughing through the ground to the right, bottom-anchored.
+    80x48: twice the size and pixel detail of the first version, to go with the bigger Brute."""
+    W, H = 80, 48
+    DUST_R = ramp('#a88a7c', '#86685c', '#664c42', '#48332c', '#2e1f1a')
     frames = []
     for i in range(4):
         rng = random.Random(300 + i)
         r = Rig(W, H, rim=0)
-        # dust cloud trailing behind
-        for k in range(7):
-            cx = 6 + k * 3.5 + rng.uniform(-1, 1)
-            ry = 2.5 + k * 0.6
-            r.part(ell(cx, H - ry - 0.5, 3.2 + k * 0.3, ry), ramp('#8a6d62', '#6a5048', '#4c3832', '#33241f'), edge=False,
-                   bias=0.15 - k * 0.03)
-        # shards jutting out of the ground, tallest at the front
+        # layered dust billowing behind the crest, bigger and darker toward the back
+        for k in range(9):
+            t = k / 8
+            cx = 6 + t * 42 + rng.uniform(-2, 2) + i * 1.2
+            ry = 3.5 + t * 4.5 + rng.uniform(-1, 1.5)
+            cy = H - ry - rng.uniform(0, 7) * (1 - t * 0.6)
+            r.part(ell(cx, cy, ry * 1.15, ry), DUST_R, edge=True, bias=0.3 - t * 0.25,
+                   line=mix(DUST_R[3], OUTLINE, 0.3))
+        # molten seam torn open under the crest
+        for x in range(34, 74):
+            y = H - 2 + math.sin(x * 0.7 + i) * 0.6
+            r.dot(x, y, EMBER[2] if (x + i) % 3 else EMBER[1])
+        r.glow(60, H - 3, 18, EMBER[2], 0.5)
+        # shards jutting out of the ground, tallest at the front; each with a lit and a shadow face
         for k in range(5):
-            bx = 18 + k * 4 + rng.uniform(-0.8, 0.8)
-            hgt = 4 + k * 2.6 + rng.uniform(-1, 1)
-            lean = rng.uniform(0.5, 2.5)
-            r.part(poly([(bx - 2.2, H), (bx + lean - 0.6, H - hgt), (bx + lean + 0.8, H - hgt + 1.2), (bx + 2.4, H)], 0.6),
-                   ROCK)
-            r.stroke(bx, H - 1, bx + lean * 0.6, H - hgt * 0.6, EMBER[3])
-        # molten glow under the crest + flying grit
-        r.glow(30, H - 2, 9, EMBER[2], 0.55)
-        for k in range(6):
-            r.dot(20 + rng.uniform(0, 18), H - 6 - rng.uniform(0, 12), EMBER[rng.randint(1, 3)])
+            bx = 36 + k * 8 + rng.uniform(-1.5, 1.5)
+            hgt = 9 + k * 5.5 + rng.uniform(-2.5, 2.5) + (i % 2) * 2
+            lean = rng.uniform(-1.5, 4.5)
+            wl, wr = rng.uniform(4.5, 6.5), rng.uniform(4.0, 6.0)
+            tip = (bx + lean, H - hgt)
+            lit = poly([(bx - wl, H), tip, (bx + lean * 0.35, H)], 0.3)
+            dark_ = poly([(bx + lean * 0.35 - 0.5, H), tip, (tip[0] + 1.6, tip[1] + 2.5), (bx + wr, H)], 0.3)
+            r.part(lit, ROCK, flat=0.25)
+            r.part(dark_, ROCK, flat=0.7, edge=False)
+            r.stroke(tip[0], tip[1], bx + lean * 0.35, H - 1, ROCK[0])           # the ridge between the faces
+            c0 = (bx + lean * 0.2, H - 2)
+            r.stroke(c0[0], c0[1], c0[0] + lean * 0.3, H - hgt * 0.55, EMBER[3])
+            r.dot(c0[0] + lean * 0.15, H - hgt * 0.3, EMBER[1])
+        # pebbles and embers thrown up and forward
+        for k in range(9):
+            px_, py_ = 40 + rng.uniform(0, 36), H - 12 - rng.uniform(0, 26)
+            if k % 3 == 0:
+                r.part(ell(px_, py_, 1.6, 1.3), ROCK, bias=0.1)
+            else:
+                r.dot(px_, py_, EMBER[rng.randint(0, 2)])
+                r.glow(px_, py_, 2.5, EMBER[2], 0.4)
         frames.append(r.render())
     return frames
 

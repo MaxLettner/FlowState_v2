@@ -23,7 +23,7 @@ public class ShockwaveComponent extends Component {
     private static final double SPEED = 520;
     private static final double RANGE = 650;
     private static final double DAMAGE = 16;
-    private static final double W = 50, H = 34;
+    private static final double W = 100, H = 60;
     private static final double MAX_CLIMB = 24;   // a step higher than this is a wall
     private static final int SCALE = 2;
 
@@ -74,7 +74,7 @@ public class ShockwaveComponent extends Component {
         dustTimer -= tpf;
         if (dustTimer <= 0) {
             dustTimer = 0.05;
-            Particles.burst(new Point2D(entity.getCenter().getX(), groundY - 2), Particles.DUST, 2, -90 - dir * 40, 30, 60, 160, 0.4, 5, 500);
+            Particles.burst(new Point2D(entity.getCenter().getX(), groundY - 2), Particles.DUST, 3, -90 - dir * 40, 30, 80, 220, 0.45, 6, 500);
         }
         double left = RANGE - travelled;
         entity.setOpacity(Math.min(1, left / 120));
@@ -82,7 +82,7 @@ public class ShockwaveComponent extends Component {
     }
 
     private void breakUp() {
-        Particles.burst(new Point2D(entity.getCenter().getX() + dir * W / 2, groundY - 10), Particles.DUST, 10, -90, 80, 80, 260, 0.5, 6, 800);
+        Particles.burst(new Point2D(entity.getCenter().getX() + dir * W / 2, groundY - 16), Particles.DUST, 18, -90, 80, 100, 340, 0.55, 7, 800);
         entity.removeFromWorld();
     }
 }
