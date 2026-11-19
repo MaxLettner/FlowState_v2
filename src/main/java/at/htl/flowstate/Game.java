@@ -351,6 +351,11 @@ public class Game extends GameApplication {
 
     public static void main(String[] args) {
         Thread.currentThread().setContextClassLoader(Game.class.getClassLoader());
+        // JavaFX drives its pulse off vsync, but on some drivers (e.g. Mesa under XWayland) the buffer swap
+        // doesn't wait for vsync and the game loop runs uncapped (~230 fps on a 60 Hz screen). FXGL only
+        // re-measures fps every 2 s, so the game visibly speeds up and slows down. Without vsync JavaFX falls
+        // back to its steady 60 Hz pulse timer. Can still be overridden with -Dprism.vsync=true.
+        if (System.getProperty("prism.vsync") == null) System.setProperty("prism.vsync", "false");
         launch(args);
     }
 
