@@ -2,8 +2,9 @@
 (seamless horizontally). Tiles are meant to be drawn at x2 via a world-anchored ImagePattern;
 backgrounds are 480x216 and scale x5 to 2400x1080.
 
-  Ground        64x64  red-black hell rock with glowing crevices (fills ground bodies)
-  GroundTop     64x12  charred crust strip for the top edge of ground (horizontal tiling)
+  Ground        1024x256  red-black hell rock with glowing crevices (fills ground bodies); one big
+                seamless texture so the repeat is never visible on screen
+  GroundTop     1024x12   charred crust strip for the top edge of ground (horizontal tiling)
   GroundEmbed   6 frames 24x16  bones/skull/crystals/magma buried in the ground body
   GroundSurface 6 frames 24x24  bottom-aligned decorations standing on the ground
   Platform      3 frames 32x32  floating platform variants: black iron, obsidian+bone, rune stone
@@ -16,26 +17,84 @@ import math
 import random
 from pixel import *
 from materials import *
-from effects import Noise
+from effects import Noise, WrapNoise
 from projectiles import FIRE
 
 SKY = ramp('#4a1c1a', '#36161a', '#26111a', '#1a0d16', '#110911')
 
 
-def wrap_d(a, b, n):
-    d = abs(a - b) % n
-    return min(d, n - d)
+def stone_map(W, H, cell, seed, warp=3.5):
+    """Irregular stones on a W x H torus (tiles seamlessly).
 
-
-def voronoi_tile(S, cells, seed):
+    A jittered grid of points (about one per cell x cell px), where some cells are split into 2-3
+    pebbles and some neighbouring cells are merged into one big stone. The lookup position is
+    domain-warped so stone borders wobble instead of being straight polygon edges.
+    Returns (root, near): root[g] = a point inside stone g, near[y][x] = (stone id, distance to border)."""
+    cols, rows = max(1, round(W / cell)), max(1, round(H / cell))
+    cw, ch = W / cols, H / rows
     rng = random.Random(seed)
-    pts = [(rng.uniform(0, S), rng.uniform(0, S)) for _ in range(cells)]
-    near = [[None] * S for _ in range(S)]
-    for y in range(S):
-        for x in range(S):
-            ds = sorted((wrap_d(x + 0.5, px_, S) ** 2 + wrap_d(y + 0.5, py, S) ** 2, i) for i, (px_, py) in enumerate(pts))
-            near[y][x] = (ds[0][1], math.sqrt(ds[1][0]) - math.sqrt(ds[0][0]))
-    return pts, near
+    pts, grid = [], []
+    for r in range(rows):
+        for c in range(cols):
+            roll = rng.random()
+            k = 3 if roll < 0.07 else 2 if roll < 0.22 else 1
+            ids = []
+            for _ in range(k):
+                ids.append(len(pts))
+                pts.append(((c + rng.uniform(0.1, 0.9)) * cw, (r + rng.uniform(0.1, 0.9)) * ch))
+            grid.append(ids)
+
+    parent = list(range(len(pts)))
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    merged = set()
+    for r in range(rows):
+        for c in range(cols):
+            here = grid[r * cols + c]
+            if len(here) > 1 or here[0] in merged:
+                continue                      # pebble cells stay small; big stones are only 2 cells
+            for there, chance in ((grid[r * cols + (c + 1) % cols], 0.2),        # right neighbour
+                                  (grid[(r + 1) % rows * cols + c], 0.12)):      # the one below
+                if len(there) == 1 and there[0] not in merged and rng.random() < chance:
+                    parent[find(here[0])] = find(there[0])
+                    merged.update((here[0], there[0]))
+                    break
+    group = [find(i) for i in range(len(pts))]
+    root = {g: pts[g] for g in set(group)}
+
+    wx = WrapNoise(seed + 50, W, H, 1 / 16)
+    wy = WrapNoise(seed + 51, W, H, 1 / 16)
+    wfx = WrapNoise(seed + 52, W, H, 1 / 5)
+    wfy = WrapNoise(seed + 53, W, H, 1 / 5)
+    offs = range(-2, 3)
+    near = []
+    for y in range(H):
+        row = []
+        for x in range(W):
+            qx = x + 0.5 + (wx(x, y) - 0.5) * 2 * warp + (wfx(x, y) - 0.5) * 1.6
+            qy = y + 0.5 + (wy(x, y) - 0.5) * 2 * warp + (wfy(x, y) - 0.5) * 1.6
+            c0, r0 = math.floor(qx / cw), math.floor(qy / ch)
+            cand = []
+            for dr in offs:
+                r = r0 + dr
+                base, oy = r % rows * cols, r // rows * H
+                for dc in offs:
+                    c = c0 + dc
+                    ox = c // cols * W
+                    for i in grid[base + c % cols]:
+                        p = pts[i]
+                        dx, dy = qx - p[0] - ox, qy - p[1] - oy
+                        cand.append((dx * dx + dy * dy, group[i]))
+            d1, g1 = min(cand)
+            d2 = min(d for d, g in cand if g != g1)
+            row.append((g1, math.sqrt(d2) - math.sqrt(d1)))
+        near.append(row)
+    return root, near
 
 
 HELLROCK = ramp('#5a3036', '#40202a', '#2c141c', '#1e0c13', '#12070c')
@@ -43,61 +102,172 @@ DIM_BONE = ramp('#d8cbaa', '#b0a07c', '#857659', '#5c503c', '#3a3226')
 OBSIDIAN = ramp('#5b4a6e', '#3a2e4a', '#251d31', '#171220', '#0c0912')
 GLOW = ramp('#ffd27a', '#ff8a2a', '#e0441c', '#9a2214', '#5a120e')
 
+# Ground and GroundTop share their width (Java anchors both to world x), so the heat map lines up.
+GROUND_W, GROUND_H = 1024, 256
 
-def ground_tile(S=64, seed=1):
-    """Hell rock: red-black stones split by crevices, some of which glow with heat."""
-    img = new(S, S)
+
+def heat_field(W=GROUND_W, H=GROUND_H):
+    """Large slow blobs: where the ground runs hot (lava channels stay molten, embers on the crust)."""
+    return WrapNoise(31, W, H, 1 / 90)
+
+
+def lava_field(W=GROUND_W, H=GROUND_H, seed=60):
+    """0..1 'how much lava flows here'. Contour lines of slow noise give long meandering channels,
+    a second, faster layer adds side branches; both fade out where the ground is cold.
+    The lookup is domain-warped and each layer mixes two lattices of different spacing, otherwise the
+    value-noise grid shows through as straight, axis-aligned channel ends."""
+    m1 = WrapNoise(seed, W, H, 1 / 120)
+    m2 = WrapNoise(seed + 2, W, H, 1 / 71)
+    s1 = WrapNoise(seed + 1, W, H, 1 / 50)
+    s2 = WrapNoise(seed + 3, W, H, 1 / 33)
+    wa = WrapNoise(seed + 4, W, H, 1 / 64)
+    wb = WrapNoise(seed + 5, W, H, 1 / 64)
+    heat = heat_field(W, H)
+
+    def ridge(n, width):
+        return max(0.0, 1 - abs(n - 0.5) / width)
+
+    def f(x, y):
+        u = x + (wa(x, y) - 0.5) * 70
+        v = y + (wb(x, y) - 0.5) * 40
+        h = heat(x, y)
+        a = ridge(0.7 * m1(u, v) + 0.3 * m2(u, v), 0.032)
+        b = ridge(0.7 * s1(u, v) + 0.3 * s2(u, v), 0.02) * 0.7 * min(1.0, max(0.0, (h - 0.55) * 4))
+        return max(a, b) * min(1.0, max(0.0, (h - 0.3) * 1.8))   # cold ground has no lava at all
+    return f
+
+
+def _quant(v, x, y, band=0.15):
+    """Round v to a ramp index, checker-dithering only right around the .5 boundary."""
+    b = math.floor(v)
+    f = v - b
+    if abs(f - 0.5) < band:
+        i = b + ((x + y) & 1)
+    else:
+        i = b + (1 if f > 0.5 else 0)
+    return max(0, min(4, i))
+
+
+def ground_tile(W=GROUND_W, H=GROUND_H, seed=1):
+    """Hell rock: irregular red-black stones with lava flowing through the gaps between them.
+
+    One big seamless texture (2048x512 on screen, wider than the window) instead of a small tile,
+    so the floor never shows a visible repeat. Variety: big merged stones and small pebbles with
+    wobbly borders, lighter / darker / scorched stones, cracks inside stones, slow light-dark patches,
+    and meandering lava channels that widen, branch into side cracks and cool off at their ends."""
+    img = new(W, H)
     px = img.load()
-    pts, near = voronoi_tile(S, 12, seed)
-    nz = Noise(seed, n=16)
+    root, near = stone_map(W, H, 18, seed)
+    grain = WrapNoise(seed, W, H, 0.5)                 # fine texture inside stones
+    patch_a = WrapNoise(seed + 11, W, H, 1 / 110)      # slow light / dark areas
+    patch_b = WrapNoise(seed + 12, W, H, 1 / 45)
+    crust = WrapNoise(seed + 40, W, H, 1 / 3)          # cooling crust floating on wide lava
+    swirl = WrapNoise(seed + 41, W, H, 1 / 7)          # brighter / dimmer streaks in the lava
+    glint = WrapNoise(seed + 30, W, H, 0.22)           # stray hot specks outside the channels
+    heat = heat_field(W, H)
+    lava = lava_field(W, H)
     rng = random.Random(seed + 5)
-    tone = [rng.choice((0, 0, 1)) for _ in pts]
-    for y in range(S):
-        for x in range(S):
-            i, edge = near[y][x]
-            if edge < 1.1:
-                px[x, y] = HELLROCK[4]
+
+    tone = {}
+    for g in sorted(root):
+        r = rng.random()
+        tone[g] = 0.0 if r < 0.58 else 0.7 if r < 0.82 else -0.8 if r < 0.9 else 1.6  # last = scorched
+
+    flow = [[lava(x, y) for x in range(W)] for y in range(H)]
+
+    for y in range(H):
+        rowm2, rowp2, row, frow = near[(y - 2) % H], near[(y + 2) % H], near[y], flow[y]
+        for x in range(W):
+            g, edge = row[x]
+            fl = frow[x]
+            width = 1.1 + 1.7 * fl ** 1.5 if fl > 0.1 else 1.1   # lava channel half-width
+            if edge < width:
+                if fl <= 0.1:
+                    px[x, y] = HELLROCK[4]                         # plain dark crevice
+                    continue
+                t = edge / width                                   # 0 = middle of the channel
+                k = crust(x, y)
+                hot = t * 0.8 - fl * 0.7 - (k - 0.5) * 0.9 - (swirl(x, y) - 0.5) * 0.6   # lower = hotter
+                if fl > 0.35 and width > 2.2 and k > 0.74 and t < 0.8:
+                    c = GLOW[4] if k > 0.82 else GLOW[3]           # crust drifting on the lava
+                elif fl < 0.22:
+                    c = GLOW[3] if k < 0.55 else GLOW[2]           # cooling tail
+                elif hot < -0.55:
+                    c = GLOW[0]
+                elif hot < -0.2:
+                    c = GLOW[1]
+                elif hot < 0.35:
+                    c = GLOW[2]
+                else:
+                    c = GLOW[3]
+                px[x, y] = c
                 continue
-            ul = near[(y - 2) % S][(x - 2) % S]
-            dr = near[(y + 2) % S][(x + 2) % S]
-            s = 2 + tone[i]
-            if ul[0] != i or ul[1] < 1.1:
-                s -= 1
-            elif dr[0] != i or dr[1] < 1.1:
-                s += 1
-            n = nz(x * 16 / S * 2, y * 16 / S * 2)
+            v = 2 + tone[g]
+            ul, dr = rowm2[(x - 2) % W], rowp2[(x + 2) % W]
+            if ul[0] != g or ul[1] < 1.1:
+                v -= 1                                  # lit upper-left rim
+            elif dr[0] != g or dr[1] < 1.1:
+                v += 1                                  # shaded lower-right rim
+            n = grain(x, y)
             if n > 0.7:
-                s -= 1
+                v -= 1
             elif n < 0.3 and (x + y) % 2 == 0:
-                s += 1
-            px[x, y] = HELLROCK[max(0, min(4, s))]
-    # hot crevices with a dim halo bleeding into the stone
-    hot = set()
-    for y in range(S):
-        for x in range(S):
-            if near[y][x][1] < 1.1 and nz(x * 0.22, y * 0.22 + 30) > 0.74:
-                hot.add((x, y))
-    for x, y in hot:
-        for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
-            q = ((x + dx) % S, (y + dy) % S)
-            if q not in hot:
-                px[q] = mix(px[q], GLOW[3], 0.45)
-    for x, y in hot:
-        px[x, y] = GLOW[2] if (x * 3 + y) % 4 else GLOW[1]
+                v += 1
+            v += (0.65 * patch_a(x, y) + 0.35 * patch_b(x, y) - 0.5) * 1.9
+            c = HELLROCK[_quant(v, x, y)]
+            if fl > 0.1:                                # stone heated by the lava next to it
+                gap = (edge - width) / min(1.0, fl * 4)  # halo shrinks towards the cool ends
+                if gap < 1.2:
+                    c = mix(c, GLOW[3], 0.5)
+                elif gap < 2.6:
+                    c = mix(c, GLOW[3], 0.25)
+                elif fl > 0.3 and (x + y) % 2 == 0:
+                    c = mix(c, GLOW[4], 0.2)
+            px[x, y] = c
+
+    # thin cracks inside some stones (stay clear of the border); near lava they glow
+    for g, (sx, sy) in sorted(root.items()):
+        if rng.random() > 0.22:
+            continue
+        a = rng.uniform(0, 2 * math.pi)
+        x, y = sx, sy
+        hotcrack = flow[int(sy) % H][int(sx) % W] > 0.15
+        for _ in range(rng.randint(4, 9)):
+            ix, iy = int(x) % W, int(y) % H
+            j, e = near[iy][ix]
+            if j != g or e < 3:
+                break
+            px[ix, iy] = GLOW[3] if hotcrack else HELLROCK[4]
+            a += rng.uniform(-0.6, 0.6)
+            x += math.cos(a)
+            y += math.sin(a)
+
+    # a few stray hot specks in crevices away from the channels, only in warm ground
+    for y in range(H):
+        for x in range(W):
+            if near[y][x][1] < 1.1 and flow[y][x] <= 0.1 and heat(x, y) > 0.55 and glint(x, y) > 0.93:
+                px[x, y] = GLOW[3] if (x + y) % 2 else GLOW[2]
     return img
 
 
-def ground_top(W=64, H=12, seed=2):
-    """Charred crust: black, lumpy, with a faint red-hot rim and ember specks."""
+def ground_top(W=GROUND_W, H=12, seed=2):
+    """Charred crust: black, lumpy, with a faint red-hot rim and ember specks (seamless horizontally)."""
     img = new(W, H)
     px = img.load()
-    nz = Noise(seed, n=16)
+    lump = WrapNoise(seed, W, 1, 0.75, 1)
+    lump2 = WrapNoise(seed + 5, W, 1, 0.75, 1)
+    slow = WrapNoise(seed + 7, W, 1, 1 / 40, 1)
+    rim = WrapNoise(seed + 9, W, 1, 0.9, 1)
+    ember = WrapNoise(seed + 17, W, 1, 1.3, 1)
+    heat = heat_field()
     for x in range(W):
-        top = 1 + round(2 * nz(x * 16 / W * 3, 0))
-        bottom = 7 + round(3.5 * nz(x * 16 / W * 3, 5))
+        s = slow(x)
+        top = 1 + round(2 * (0.6 * lump(x) + 0.4 * s))
+        bottom = 7 + round(3.5 * (0.6 * lump2(x) + 0.4 * (1 - s)))
+        h = heat(x, 0)
         for y in range(top, min(H, bottom + 1)):
             if y == top:
-                c = hexc('#6e2a24') if nz(x * 0.9, 9) > 0.55 else hexc('#4a2026')
+                c = hexc('#6e2a24') if rim(x) > 0.62 - (h - 0.5) * 0.4 else hexc('#4a2026')
             elif y == top + 1:
                 c = HELLROCK[1]
             elif y >= bottom - 1:
@@ -105,7 +275,7 @@ def ground_top(W=64, H=12, seed=2):
             else:
                 c = HELLROCK[3] if (x * 7 + y * 3) % 11 else HELLROCK[4]
             px[x, y] = c
-        if nz(x * 1.3, 17) > 0.78:
+        if ember(x) > 0.8 - max(0.0, h - 0.45) * 0.5:
             px[x, top + 2] = GLOW[2]
     return img
 

@@ -34,6 +34,31 @@ class Noise:
         return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
 
 
+class WrapNoise:
+    """Value noise over a W x H pixel area that wraps seamlessly in both directions.
+
+    fx / fy are lattice points per pixel (roughly the feature frequency); they are rounded so a whole
+    number of lattice cells fits into W and H, which is what makes the texture tile without a seam."""
+    def __init__(self, seed, W, H, fx, fy=None):
+        fy = fx if fy is None else fy
+        self.nx = max(1, round(W * fx))
+        self.ny = max(1, round(H * fy))
+        self.sx, self.sy = self.nx / W, self.ny / H
+        r = random.Random(seed)
+        self.v = [[r.random() for _ in range(self.nx)] for _ in range(self.ny)]
+
+    def __call__(self, x, y=0.0):
+        x, y = x * self.sx, y * self.sy
+        nx, ny = self.nx, self.ny
+        x0, y0 = math.floor(x), math.floor(y)
+        fx, fy = x - x0, y - y0
+        fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+        r0, r1 = self.v[y0 % ny], self.v[(y0 + 1) % ny]
+        a, b = r0[x0 % nx], r0[(x0 + 1) % nx]
+        c, d = r1[x0 % nx], r1[(x0 + 1) % nx]
+        return (a * (1 - fx) + b * fx) * (1 - fy) + (c * (1 - fx) + d * fx) * fy
+
+
 # ---------------------------------------------------------------- explosions
 def explosion_fire(S=48, n=7, seed=3):
     pal = FIRE[:5] + SMOKE           # 0 white .. 4 red, 5.. smoke
