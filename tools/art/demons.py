@@ -9,7 +9,7 @@ All demons face right (+x) and are shown at x2. Frame sizes and anchors must mat
   name            frame    anchor       strips
   DemonImp        40x36    (20, 34)     idle 4, run 6, crouch 1, leap 2
   DemonHound      64x40    (32, 38)     idle 4, run 6, crouch 2, lunge 2, pant 4
-  DemonBrute      160x168  (80, 165)    idle 4, walk 6, slam 6, air 1   (twice the pixel detail: 4x on screen)
+  DemonBrute      160x168  (80, 165)    idle 8, walk 12, slam 12, air 2 (twice the pixel detail and frames)
   DemonHurler     56x52    (28, 50)     idle 4, walk 6, throw 5, air 1
   DemonBat        48x44    (24, 22)*    fly 4, dive 2           (* centre anchor, it flies)
   DemonCultist    48x60    (24, 58)     idle 4, walk 6, cast 5, air 1
@@ -717,29 +717,65 @@ def draw_brute(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), arms=((1.35,
     return r.render()
 
 
+def _lerp_pose(a, b, t):
+    """In-between of two draw_brute keyword poses (numbers and nested tuples of numbers; bools snap)."""
+    def mix(x, y):
+        if isinstance(x, bool) or isinstance(y, bool):
+            return x if t < 0.5 else y
+        if isinstance(x, tuple):
+            return tuple(mix(u, v) for u, v in zip(x, y))
+        return x + (y - x) * t
+    defaults = dict(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), arms=((1.35, 1.5), (1.3, 1.45)),
+                    mouth=0.0, chains=0.0, heat=0.3, blink=False)
+    a, b = {**defaults, **a}, {**defaults, **b}
+    return {k: mix(a[k], b[k]) for k in defaults}
+
+
 def brute_anims():
+    """Twice the frames of the other demons (idle 8, walk 12, slam 12, air 2), played at twice the rate."""
     idle = []
-    for i in range(4):
-        s = math.sin(i / 4 * 6.28)
-        idle.append(draw_brute(bob=s * 0.8, arms=((1.35 - s * 0.03, 1.5), (1.3, 1.45 + s * 0.03)), chains=i * 0.8,
-                               heat=0.3 + 0.2 * (s + 1) / 2, blink=(i == 2)))
+    for i in range(8):
+        s = math.sin(i / 8 * 6.28)
+        idle.append(draw_brute(bob=s * 0.8, arms=((1.35 - s * 0.03, 1.5), (1.3, 1.45 + s * 0.03)), chains=i * 0.4,
+                               heat=0.3 + 0.2 * (s + 1) / 2, blink=(i in (4, 5))))
     walk = []
-    for i in range(6):
-        p = i / 6 * 2 * math.pi
+    for i in range(12):
+        p = i / 12 * 2 * math.pi
         a = math.sin(p) * 0.55
         walk.append(draw_brute(bob=-abs(math.cos(p)) * 1.5 + 0.8, lean=0.05, legs=(a, -a),
                                lift=(max(0, -math.cos(p)) * 3, max(0, math.cos(p)) * 3),
                                arms=((1.3 - a * 0.35, 1.45 - a * 0.3), (1.3 + a * 0.35, 1.45 + a * 0.3)),
                                chains=p, heat=0.35))
-    slam = [
-        draw_brute(lean=-0.12, arms=((-0.6, -1.3), (-0.8, -1.4)), mouth=0.4, chains=1, heat=0.6),
-        draw_brute(lean=-0.22, bob=-1, arms=((-1.75, -2.4), (-1.85, -2.5)), mouth=1.0, chains=2, heat=1.0),
-        draw_brute(lean=0.18, bob=1.5, arms=((0.45, 0.95), (0.35, 0.85)), mouth=1.0, chains=3, heat=1.0),
-        draw_brute(lean=0.32, bob=4, arms=((1.15, 1.42), (1.1, 1.4)), legs=(0.25, -0.3), mouth=0.8, chains=4, heat=1.0),
-        draw_brute(lean=0.3, bob=3.5, arms=((1.12, 1.4), (1.08, 1.38)), legs=(0.25, -0.3), mouth=0.5, chains=4.6, heat=0.8),
-        draw_brute(lean=0.12, bob=1.5, arms=((1.25, 1.45), (1.2, 1.42)), legs=(0.1, -0.15), mouth=0.2, chains=5, heat=0.5),
+    rest = dict(arms=((1.35, 1.5), (1.3, 1.45)), heat=0.3)
+    keys = [
+        dict(lean=-0.12, arms=((-0.6, -1.3), (-0.8, -1.4)), mouth=0.4, chains=1, heat=0.6),                 # raising
+        dict(lean=-0.22, bob=-1, arms=((-1.75, -2.4), (-1.85, -2.5)), mouth=1.0, chains=2, heat=1.0),       # overhead
+        dict(lean=0.18, bob=1.5, arms=((0.45, 0.95), (0.35, 0.85)), mouth=1.0, chains=3, heat=1.0),         # coming down
+        dict(lean=0.32, bob=4, arms=((1.15, 1.42), (1.1, 1.4)), legs=(0.25, -0.3), mouth=0.8, chains=4, heat=1.0),   # impact
+        dict(lean=0.3, bob=3.5, arms=((1.12, 1.4), (1.08, 1.38)), legs=(0.25, -0.3), mouth=0.5, chains=4.6, heat=0.8),
+        dict(lean=0.12, bob=1.5, arms=((1.25, 1.45), (1.2, 1.42)), legs=(0.1, -0.15), mouth=0.2, chains=5, heat=0.5),
     ]
-    air = [draw_brute(bob=-1, legs=(0.3, -0.25), lift=(2, 1), arms=((0.6, 0.9), (0.5, 0.8)), mouth=0.6, heat=0.5)]
+    # the held overhead pose strains: a little higher, hotter, the jaw wide open
+    strain = dict(lean=-0.25, bob=-1.6, arms=((-1.8, -2.5), (-1.9, -2.6)), mouth=1.0, chains=2.4, heat=1.0)
+    L = _lerp_pose
+    slam_poses = [
+        dict(lean=-0.06, bob=0.5, arms=((0.8, -1.25), (0.7, -1.35)), mouth=0.2, chains=0.5, heat=0.45),  # 0  elbows bend, fists rise
+        keys[0],                        # 1
+        L(keys[0], keys[1], 0.5),       # 2
+        keys[1],                        # 3  overhead                 (held: 3 and 4 alternate)
+        strain,                         # 4
+        L(keys[1], keys[2], 0.5),       # 5  swinging down
+        keys[2],                        # 6
+        keys[3],                        # 7  impact
+        L(keys[3], keys[4], 0.5),       # 8
+        keys[4],                        # 9
+        L(keys[4], keys[5], 0.5),       # 10
+        keys[5],                        # 11
+    ]
+    slam = [draw_brute(**p) for p in slam_poses]
+    air = [draw_brute(bob=-1, legs=(0.3, -0.25), lift=(2, 1), arms=((0.6, 0.9), (0.5, 0.8)), mouth=0.6, heat=0.5),
+           draw_brute(bob=-1.3, legs=(0.36, -0.3), lift=(2.6, 1.4), arms=((0.5, 0.78), (0.42, 0.7)), mouth=0.7,
+                      chains=0.8, heat=0.55)]
     return dict(idle=idle, walk=walk, slam=slam, air=air)
 
 

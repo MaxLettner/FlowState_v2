@@ -14,15 +14,15 @@ import javafx.geometry.Point2D;
 public class GargoyleBehaviour extends DemonBehaviour {
     private static final double WAKE_RANGE = 330;
     private static final double WAKE_TIME = 0.6;
-    private static final double MAX_SPEED = 300;
-    private static final double ACCEL = 3.0;
-    private static final double HOVER_HEIGHT = 190;
-    private static final double SWOOP_SPEED = 640;
+    private static final double MAX_SPEED = 250;
+    private static final double ACCEL = 2.6;
+    private static final double HOVER_HEIGHT = 230;      // its centre: it is a big beast now
+    private static final double SWOOP_SPEED = 540;
     private static final double SWOOP_TIME = 1.1;
     private static final double SWOOP_DAMAGE = 13;
     private static final double CONTACT_DAMAGE = 5;
     private static final double WINDUP = 0.35;
-    private static final double LAND_SPEED = 340;
+    private static final double LAND_SPEED = 300;
     private static final double REST_TIME = 2.6;
     private static final double SINK_SPEED = 160;
     private static final javafx.scene.paint.Color[] GRIT = {javafx.scene.paint.Color.web("#9a958c"),

@@ -3,7 +3,7 @@ plus their effects. Same Rig as demons.py (wave 1). Faces right, shown at x2. Mu
 
   name             frame     anchor        strips
   DemonWarden      64x60     (32, 59)      idle 4, walk 6, swing 5 (+ _bare versions once the shield breaks)
-  DemonGargoyle    56x48     (28, 24)*     stone 1, wake 3, fly 4, swoop 2        (* centre anchor, it flies)
+  DemonGargoyle    112x112   (56, 64)*     stone 1, wake 3, fly 4, swoop 2        (* centre anchor, it flies; 2x detail)
   DemonWatcher     48x48     (24, 24)*     idle 4, look 8 (pupil at k * 45 deg), charge 2
   DemonGatekeeper  56x72     (28, 71)      idle 4, summon 4
   DemonPriest      48x56     (24, 55)      idle 4, walk 6, cast 4
@@ -177,14 +177,17 @@ def warden_anims(shield=True):
 # =====================================================================================================
 # Gargoyle: a stone statue until you pass; swoops, lands and turns back to stone
 # =====================================================================================================
-GARG_W, GARG_H = 56, 48
+GARG_K = 2                       # drawn at twice the pixel detail (like the Brute): the pose stays in design units
+GARG_W, GARG_H = 112, 112        # pixels: the old 56 x 48 design frame x GARG_K, plus GARG_OY of headroom on top
+GARG_OY = 8                      # design units: room for the raised wing (the anchor moves down with it)
 STONE = ramp('#c4beb4', '#9a958c', '#76726b', '#55524d', '#363431')
 SLATE = ramp('#8a8fa8', '#626882', '#45495f', '#2d3042', '#1a1c28')
-GARG_FEET = 36          # perched: the bottom of the 50 px hitbox around the centre anchor
+GARG_FEET = 36          # design units; perched: the bottom of the 100 px hitbox around the centre anchor
 
 
-def membrane_wing(r, root, phi, ln, rmp, bias, edge_c=None):
-    """Bat-like wing from root pointing at phi (radians), fanned out backwards."""
+def membrane_wing(r, root, phi, ln, rmp, bias, K=1, edge_c=None):
+    """Bat-like wing from root pointing at phi (radians), fanned out backwards. Design units, drawn x K:
+    finger bones, a thumb claw and veins across the membrane."""
     s_ = -1 if math.sin(phi) < 0 else 1
     el = polar(root, ln * 0.45, phi - s_ * 0.15)
     f1 = polar(el, ln * 0.62, phi + s_ * 0.15)
@@ -193,20 +196,43 @@ def membrane_wing(r, root, phi, ln, rmp, bias, edge_c=None):
     back = (root[0] - 4, root[1] + 2)
     mid = lambda a, b, k=0.25: ((a[0] + b[0]) / 2 + (root[0] - (a[0] + b[0]) / 2) * k,
                                 (a[1] + b[1]) / 2 + (root[1] - (a[1] + b[1]) / 2) * k)
-    r.part(poly([root, el, f1, mid(f1, f2), f2, mid(f2, f3), f3, mid(f3, back, 0.15), back], 0.25), rmp, bias=bias)
-    for f in (f1, f2, f3):
-        r.stroke(el[0], el[1], f[0], f[1], rmp[3] if bias == 0 else rmp[4])
-    r.stroke(root[0], root[1], el[0], el[1], rmp[2])
+    P = lambda pts, b: poly([(x * K, y * K) for x, y in pts], b)
+    S = lambda a, b, c: r.stroke(a[0] * K, a[1] * K, b[0] * K, b[1] * K, c)
+    r.part(P([root, el, f1, mid(f1, f2), f2, mid(f2, f3), f3, mid(f3, back, 0.15), back], 0.25), rmp, bias=bias)
+    vein = rmp[2] if bias == 0 else rmp[3]
+    for a, b in ((f1, f2), (f2, f3), (f3, back)):                         # veins fanning into the membrane
+        m = mid(a, b, 0.45)
+        S(el, m, vein)
+        S(m, mid(a, b, 0.1), vein)
+    bone = rmp[3] if bias == 0 else rmp[4]
+    for f in (f1, f2, f3):                                                # finger bones with a knuckle
+        r.part(limb(el[0] * K, el[1] * K, f[0] * K, f[1] * K, 0.55 * K, 0.3 * K), rmp, edge=False, bias=bias + 0.15)
+        S(el, f, bone)
+        kn = (el[0] + (f[0] - el[0]) * 0.5, el[1] + (f[1] - el[1]) * 0.5)
+        r.dot(kn[0] * K, kn[1] * K, rmp[1])
+    r.part(limb(root[0] * K, root[1] * K, el[0] * K, el[1] * K, 0.9 * K, 0.6 * K), rmp, bias=bias)   # arm bone
+    thumb = polar(el, 2.2, phi - s_ * 1.2)
+    r.part(chain([(el[0] * K, el[1] * K), (thumb[0] * K, thumb[1] * K)], 0.5 * K, 0.15 * K), HORN, edge=False, bias=bias)
     if edge_c:
         for a, b in ((f1, f2), (f2, f3)):
-            r.stroke(a[0], a[1], mid(a, b)[0], mid(a, b)[1], edge_c)
+            S(a, mid(a, b), edge_c)
 
 
 def draw_gargoyle(pose='perch', stone=0.0, flap=0.0, cracks=0.0, phase=0.0, mouth=0.0):
-    """pose: perch / fly / swoop; stone 0 living .. 1 statue; cracks 0..1 glowing seams while waking."""
+    """pose: perch / fly / swoop; stone 0 living .. 1 statue; cracks 0..1 glowing seams while waking.
+    Laid out in the old 56 x 48 design units and drawn x GARG_K (finer outlines, ridges, veins, pitting)."""
+    K = GARG_K
     r = Rig(GARG_W, GARG_H, rim=0.4 * (1 - stone))
+    E = lambda cx, cy, rx, ry, a=0.0: ell(cx * K, cy * K, rx * K, ry * K, a)
+    L = lambda x0, y0, x1, y1, r0, r1=None: limb(x0 * K, y0 * K, x1 * K, y1 * K, r0 * K, (r0 if r1 is None else r1) * K)
+    C = lambda pts, r0, r1: chain([(x * K, y * K) for x, y in pts], r0 * K, r1 * K)
+    PG = lambda pts, b=0.6: poly([(x * K, y * K) for x, y in pts], b)
+    D = lambda x, y, c: r.dot(x * K, y * K, c)
+    S = lambda x0, y0, x1, y1, c: r.stroke(x0 * K, y0 * K, x1 * K, y1 * K, c)
+    G = lambda x, y, rad, c, st: r.glow(x * K, y * K, rad * K, c, st)
     skin = [mix(SLATE[i], STONE[i], stone) for i in range(5)]
     hornr = [mix(HORN[i], STONE[i], stone * 0.8) for i in range(5)]
+    crease = skin[3]
     if pose == 'perch':
         haunch, torso, head = (23.5, 30.5), (28.5, 24.5), (34.5, 17.5)
         tor_rot = -0.55
@@ -216,90 +242,158 @@ def draw_gargoyle(pose='perch', stone=0.0, flap=0.0, cracks=0.0, phase=0.0, mout
     else:   # swoop: nose down, claws out
         haunch, torso, head = (21.0, 18.5), (28.0, 22.5), (34.5, 27.0)
         tor_rot = 0.65
-    # tail
+    haunch, torso, head = [(p[0], p[1] + GARG_OY) for p in (haunch, torso, head)]
+    feet = GARG_FEET + GARG_OY
+    # tail with a spade tip
     tb = (haunch[0] - 4, haunch[1] + 1)
-    tp = bezier(tb, (tb[0] - 6, tb[1] + 4 + math.sin(phase * 6.28) * 1.5), (tb[0] - 9, tb[1] - 2), 6)
-    r.part(chain(tp, 1.4, 0.5), skin, bias=0.2)
-    r.part(poly([(tp[-1][0] + 1, tp[-1][1] - 1.6), (tp[-1][0] - 2.6, tp[-1][1] - 1.4), (tp[-1][0] - 0.5, tp[-1][1] + 1.4)], 0.3), skin, bias=0.2)
+    tp = bezier(tb, (tb[0] - 6, tb[1] + 4 + math.sin(phase * 6.28) * 1.5), (tb[0] - 9, tb[1] - 2), 8)
+    r.part(C(tp, 1.4, 0.5), skin, bias=0.2)
+    for k in range(2, len(tp) - 1, 2):                                     # segment rings
+        D(tp[k][0], tp[k][1] - 0.6, crease)
+    t_ = tp[-1]
+    r.part(PG([(t_[0] + 1, t_[1] - 1.6), (t_[0] - 2.6, t_[1] - 1.4), (t_[0] - 0.5, t_[1] + 1.4)], 0.3), skin, bias=0.2)
+    S(t_[0] + 0.6, t_[1] - 0.2, t_[0] - 1.8, t_[1] - 0.8, crease)
     # far wing
     wroot = (torso[0] - 1.5, torso[1] - 4)
     if pose == 'perch':
-        r.part(poly([wroot, (wroot[0] - 7, wroot[1] - 9), (wroot[0] - 10, wroot[1] - 2), (wroot[0] - 9, wroot[1] + 8),
-                     (wroot[0] - 4, wroot[1] + 9)], 0.4), skin, bias=0.35)
+        tip = (wroot[0] - 7, wroot[1] - 9)
+        r.part(PG([wroot, tip, (wroot[0] - 10, wroot[1] - 2), (wroot[0] - 9, wroot[1] + 8), (wroot[0] - 4, wroot[1] + 9)], 0.4), skin, bias=0.35)
+        for k in range(3):                                                 # folded finger ribs
+            S(tip[0], tip[1], wroot[0] - 9 + k * 2, wroot[1] + 7 + k * 0.5, skin[4])
     elif pose == 'fly':
         phi = -2.0 - (1 - flap) / 2 * (2 * math.pi - 4.2)
-        membrane_wing(r, (wroot[0] + 1, wroot[1]), phi + 0.25, 19 * (0.45 + 0.55 * abs(math.sin(phi))) * 0.85, skin, 0.35)
+        membrane_wing(r, (wroot[0] + 1, wroot[1]), phi + 0.25, 19 * (0.45 + 0.55 * abs(math.sin(phi))) * 0.85, skin, 0.35, K)
     else:
-        r.part(poly([wroot, (wroot[0] - 13, wroot[1] - 6), (wroot[0] - 11, wroot[1] - 1), (wroot[0] - 3, wroot[1] + 3)], 0.3), skin, bias=0.35)
-    # hind legs
+        r.part(PG([wroot, (wroot[0] - 13, wroot[1] - 6), (wroot[0] - 11, wroot[1] - 1), (wroot[0] - 3, wroot[1] + 3)], 0.3), skin, bias=0.35)
+        S(wroot[0], wroot[1], wroot[0] - 12, wroot[1] - 5, skin[4])
+    # hind legs: thigh muscle line, three hooked toe claws
     for i, bias in ((1, 0.3), (0, 0.0)):
         if pose == 'perch':
             knee = (haunch[0] + 3.5 - i * 1.5, haunch[1] + 2)
-            foot = (haunch[0] + 1 - i * 2.5, GARG_FEET - 1)
+            foot = (haunch[0] + 1 - i * 2.5, feet - 1)
         elif pose == 'fly':
             knee = (haunch[0] - 3, haunch[1] + 3 - i)
             foot = (haunch[0] - 8, haunch[1] + 4 - i)
         else:
             knee = (haunch[0] - 2, haunch[1] - 3 - i)
             foot = (haunch[0] - 7, haunch[1] - 5 - i)
-        r.part(union(limb(haunch[0], haunch[1], knee[0], knee[1], 3.4, 2.2), limb(knee[0], knee[1], foot[0], foot[1], 2.0, 1.5)), skin, bias=bias)
-        for k in range(2):
-            r.dot(foot[0] + 1.5 + k, foot[1] + 0.5 - k * 0.5, hornr[2])
-    r.part(union(ell(torso[0], torso[1], 6.0, 7.2, tor_rot), ell(haunch[0], haunch[1], 5.5, 5.0)), skin)
-    r.stroke(torso[0] + 1, torso[1] - 2, torso[0] + 3, torso[1] + 3, skin[3])         # chest plates
-    r.stroke(torso[0] - 0.5, torso[1] + 1, torso[0] + 1.5, torso[1] + 5, skin[3])
-    # front arms
+        r.part(union(L(haunch[0], haunch[1], knee[0], knee[1], 3.4, 2.2), L(knee[0], knee[1], foot[0], foot[1], 2.0, 1.5)), skin, bias=bias)
+        S(haunch[0] + 0.5, haunch[1] - 1.5, knee[0] - 0.3, knee[1] - 0.8, crease if bias == 0 else skin[4])
+        fa = math.atan2(foot[1] - knee[1], foot[0] - knee[0])
+        for k in range(3):
+            c0 = (foot[0] + 0.6 + k * 0.9, foot[1] + 0.4 - k * 0.35)
+            c1 = polar(c0, 1.6, fa + 0.9 - k * 0.15) if pose != 'perch' else (c0[0] + 1.2, c0[1] + 0.6)
+            r.part(C([c0, c1], 0.45, 0.12), hornr, edge=False, bias=bias)
+    # torso: chest plates, ribs, a spine of stubby spikes along the back
+    r.part(union(E(torso[0], torso[1], 6.0, 7.2, tor_rot), E(haunch[0], haunch[1], 5.5, 5.0)), skin)
+    S(torso[0] + 1, torso[1] - 2, torso[0] + 3, torso[1] + 3, crease)
+    S(torso[0] - 0.5, torso[1] + 1, torso[0] + 1.5, torso[1] + 5, crease)
+    for k in range(3):
+        a = tor_rot + 0.35 + k * 0.3
+        p0, p1 = polar(torso, 2.5, a), polar(torso, 5.2, a + 0.1)
+        S(p0[0], p0[1], p1[0], p1[1], crease)
+    back_pts = bezier((head[0] - 3.5, head[1] - 1.5), (torso[0] - 5.5, torso[1] - 7.5), (haunch[0] - 4, haunch[1] - 3), 9)
+    for k in range(1, len(back_pts) - 1):
+        a, b = back_pts[k - 1], back_pts[k + 1]
+        out = math.atan2(b[1] - a[1], b[0] - a[0]) - math.pi / 2           # away from the body (up / back)
+        base = back_pts[k]
+        tip = polar(base, 1.8 - abs(k - 4) * 0.12, out - 0.35)
+        r.part(PG([polar(base, 0.8, out + math.pi / 2), tip, polar(base, -0.8, out + math.pi / 2)], 0.2), hornr, edge=False, bias=0.15)
+    # front arms: forearm muscle, two-claw hands
     for i, bias in ((1, 0.3), (0, 0.0)):
         sh = (torso[0] + 2.5 - i, torso[1] - 3)
         if pose == 'perch':
-            el, hand = (sh[0] + 3, sh[1] + 6), (sh[0] + 4 + i * -1.5, GARG_FEET - 1.2)
+            el, hand = (sh[0] + 3, sh[1] + 6), (sh[0] + 4 + i * -1.5, feet - 1.2)
         elif pose == 'fly':
             el, hand = (sh[0] + 2, sh[1] + 4), (sh[0] + 5, sh[1] + 6)
         else:
             el, hand = (sh[0] + 4, sh[1] + 3), (sh[0] + 9, sh[1] + 7 - i)
-        r.part(union(limb(sh[0], sh[1], el[0], el[1], 2.2, 1.7), limb(el[0], el[1], hand[0], hand[1], 1.7, 1.3)), skin, bias=bias)
-        for k in (-0.5, 0.4):
+        r.part(union(L(sh[0], sh[1], el[0], el[1], 2.2, 1.7), L(el[0], el[1], hand[0], hand[1], 1.7, 1.3)), skin, bias=bias)
+        r.part(E(sh[0], sh[1], 2.4, 2.0), skin, edge=False, bias=bias - 0.1)
+        S(el[0] - 0.3, el[1] - 0.6, (el[0] + hand[0]) / 2, (el[1] + hand[1]) / 2 - 0.4, crease if bias == 0 else skin[4])
+        for k in (-0.55, 0.0, 0.5):
             ang = math.atan2(hand[1] - el[1], hand[0] - el[0]) + k
-            tip = polar(hand, 2.0, ang)
-            r.stroke(hand[0], hand[1], tip[0], tip[1], hornr[1 if bias == 0 else 3])
-    # head: snout, fangs, swept horns, pointed ear
-    r.part(poly([(head[0] - 2.5, head[1] - 1), (head[0] - 7, head[1] - 5), (head[0] - 2, head[1] + 1.5)], 0.3), skin, bias=0.1)
-    r.part(union(ell(head[0], head[1], 4.2, 3.8), limb(head[0] + 1, head[1] + 0.8, head[0] + 4.8, head[1] + 2.2, 2.2, 1.6)), skin)
+            tip = polar(hand, 2.1, ang)
+            r.part(C([hand, tip], 0.42, 0.1), hornr, edge=False, bias=bias)
+    # head: snout, jaw, brow ridge, fangs, ridged horns, pointed ear
+    ear = [(head[0] - 2.5, head[1] - 1), (head[0] - 7, head[1] - 5), (head[0] - 2, head[1] + 1.5)]
+    r.part(PG(ear, 0.3), skin, bias=0.1)
+    S(head[0] - 2.8, head[1] - 0.6, head[0] - 6, head[1] - 4.2, skin[4])
+    jaw_drop = mouth * 1.2
+    r.part(L(head[0] + 0.5, head[1] + 2.2 + jaw_drop, head[0] + 4.6, head[1] + 3.0 + jaw_drop, 1.3, 1.0), skin, bias=0.15)
+    if mouth > 0.3:
+        r.part(E(head[0] + 3, head[1] + 2.6 + jaw_drop * 0.5, 2.0, 0.6 + jaw_drop * 0.5), [hexc('#3a0a0a'), hexc('#1e0404')], edge=False)
+    r.part(union(E(head[0], head[1], 4.2, 3.8), L(head[0] + 1, head[1] + 0.8, head[0] + 4.8, head[1] + 2.2, 2.2, 1.6)), skin)
+    D(head[0] + 4.7, head[1] + 1.0, skin[4])                                # nostril
+    S(head[0] + 1.2, head[1] + 2.6, head[0] + 4.6, head[1] + 3.0, crease)    # lip line
+    for fx in (1.6, 2.8, 4.0):                                            # fangs
+        r.part(L(head[0] + fx, head[1] + 2.4, head[0] + fx + 0.1, head[1] + 3.6 + jaw_drop * 0.3, 0.38, 0.12), BONE, edge=False)
+    r.part(L(head[0] - 0.6, head[1] - 1.9, head[0] + 3.8, head[1] - 1.1, 0.9, 0.6), skin, bias=-0.1)   # brow ridge
+    for k in range(2):
+        S(head[0] - 2.5, head[1] - 3 - k * 0.8, head[0] + 0.5, head[1] - 2.8 - k * 0.9, crease)
     for hx, bias in ((-2.0, 0.3), (0.5, 0.0)):
         hb = (head[0] + hx, head[1] - 3)
-        r.part(chain(bezier(hb, (hb[0] - 1, hb[1] - 4), (hb[0] - 5, hb[1] - 5.5), 5), 1.3, 0.25), hornr, bias=bias)
-    if mouth > 0.3:
-        r.stroke(head[0] + 1.5, head[1] + 3.0, head[0] + 4.8, head[1] + 3.4, hexc('#2a0a0a'))
-    r.dot(head[0] + 3.2, head[1] + 3.2, BONE[1])
-    r.dot(head[0] + 4.6, head[1] + 3.3, BONE[1])
+        pts = bezier(hb, (hb[0] - 1, hb[1] - 4), (hb[0] - 5, hb[1] - 5.5), 8)
+        r.part(C(pts, 1.3, 0.25), hornr, bias=bias)
+        for k in range(1, len(pts) - 2, 2):                                # ridges across the horn
+            a_, b_ = pts[k - 1], pts[k + 1]
+            n_ = math.atan2(b_[1] - a_[1], b_[0] - a_[0]) + math.pi / 2
+            rad = (1.3 + (0.25 - 1.3) * k / len(pts)) * 0.85
+            e0, e1 = polar(pts[k], rad, n_), polar(pts[k], -rad, n_)
+            S(e0[0], e0[1], e1[0], e1[1], hornr[3] if bias == 0 else hornr[4])
     eye_c = mix(EMBER[1], STONE[3], stone)
-    r.dot(head[0] + 1.0, head[1] - 0.5, eye_c)
-    r.dot(head[0] + 2.8, head[1] - 0.6, eye_c)
-    r.stroke(head[0] + 0.2, head[1] - 1.7, head[0] + 3.4, head[1] - 1.2, OUTLINE)
+    eye_hi = mix(hexc('#fff3a0'), STONE[2], stone)
+    for ex in (head[0] + 0.7, head[0] + 2.5):
+        S(ex - 0.3, head[1] - 0.4, ex + 0.7, head[1] - 0.5, eye_c)
+        D(ex + 0.2, head[1] - 0.5, eye_hi)
+    S(head[0] - 0.2, head[1] - 1.2, head[0] + 3.6, head[1] - 0.8, OUTLINE)
     if stone < 0.5:
-        r.glow(head[0] + 1.9, head[1] - 0.5, 3.5, EMBER[2], 0.5 * (1 - stone))
+        G(head[0] + 1.9, head[1] - 0.5, 3.5, EMBER[2], 0.5 * (1 - stone))
+    # weathered stone: pits and hairline cracks over the body while it is a statue
+    if stone > 0.3:
+        rng = random.Random(11)
+        for _ in range(int(22 * stone)):
+            px_, py_ = torso[0] + rng.uniform(-6, 7), torso[1] + rng.uniform(-8, 9)
+            D(px_, py_, STONE[4] if rng.random() < 0.6 else STONE[1])
+        for _ in range(4):
+            cx_, cy_ = torso[0] + rng.uniform(-5, 4), torso[1] + rng.uniform(-6, 7)
+            a = rng.uniform(0, 6.28)
+            p1 = polar((cx_, cy_), rng.uniform(1.5, 3), a)
+            p2 = polar(p1, rng.uniform(1, 2), a + rng.uniform(-0.8, 0.8))
+            S(cx_, cy_, p1[0], p1[1], STONE[4])
+            S(p1[0], p1[1], p2[0], p2[1], STONE[4])
     # glowing seams as the stone cracks open
     if cracks > 0:
         rng = random.Random(5)
-        for k in range(int(3 + cracks * 5)):
+        for k in range(int(4 + cracks * 8)):
             cx_, cy_ = torso[0] + rng.uniform(-5, 4), torso[1] + rng.uniform(-6, 6)
             ln = rng.uniform(2, 4) * cracks
             a = rng.uniform(0, 6.28)
-            r.stroke(cx_, cy_, cx_ + math.cos(a) * ln, cy_ + math.sin(a) * ln, EMBER[2] if k % 2 else EMBER[1])
-        r.glow(torso[0], torso[1], 6, EMBER[2], 0.35 * cracks)
+            p1 = polar((cx_, cy_), ln, a)
+            p2 = polar(p1, ln * 0.6, a + rng.uniform(-0.9, 0.9))
+            col = EMBER[2] if k % 2 else EMBER[1]
+            S(cx_, cy_, p1[0], p1[1], col)
+            S(p1[0], p1[1], p2[0], p2[1], col)
+        G(torso[0], torso[1], 6, EMBER[2], 0.35 * cracks)
     # near wing
     if pose == 'perch':
-        r.part(poly([(wroot[0] + 1, wroot[1]), (wroot[0] - 4.5, wroot[1] - 10), (wroot[0] - 8, wroot[1] - 3), (wroot[0] - 7, wroot[1] + 9),
-                     (wroot[0] - 1, wroot[1] + 8)], 0.4), skin, bias=0.05)
-        r.stroke(wroot[0] + 1, wroot[1], wroot[0] - 4.5, wroot[1] - 10, skin[1])
+        tip = (wroot[0] - 4.5, wroot[1] - 10)
+        r.part(PG([(wroot[0] + 1, wroot[1]), tip, (wroot[0] - 8, wroot[1] - 3), (wroot[0] - 7, wroot[1] + 9),
+                   (wroot[0] - 1, wroot[1] + 8)], 0.4), skin, bias=0.05)
+        S(wroot[0] + 1, wroot[1], tip[0], tip[1], skin[1])
+        for k in range(3):                                                 # folded finger ribs
+            S(tip[0], tip[1], wroot[0] - 6.5 + k * 2.2, wroot[1] + 8 - k * 0.3, crease)
+        r.part(C([(tip[0] + 0.2, tip[1] + 0.4), (tip[0] - 0.4, tip[1] - 1.6)], 0.5, 0.15), hornr, edge=False)   # wing claw
     elif pose == 'fly':
         phi = -2.0 - (1 - flap) / 2 * (2 * math.pi - 4.2)
-        membrane_wing(r, (wroot[0] + 2, wroot[1] + 1), phi, 21 * (0.45 + 0.55 * abs(math.sin(phi))), skin, 0.0)
+        membrane_wing(r, (wroot[0] + 2, wroot[1] + 1), phi, 21 * (0.45 + 0.55 * abs(math.sin(phi))), skin, 0.0, K)
     else:
-        r.part(poly([(wroot[0] + 1, wroot[1] + 1), (wroot[0] - 15, wroot[1] - 3), (wroot[0] - 12, wroot[1] + 1.5),
-                     (wroot[0] - 2, wroot[1] + 4.5)], 0.3), skin, bias=0.05)
+        r.part(PG([(wroot[0] + 1, wroot[1] + 1), (wroot[0] - 15, wroot[1] - 3), (wroot[0] - 12, wroot[1] + 1.5),
+                   (wroot[0] - 2, wroot[1] + 4.5)], 0.3), skin, bias=0.05)
+        S(wroot[0] + 1, wroot[1] + 1, wroot[0] - 14, wroot[1] - 2.6, skin[1])
+        for k in range(2):
+            S(wroot[0] - 14, wroot[1] - 2.6, wroot[0] - 9 + k * 4, wroot[1] + 2.5 + k * 0.8, crease)
     return r.render()
-
 
 def gargoyle_anims():
     stone = [draw_gargoyle('perch', stone=1.0)]

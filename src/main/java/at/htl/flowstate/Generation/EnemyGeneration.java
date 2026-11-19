@@ -58,14 +58,14 @@ public class EnemyGeneration {
             new Group("night sky", 6.5, 22000, 1.0, new Pack(DemonType.BAT, 5, 7), new Pack(DemonType.HURLER, 1, 1)),
             // wave 2
             new Group("warden", 3.5, 8000, 1.5, new Pack(DemonType.WARDEN, 1, 1)),
-            new Group("gargoyles", 3.0, 9000, 1.2, new Pack(DemonType.GARGOYLE, 1, 2)),
+            new Group("gargoyles", 4.0, 9000, 1.2, new Pack(DemonType.GARGOYLE, 1, 2)),
             new Group("watcher", 3.5, 11000, 1.2, new Pack(DemonType.WATCHER, 1, 1)),
             new Group("gatekeeper", 5.0, 14000, 0.9, new Pack(DemonType.GATEKEEPER, 1, 1)),
             new Group("priest", 2.0, 14000, 0, new Pack(DemonType.PRIEST, 1, 1)),     // only with an escort (tests: alone)
             new Group("priest + imps", 6.0, 14000, 1.0, new Pack(DemonType.PRIEST, 1, 1), new Pack(DemonType.IMP, 3, 5)),
             new Group("priest + warden", 7.5, 16000, 1.0, new Pack(DemonType.PRIEST, 1, 1), new Pack(DemonType.WARDEN, 1, 1)),
             new Group("phalanx", 8.5, 20000, 1.0, new Pack(DemonType.WARDEN, 2, 2), new Pack(DemonType.HURLER, 1, 1)),
-            new Group("watchtower", 7.0, 21000, 1.0, new Pack(DemonType.WATCHER, 2, 2), new Pack(DemonType.GARGOYLE, 1, 1))
+            new Group("watchtower", 8.0, 21000, 1.0, new Pack(DemonType.WATCHER, 2, 2), new Pack(DemonType.GARGOYLE, 1, 1))
     );
 
     private final List<Group> groups;

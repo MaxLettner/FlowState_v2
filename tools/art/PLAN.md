@@ -69,7 +69,7 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   horn ridges, knuckles, rivets and chain links come out at the finer pixel size; 160x168 frames, 4x on screen).
 
 - `demons2.py` (wave 2): `DemonWarden` (with `_bare` strips once the shield breaks), `DemonGargoyle`
-  (stone / wake / fly / swoop), `DemonWatcher` (`look` = 8 pupil directions at k * 45 deg), `DemonGatekeeper`,
+  (stone / wake / fly / swoop; 112x112 at `GARG_K = 2`, twice the size and pixel detail like the Brute), `DemonWatcher` (`look` = 8 pupil directions at k * 45 deg), `DemonGatekeeper`,
   `DemonPriest` and the boss `DemonLord` (352x280 so the cleaver fits at full swing, twice the pixel detail like the Brute, molten cleaver). Effects:
   `Portal`, `HexBolt`, `BossGate` (tile). hudbars.py has a `BOSS` bar. `python tools/art/demons2.py sheet out.png`.
 

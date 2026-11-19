@@ -19,6 +19,9 @@ public class BruteBehaviour extends GroundDemonBehaviour {
     private static final double TRIGGER_RANGE = 360;
     private static final double RAISE = 0.3, HOLD = 0.5, DOWN = 0.09;
     private static final double AFTER_IMPACT = 0.25, RECOVER = 0.75;
+    /** The Brute's strips have twice the frames of the other demons (idle 8, walk 12, slam 12, air 2). */
+    private static final double IDLE_FPS = 14, WALK_FPS = 16, AIR_FPS = 6, RECOVER_FPS = 12;
+    private static final double TREMBLE_FPS = 14;      // overhead hold: slam frames 3 and 4 alternate
 
     private enum State { WALK, WINDUP, SLAM, RECOVER }
 
@@ -36,7 +39,11 @@ public class BruteBehaviour extends GroundDemonBehaviour {
             case WINDUP -> {
                 stop();
                 timer += t;
-                sprite.show("slam", timer < RAISE ? 0 : 1);
+                if (timer < RAISE) {
+                    sprite.show("slam", (int) (timer / RAISE * 3));                      // 0..2: fists come up
+                } else {
+                    sprite.show("slam", 3 + (int) ((timer - RAISE) * TREMBLE_FPS) % 2);  // 3/4: straining overhead
+                }
                 if (timer >= RAISE + HOLD) {
                     state = State.SLAM;
                     timer = 0;
@@ -48,10 +55,12 @@ public class BruteBehaviour extends GroundDemonBehaviour {
                 stop();
                 timer += t;
                 if (timer < DOWN) {
-                    sprite.show("slam", 2);
+                    sprite.show("slam", timer < DOWN * 0.5 ? 5 : 6);
                 } else {
                     if (!impacted) impact();
-                    sprite.show("slam", timer < DOWN + AFTER_IMPACT * 0.5 ? 3 : timer < DOWN + AFTER_IMPACT ? 4 : 5);
+                    double after = timer - DOWN;                                          // 7..11: impact, settle
+                    sprite.show("slam", after < 0.06 ? 7 : after < AFTER_IMPACT * 0.5 ? 8
+                            : after < AFTER_IMPACT ? 9 : after < AFTER_IMPACT + 0.08 ? 10 : 11);
                     if (timer >= DOWN + AFTER_IMPACT + 0.15) {
                         state = State.RECOVER;
                         timer = RECOVER;
@@ -60,7 +69,7 @@ public class BruteBehaviour extends GroundDemonBehaviour {
             }
             case RECOVER -> {
                 stop();
-                sprite.loop("idle", 6);
+                sprite.loop("idle", RECOVER_FPS);
                 if ((timer -= t) <= 0) state = State.WALK;
             }
         }
@@ -70,7 +79,7 @@ public class BruteBehaviour extends GroundDemonBehaviour {
         double dx = dxToPlayer();
         walk(Math.abs(dx) < 20 ? 0 : dx > 0 ? 1 : -1, SPEED);
         touch(CONTACT_DAMAGE);
-        locomotion("idle", "walk", 8, "air");
+        locomotion("idle", IDLE_FPS, "walk", WALK_FPS, "air", AIR_FPS);
         if (grounded && cooldown <= 0 && Math.abs(dx) < TRIGGER_RANGE && Math.abs(dyToPlayer()) < 200) {
             face(dirToPlayer());
             state = State.WINDUP;
@@ -108,6 +117,6 @@ public class BruteBehaviour extends GroundDemonBehaviour {
 
     @Override
     protected void disabledPose() {
-        sprite.loop("idle", 6);
+        sprite.loop("idle", RECOVER_FPS);
     }
 }

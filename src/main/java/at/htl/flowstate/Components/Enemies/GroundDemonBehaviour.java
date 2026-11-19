@@ -123,12 +123,17 @@ public abstract class GroundDemonBehaviour extends DemonBehaviour {
 
     /** Idle / walk / air from the movement, for demons in their neutral state. */
     protected void locomotion(String idle, String walk, double walkFps, String air) {
+        locomotion(idle, 7, walk, walkFps, air, 6);
+    }
+
+    /** As above with the idle and air rates too (the Brute has twice the frames, played twice as fast). */
+    protected void locomotion(String idle, double idleFps, String walk, double walkFps, String air, double airFps) {
         if (!grounded) {
-            sprite.loop(air, 6);
+            sprite.loop(air, airFps);
         } else if (Math.abs(physics.getVelocityX()) > 1.0) {
             sprite.loop(walk, walkFps);
         } else {
-            sprite.loop(idle, 7);
+            sprite.loop(idle, idleFps);
         }
     }
 }
