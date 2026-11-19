@@ -123,25 +123,31 @@ public class WatcherBehaviour extends DemonBehaviour {
         sprite.show("look", frame);
     }
 
+    /**
+     * The line lives in its own entity that sits at the eye and draws relative to it. (Placed at the world origin
+     * it would be removed by the cleanup of entities far behind the camera as soon as the run passes x = 3500.)
+     */
     private void showLine() {
+        removeLine();
         line = new Line();
         line.setStrokeLineCap(StrokeLineCap.ROUND);
         core = new Line();
         core.setStrokeLineCap(StrokeLineCap.ROUND);
         core.setVisible(false);
         Group g = new Group(line, core);
-        lineEntity = entityBuilder().at(0, 0).view(g).zIndex(14).buildAndAttach();
+        lineEntity = entityBuilder().at(eye()).view(g).zIndex(14).buildAndAttach();
     }
 
     /** Points the line along aimDir up to the first terrain; @return its length */
     private double updateLine(Color color, double width, boolean beam) {
-        if (line == null) showLine();
+        if (lineEntity == null || !lineEntity.isActive()) showLine();
         Point2D from = eye();
         double len = rayLength(from, aimDir);
-        Point2D to = from.add(aimDir.multiply(len));
+        Point2D to = aimDir.multiply(len);                       // relative to the line entity at the eye
+        lineEntity.setPosition(from);
         for (Line l : new Line[]{line, core}) {
-            l.setStartX(from.getX());
-            l.setStartY(from.getY());
+            l.setStartX(0);
+            l.setStartY(0);
             l.setEndX(to.getX());
             l.setEndY(to.getY());
         }
