@@ -28,6 +28,7 @@ import com.almasb.fxgl.physics.HitBox;
 import com.almasb.fxgl.physics.PhysicsComponent;
 import com.almasb.fxgl.physics.box2d.dynamics.BodyType;
 import com.almasb.fxgl.physics.box2d.dynamics.FixtureDef;
+import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -55,9 +56,15 @@ public class Game extends GameApplication {
 
     // parallax layers (tools/art/terrain.py): 480x216 art shown at x5 = 2400x1080, seamless horizontally
     private static final int BG_SCALE = 5;
+    // foreground layers move faster than the world (factor > 1): the bigger, the closer they look
+    private static final double FG_MID_FACTOR = 1.3;
+    private static final double FG_NEAR_FACTOR = 1.7;
     private static final double DEATH_EXIT_DELAY = 0.8; // puddle stays on screen before returning to the main menu
     private static final double EMBER_INTERVAL = 0.35; // faint embers rising out of the abyss
     private final List<ParallaxLayer> layers = new ArrayList<>();
+    // foreground cave silhouettes (tools/art/foreground.py), in front of the world, scrolling faster than the camera
+    private final List<ParallaxLayer> fgLayers = new ArrayList<>();
+    private final Group foreground = new Group();
     private double emberTimer = 0;
     private double cleanupTimer = 0;
     private static final double CLEANUP_INTERVAL = 0.5;
@@ -75,6 +82,13 @@ public class Game extends GameApplication {
             if (offset > 0) offset -= width;
             a.setLayoutX(Math.round(offset));
             b.setLayoutX(Math.round(offset + width));
+        }
+
+        /** Vertical camera movement (shake), also scaled by the factor. */
+        void shiftY(double cameraY) {
+            double y = Math.round(-cameraY * factor);
+            a.setLayoutY(y);
+            b.setLayoutY(y);
         }
 
         void setImage(Image img) {
@@ -236,6 +250,26 @@ public class Game extends GameApplication {
         layers.clear();
         layers.add(addLayer(Assets.pixels("bg_far.png", BG_SCALE), 0.03, 0));
         layers.add(addLayer(Assets.pixels("bg_mid.png", BG_SCALE), 0.08, 0));
+        setupFg();
+    }
+
+    private void setupFg() {
+        // between the game world (contentRoot child 0) and the UI root, so the HUD stays on top
+        var content = getGameScene().getContentRoot().getChildren();
+        if (!content.contains(foreground)) content.add(1, foreground);
+        foreground.setMouseTransparent(true);
+        foreground.getChildren().clear();
+        fgLayers.clear();
+        fgLayers.add(addFgLayer(Assets.pixels("fg_mid.png", 4), FG_MID_FACTOR));
+        fgLayers.add(addFgLayer(Assets.pixels("fg_near.png", 6), FG_NEAR_FACTOR));
+    }
+
+    private ParallaxLayer addFgLayer(Image img, double factor) {
+        ImageView a = new ImageView(img), b = new ImageView(img);
+        a.setSmooth(false);
+        b.setSmooth(false);
+        foreground.getChildren().addAll(a, b);
+        return new ParallaxLayer(a, b, factor);
     }
 
     private ParallaxLayer addLayer(Image img, double factor, double y) {
@@ -278,6 +312,11 @@ public class Game extends GameApplication {
     private void scrollBg(double tpf) {
         double cameraX = getGameScene().getViewport().getX();
         for (ParallaxLayer layer : layers) layer.scroll(cameraX);
+        double cameraY = getGameScene().getViewport().getY();
+        for (ParallaxLayer layer : fgLayers) {
+            layer.scroll(cameraX);
+            layer.shiftY(cameraY);
+        }
 
         // sparse embers drifting up from the abyss
         emberTimer -= tpf;
@@ -312,6 +351,11 @@ public class Game extends GameApplication {
 
     public static void main(String[] args) {
         Thread.currentThread().setContextClassLoader(Game.class.getClassLoader());
+        // JavaFX drives its pulse off vsync, but on some drivers (e.g. Mesa under XWayland) the buffer swap
+        // doesn't wait for vsync and the game loop runs uncapped (~230 fps on a 60 Hz screen). FXGL only
+        // re-measures fps every 2 s, so the game visibly speeds up and slows down. Without vsync JavaFX falls
+        // back to its steady 60 Hz pulse timer. Can still be overridden with -Dprism.vsync=true.
+        if (System.getProperty("prism.vsync") == null) System.setProperty("prism.vsync", "false");
         launch(args);
     }
 
