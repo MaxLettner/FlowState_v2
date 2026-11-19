@@ -47,7 +47,7 @@ public class DemonSpriteComponent extends Component {
 
     public DemonSpriteComponent(DemonType type) {
         this.type = type;
-        current = exists("idle") ? "idle" : "fly";
+        current = exists("dormant") ? "dormant" : exists("idle") ? "idle" : "fly";
         Frames first = strip(current);
         sprite = new FrameSprite(first);
         sprite.loop(first, 8);

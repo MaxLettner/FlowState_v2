@@ -157,6 +157,15 @@ public class PlayerMovementComponent extends Component {
         }
     }
 
+    /**
+     * Drags the player sideways by {@code dx} px this frame (the Void Caller's gravity well). Moves the body
+     * directly so it adds to walking instead of fighting the velocity the input sets; a dash ignores it.
+     */
+    public void pull(double dx) {
+        if (dead || dashLeft > 0 || dx == 0) return;
+        physics.overwritePosition(entity.getPosition().add(dx, 0));
+    }
+
     /** Death: input stops moving the player, who just falls and melts. */
     public void die() {
         dead = true;

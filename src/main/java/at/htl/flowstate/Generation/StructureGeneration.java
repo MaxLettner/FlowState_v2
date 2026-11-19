@@ -20,6 +20,11 @@ public class StructureGeneration {
 
     private static final double PLATFORM_H = 50;
     private static final double CHEST_W = 80, CHEST_H = 50;
+    /** About one chest in six is a Mimic, once the run is past the first stretch. */
+    private static final double MIMIC_CHANCE = 1 / 6.0;
+    private static final double MIMIC_FROM = 6000;
+    /** Testing: {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic. */
+    private static final boolean ALL_MIMICS = "1".equals(System.getenv("FLOWSTATE_MIMICS"));
 
     //ruins sink a little into the ground so they don't float on uneven crust
     private static final double RUIN_SINK = 6;
@@ -157,6 +162,10 @@ public class StructureGeneration {
     }
 
     private void spawnChest(double x, double y) {
+        if (ALL_MIMICS || x >= MIMIC_FROM && Math.random() < MIMIC_CHANCE) {
+            spawn("mimic", new SpawnData(x, y - 2));      // same box, same spot: it can't be told apart
+            return;
+        }
         spawn("chest", new SpawnData(x, y)
                 .put("width", CHEST_W)
                 .put("height", CHEST_H));

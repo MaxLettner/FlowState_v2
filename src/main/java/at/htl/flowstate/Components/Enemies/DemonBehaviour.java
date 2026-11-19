@@ -89,6 +89,11 @@ public abstract class DemonBehaviour extends Component {
         return 1;
     }
 
+    /** Hidden in plain sight (a sleeping Mimic): auto-aim leaves it alone. */
+    public boolean isLurking() {
+        return false;
+    }
+
     /** Whether the hit comes from the side the demon faces (from the attacker's x, else the player's). */
     protected boolean fromFront(Hit h) {
         double x = Double.isNaN(h.getSourceX()) ? player.getCenter().getX() : h.getSourceX();

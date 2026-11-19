@@ -76,6 +76,22 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.PRIEST, new PriestBehaviour());
     }
 
+    @Spawns("drake")
+    public Entity drake(SpawnData data) {
+        return demon(data, DemonType.DRAKE, new DrakeBehaviour());
+    }
+
+    @Spawns("void_caller")
+    public Entity voidCaller(SpawnData data) {
+        return demon(data, DemonType.VOID_CALLER, new VoidCallerBehaviour());
+    }
+
+    /** Stands in for a chest (StructureGeneration). */
+    @Spawns("mimic")
+    public Entity mimic(SpawnData data) {
+        return demon(data, DemonType.MIMIC, new MimicBehaviour());
+    }
+
     @Spawns("lord")
     public Entity lord(SpawnData data) {
         return demon(data, DemonType.LORD, new PitLordBehaviour());

@@ -2,6 +2,7 @@ package at.htl.flowstate.Components.Enemies;
 
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Combat.DamageKind;
+import at.htl.flowstate.Combat.Element;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
@@ -51,6 +52,10 @@ public class EnemyStatsComponent extends Component {
     private double poisonLeft, bleedLeft;
     private Point2D pinPosition;
 
+    private double fizzleCooldown;
+    private static final javafx.scene.paint.Color[] SMOKE = {
+            javafx.scene.paint.Color.web("#8c8487"), javafx.scene.paint.Color.web("#5e5659"), javafx.scene.paint.Color.web("#b3abab")};
+
     private double knockbackVelocity = 0;
     private boolean launched = false;
     private final Set<Entity> bounced = new HashSet<>();
@@ -78,6 +83,7 @@ public class EnemyStatsComponent extends Component {
 
         if (knockbackVelocity == 0) stunLeft = Math.max(0, stunLeft - tpf);
         freezeLeft = Math.max(0, freezeLeft - tpf);
+        fizzleCooldown = Math.max(0, fizzleCooldown - tpf);
         slowLeft = Math.max(0, slowLeft - tpf);
 
         if (pinLeft > 0) {
@@ -123,8 +129,8 @@ public class EnemyStatsComponent extends Component {
                 return;
             }
         }
-        if (freezeLeft > 0 && kind != DamageKind.DOT) { // shatter
-            amount *= 2;
+        if (freezeLeft > 0 && kind != DamageKind.DOT) { // shatter (fire demons shatter for more)
+            amount *= type.nature == DemonNature.FIRE ? DemonNature.FIRE_SHATTER : DemonNature.SHATTER;
             freezeLeft = 0;
             Sfx.SHATTER.at(entity.getCenter());
         }
@@ -176,7 +182,7 @@ public class EnemyStatsComponent extends Component {
         double dot = 0;
         if (burnLeft > 0) {
             burnLeft -= tpf;
-            dot += BURN_DPS * tpf;
+            dot += BURN_DPS * type.nature.multiplier(Element.FIRE) * tpf;
         }
         if (poisonStacks > 0) {
             poisonLeft -= tpf;
@@ -212,9 +218,20 @@ public class EnemyStatsComponent extends Component {
     }
     public void burn(double duration) {
         if (getAffix() == EliteAffix.INFERNAL) return;
+        if (type.nature.burnImmune()) {
+            fizzle();
+            return;
+        }
         burnLeft = Math.max(burnLeft, duration * mastery());
     }
     public void clearSlow() { slowLeft = 0; }
+
+    /** A fire demon shrugging off a burn: a puff of smoke (at most every half second). */
+    private void fizzle() {
+        if (fizzleCooldown > 0 || entity == null) return;
+        fizzleCooldown = 0.5;
+        Particles.burst(entity.getCenter().add(0, -10), SMOKE, 6, -90, 40, 30, 90, 0.7, 6, -60);
+    }
 
     public void addPoison(int stacks) {
         poisonStacks = Math.min(POISON_MAX_STACKS, poisonStacks + stacks);
@@ -250,7 +267,7 @@ public class EnemyStatsComponent extends Component {
         if (direction != 1 && direction != -1) return;
         if (pinLeft > 0) return;
         resolveComponents();
-        strength *= type.knockbackMult;
+        strength *= type.knockbackMult * (type.nature == DemonNature.VOID ? DemonNature.VOID_KNOCKBACK : 1);
         if (strength < 1) return;
         knockbackVelocity = strength * direction;
         launched = launch;

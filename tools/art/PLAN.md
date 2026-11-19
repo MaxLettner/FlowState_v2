@@ -73,6 +73,12 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   `DemonPriest` and the boss `DemonLord` (352x280 so the cleaver fits at full swing, twice the pixel detail like the Brute, molten cleaver). Effects:
   `Portal`, `HexBolt`, `BossGate` (tile). hudbars.py has a `BOSS` bar. `python tools/art/demons2.py sheet out.png`.
 
+- `demons3.py` (wave 3): `DemonDrake` (ash wyvern, 128x120 at `DRAKE_K = 2`, reuses demons2's `membrane_wing`; fly / drop),
+  `DemonVoidCaller` (hooded void face, orbiting shards, void orb; idle / walk / cast / air) and `DemonMimic` (its dormant
+  frame 0 is `effects.chest_frames()[0]` pasted at (8, 14), so it matches the chest pixel for pixel; the awake frames
+  redraw the chest box with a lid jaw, teeth, tongue and legs). Effects: `DrakeBomb`, `GravityWell`.
+  `python tools/art/demons3.py sheet out.png`. The Brute also has twice the frames since 2026-11-19 (in-betweens).
+
 ### Possible follow-ups
 - Old unused textures were deleted 2026-11-18 (still in src_backup_pre_art_overhaul.tar.gz).
 - Projectile trails were not added (only fireball embers via burning ground / blasts).

@@ -99,6 +99,8 @@ public final class Combat {
         Entity best = null;
         double bestDist = maxDistance;
         for (Entity e : enemies()) {
+            DemonBehaviour ai = e.getComponentOptional(DemonBehaviour.class).orElse(null);
+            if (ai != null && ai.isLurking()) continue;
             double d = e.getCenter().distance(point);
             if (d <= bestDist) {
                 bestDist = d;
@@ -153,6 +155,11 @@ public final class Combat {
         boolean crit = critChance > 0 && Math.random() < critChance;
         if (crit) damage *= CRIT_MULT;
 
+        // elemental matchups: fire demons hate ice, void demons hate fire
+        Element element = element(h, weaponHit, loadout);
+        double weak = stats.getType().nature.multiplier(element);
+        damage *= weak;
+
         boolean shatteredSlow = false;
         if (h.shatterSlowed && stats.isSlowed() && !stats.isFrozen()) {
             damage += ICICLE_SHATTER_BONUS;
@@ -167,6 +174,7 @@ public final class Combat {
             if (crit) Particles.burst(enemy.getCenter(), Particles.SPARK, 8, -90, 180, 200, 420, 0.3, 6, 200);
         }
         if (h.kind != DamageKind.DOT) hitSound(enemy, h, damage, crit, shatteredSlow);
+        if (weak > 1 && h.kind != DamageKind.DOT) weakness(enemy, element);
         if (fist) loadout.registerComboHit();
         if (h.kind == DamageKind.MELEE) meleeImpact(enemy, damage, crit, stats.isDead(), h.impact);
         if (stats.isDead()) return new Result(true, damage, crit, true);
@@ -197,6 +205,29 @@ public final class Combat {
             stats.applyKnockback(h.knockback, dir, h.launch);
         }
         return new Result(true, damage, crit, false);
+    }
+
+    /**
+     * The element a hit carries: ice for freezing/slowing hits (Icicle, Ice Trident) and ice-imbued weapons,
+     * fire for burning hits (Spark, Fire Ball) and fire-imbued weapons; null for the rest.
+     */
+    public static Element element(Hit h, boolean weaponHit, LoadoutComponent loadout) {
+        if (h.freeze > 0 || h.slow > 0 || h.shatterSlowed || h.family == SkillType.ICICLE || h.family == SkillType.ICE_TRIDENT) {
+            return Element.ICE;
+        }
+        if (h.burn > 0 || h.family == SkillType.FIRE_BALL) return Element.FIRE;
+        if (weaponHit && loadout.getActiveEnchant() == SkillType.IMBUE) {
+            Element imbued = loadout.getImbueElement();
+            if (imbued == Element.ICE || imbued == Element.FIRE) return imbued;
+        }
+        return null;
+    }
+
+    /** A hit on a weakness: a burst in the element's colour and a bright ring, so the matchup is learnt. */
+    private static void weakness(Entity enemy, Element element) {
+        Point2D c = enemy.getCenter();
+        Particles.burst(c, element == Element.ICE ? Particles.ICE : Particles.EMBER, 14, -90, 180, 160, 380, 0.45, 5, 250);
+        Sfx.CRIT.at(c, 0.8, element == Element.ICE ? 1.35 : 0.85);
     }
 
     /** Sparks and a clang off a shield or stone skin; melee still gets a small freeze so it feels solid. */

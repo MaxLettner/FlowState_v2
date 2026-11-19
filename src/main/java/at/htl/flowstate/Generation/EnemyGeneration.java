@@ -25,7 +25,8 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * blocks the way; nothing else spawns while it lives.
  * <p>
  * Testing: {@code FLOWSTATE_DEMONS=imp,bat} spawns only those demons (all distances, one kind per group;
- * {@code lord} brings the boss right away), {@code FLOWSTATE_ELITES=1} makes every single demon an elite.
+ * {@code lord} brings the boss right away, {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
+ * every single demon an elite; {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic (StructureGeneration).
  */
 public class EnemyGeneration {
     private static final double START_X = 1200;          // the first screen stays empty
@@ -65,7 +66,13 @@ public class EnemyGeneration {
             new Group("priest + imps", 6.0, 14000, 1.0, new Pack(DemonType.PRIEST, 1, 1), new Pack(DemonType.IMP, 3, 5)),
             new Group("priest + warden", 7.5, 16000, 1.0, new Pack(DemonType.PRIEST, 1, 1), new Pack(DemonType.WARDEN, 1, 1)),
             new Group("phalanx", 8.5, 20000, 1.0, new Pack(DemonType.WARDEN, 2, 2), new Pack(DemonType.HURLER, 1, 1)),
-            new Group("watchtower", 8.0, 21000, 1.0, new Pack(DemonType.WATCHER, 2, 2), new Pack(DemonType.GARGOYLE, 1, 1))
+            new Group("watchtower", 8.0, 21000, 1.0, new Pack(DemonType.WATCHER, 2, 2), new Pack(DemonType.GARGOYLE, 1, 1)),
+            // wave 3 (the Mimic hides among the chests instead: StructureGeneration)
+            new Group("drake", 4.5, 12000, 1.1, new Pack(DemonType.DRAKE, 1, 1)),
+            new Group("void caller", 4.0, 13000, 1.1, new Pack(DemonType.VOID_CALLER, 1, 1)),
+            new Group("event horizon", 7.0, 17000, 1.0, new Pack(DemonType.VOID_CALLER, 1, 1), new Pack(DemonType.IMP, 3, 4)),
+            new Group("air raid", 7.5, 19000, 1.0, new Pack(DemonType.DRAKE, 1, 1), new Pack(DemonType.HURLER, 1, 1)),
+            new Group("undertow", 8.5, 23000, 0.8, new Pack(DemonType.VOID_CALLER, 1, 1), new Pack(DemonType.HOUND, 2, 2))
     );
 
     private final List<Group> groups;
@@ -86,6 +93,8 @@ public class EnemyGeneration {
                     groups.add(new Group(g.name(), Math.min(g.cost(), 2.5), 0, 1, g.packs()));
                 }
             }
+            // the Mimic normally hides among the chests; tests can have it on the ground
+            if (names.contains(DemonType.MIMIC.name())) groups.add(new Group("mimic", 2.5, 0, 1, new Pack(DemonType.MIMIC, 1, 1)));
             boolean lord = names.contains(DemonType.LORD.name());
             nextBossX = lord ? START_X * 0.6 + 300 : Double.MAX_VALUE;
             if (groups.isEmpty() && !lord) throw new IllegalArgumentException("FLOWSTATE_DEMONS: no demon named in " + only);
@@ -139,9 +148,11 @@ public class EnemyGeneration {
             for (int i = 0; i < count; i++) {
                 double room = Math.max(0, width - type.width);
                 double sx = x + Math.random() * room;
-                // gargoyles fly but start as statues standing on the ground
+                // gargoyles fly but start as statues standing on the ground; drakes arrive high up
                 boolean airborne = type.flying && type != DemonType.GARGOYLE;
-                double sy = airborne ? groundY - 280 - Math.random() * 120 : groundY - type.height - 2;
+                double sy = !airborne ? groundY - type.height - 2
+                        : type == DemonType.DRAKE ? groundY - 520 - Math.random() * 80
+                        : groundY - 280 - Math.random() * 120;
                 SpawnData data = new SpawnData(sx, sy);
                 if (pack.max() == 1 && Math.random() < eliteChance) data.put("elite", EliteComponent.random());
                 spawn(type.spawnName(), data);

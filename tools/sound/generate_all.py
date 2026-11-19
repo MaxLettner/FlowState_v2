@@ -683,6 +683,60 @@ def ui_slot():
 
 
 #=====Ambience (loops)=====
+#=====Wave 3 demons=====
+@sound
+def drake_screech():
+    """A raspy, falling wyvern cry from high up."""
+    dur = 0.7
+    cry = tone(dur, sweep(1500, 600, dur), 'saw', vibrato=40, vib_rate=19)
+    rasp = tremolo(bandpass(noise(dur, seed=301), sweep(2600, 1200, dur), 1.6), 37, 0.7)
+    return env(lowpass(drive(mix((cry, 0.6), (rasp, 0.6)), 1.8), 3800), 0.03, dur)
+
+
+@sound
+def bomb_drop():
+    """A short falling whistle as a fire bomb leaves the drake's belly."""
+    dur = 0.45
+    whistle = env(tone(dur, sweep(1800, 700, dur), 'sine', vibrato=8, vib_rate=11), 0.02, dur)
+    air = whoosh(dur, 500, 2500, 1.4, 0.3, seed=302)
+    return mix((whistle, 0.6), (air, 0.5))
+
+
+@sound
+def void_cast():
+    """A deep drone pulling in on itself, with a reversed-sounding swell, while the void orb gathers."""
+    dur = 1.15
+    drone = mix((tone(dur, sweep(55, 82, dur), 'saw'), 0.5), (tone(dur, sweep(110, 164, dur), 'sine'), 0.4))
+    suck = bandpass(noise(dur, 'pink', seed=303), lambda t: 2400 - 2000 * (t / dur), 2.2)
+    sig = mix((lowpass(drone, 700), 0.8), (tremolo(suck, 13, 0.6), 0.5), (shimmer(dur, 3000, 6000, seed=304), 0.15))
+    return amp(sig, lambda t: (t / dur) ** 1.3)
+
+
+@sound
+def well_open():
+    """The well snapping open: a low thud and a rushing inhale."""
+    thud = thump(0.5, 120, 35)
+    rush = bandpass(noise(0.7, 'pink', seed=305), lambda t: 3000 * math.exp(-t * 4) + 200, 1.8)
+    return mix((thud, 0.9), (env(rush, 0.01, 0.7), 0.6))
+
+
+@sound
+def well_hum():
+    """One beat of the well's throbbing hum (played on repeat while it lasts)."""
+    dur = 0.95
+    hum = mix((tone(dur, 46, 'saw'), 0.5), (tone(dur, 69, 'sine'), 0.5), (tone(dur, 92.5, 'sine'), 0.2))
+    return amp(lowpass(hum, 400), lambda t: math.sin(math.pi * t / dur) ** 2)
+
+
+@sound
+def mimic_chomp():
+    """A wooden lid slamming shut on teeth: a knock, a crunch and a wet snap."""
+    knock = mix((thump(0.18, 300, 90), 0.9), (bandpass(env(noise(0.08, seed=306), 0.001, 0.06), 1800, 2.0), 0.6))
+    crunch = lowpass(clicks(0.12, 140, 0.003, (1200, 4000), seed=307), 5000)
+    wet = squelch(0.12, 1600, 500, 3, seed=308)
+    return mix((knock, 1.0), (amp(crunch, lambda t: math.exp(-t / 0.05)), 0.5, 0.01), (wet, 0.4, 0.02))
+
+
 @sound
 def amb_abyss():
     dur, xf = 17.0, 1.0

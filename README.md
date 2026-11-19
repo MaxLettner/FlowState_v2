@@ -38,8 +38,9 @@ Testing switches (combine freely):
 
 |Variable|Effect|
 |---|---|
-|`FLOWSTATE_DEMONS=imp,bat`|Only these demons spawn (imp, hound, brute, hurler, bat, cultist, warden, gargoyle, watcher, gatekeeper, priest), from the start, with a full danger budget; `lord` brings the Pit Lord right away|
+|`FLOWSTATE_DEMONS=imp,bat`|Only these demons spawn (imp, hound, brute, hurler, bat, cultist, warden, gargoyle, watcher, gatekeeper, priest, drake, void_caller), from the start, with a full danger budget; `lord` brings the Pit Lord right away, `mimic` puts mimics on the ground|
 |`FLOWSTATE_ELITES=1`|Every single demon is an elite|
+|`FLOWSTATE_MIMICS=1`|Every chest is a Mimic|
 |`FLOWSTATE_AUTOSTART=1`|Skips the main menu|
 |`FLOWSTATE_SHOTS=<dir>`|Saves a screenshot every `FLOWSTATE_SHOTS_EVERY` s (default 1), at most `FLOWSTATE_SHOTS_MAX` (default 30)|
 
@@ -101,6 +102,8 @@ src/main/java/
     │   │   ├── GroundDemonBehaviour      # Walking: step-up, jump-over
     │   │   ├── Imp/Hound/Brute/Hurler/Cultist/BatBehaviour
     │   │   ├── Warden/Gargoyle/Watcher/Gatekeeper/Priest/PitLordBehaviour
+    │   │   ├── Drake/VoidCaller/MimicBehaviour, GravityWellComponent
+    │   │   ├── DemonNature               # Elemental matchups: flesh, fire (hates ice), void (hates fire)
     │   │   ├── EliteAffix, EliteComponent, PortalComponent, BossGateComponent
     │   │   ├── EnemyStatsComponent       # HP, death, XP, stun/freeze/slow/burn/poison/bleed/pin, knockback, bounce
     │   │   ├── EnemyProjectileComponent, BallisticProjectileComponent, Ballistics, HomingOrbComponent
@@ -160,8 +163,13 @@ Segment types:
 |Gatekeeper; Hex Priest + Imps|5–6|14 000|
 |Hex Priest + Chainwarden|7.5|16 000|
 |2 Wardens + Hurler, 2 Watchers + Gargoyle|8–8.5|20 000–21 000|
+|Ash Drake|4.5|12 000|
+|Void Caller|4|13 000|
+|Void Caller + Imps, Drake + Hurler, Void Caller + 2 Hounds|7–8.5|17 000–23 000|
 
 Single demons can be **elites** (chance grows from 0 at x = 9 000 to 22 %): ×1.8 HP, ×2 XP, a coloured aura and one affix: *Infernal* (sets you on fire, can't be burned), *Frostbound* (chills you, can't be frozen or slowed), *Vampiric* (heals 15 % on every hit), *Swift* (+35 % speed and attack speed).
+
+About one chest in six past x = 6 000 is a **Mimic** (it takes the chest's place; killing it pays out the skill point).
 
 The **Pit Lord** mini-boss comes at x = 18 000 and every 24 000 px after. A gate of hellfire bars the way on until it dies, nothing else spawns during the fight, and its health bar shows at the top of the screen. Killing it grants 2 skill points.
 
@@ -234,7 +242,20 @@ Every demon extends `DemonBehaviour`: each frame it either thinks (moves and att
 |Watcher|60|flying ranged|Hovers ~420 px away at your height, traces an aim line (1.2 s), locks it (0.35 s), fires a beam stopped by terrain|Step out of the locked line, use terrain, stun it|
 |Gatekeeper|200|summoner|Stays put and opens portals that let imps through (up to 4 of its own; they give no XP)|Kill it first|
 |Hex Priest|85|support|Wards up to 3 nearby demons (soaks 30 damage), hexes you (lower jumps, no mana regen for 4 s)|Kill it first, knock it away|
+|Ash Drake|150|flying bomber|Flies passes high over you (~400 px up), dropping fire bombs timed to land on you; each leaves a fire pool. Never comes down by itself, climbs away after 5 passes|Bows, crossbows, tridents, spells; freeze or stun it and it sinks within reach|
+|Void Caller|110|ground mage|Drifts 280–620 px away, casts for 1.15 s (violet glow), then opens a gravity well where you stand for 3.6 s: drags you toward a biting core (slower than walking; a dash breaks free) while the others close in|Freeze or stun it to stop the cast; walk or dash out of the well|
+|Mimic|220|ambush|Sleeps as a chest (the lid twitches now and then); wakes when you come close or hit it, hops after you and bites (18). Pays out the chest's skill point when it dies|Watch for the twitch; hit it before you reach for it|
 |Pit Lord|1600|boss|Cleaver slam (direct hit + shockwaves), magma volleys; from 60 % HP also summons imps, below 30 % enraged (faster, double shockwaves, 5-ball volleys). No knockback, stuns cut to a third|Jump the shockwaves, keep moving under the volleys|
+
+**Elemental weaknesses** (`DemonNature`): every demon is flesh, fire or void.
+
+|Nature|Demons|Matchup|
+|---|---|---|
+|Flesh|Imp, Hellhound, Pit Brute, Chainwarden, Gargoyle, Mimic|none|
+|Fire|Brimstone Hurler, Cinderbat, Hellfire Cultist, Ash Drake, Pit Lord|can't be burned (a puff of smoke), ice hits deal ×2, a freeze shatters for ×3 instead of ×2|
+|Void|Watcher, Gatekeeper, Hex Priest, Void Caller|half knockback, fire hits and burn deal ×1.5|
+
+Ice hits are Icicle, Ice Trident and anything that freezes or slows, plus weapons imbued with ice; fire hits are Spark, Fire Ball, anything that burns and weapons imbued with fire. A hit on a weakness throws a burst in the element's colour with a ringing crit sound.
 
 The lob is solved analytically in `Ballistics.velocity` (discriminant check, minimum-time solution). **Do not modify that math unless you fully understand it.**
 
