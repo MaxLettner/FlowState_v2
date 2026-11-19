@@ -37,11 +37,11 @@ public class EnemyGeneration {
             new Group("hound", 2.0, 2000, 2.5, new Pack(DemonType.HOUND, 1, 1)),
             new Group("hurler", 2.5, 4000, 2.0, new Pack(DemonType.HURLER, 1, 1)),
             new Group("bats", 3.0, 7000, 2.0, new Pack(DemonType.BAT, 4, 6)),
-            new Group("brute", 4.5, 10000, 1.5, new Pack(DemonType.BRUTE, 1, 1)),
+            new Group("brute", 5.5, 10000, 1.5, new Pack(DemonType.BRUTE, 1, 1)),
             new Group("cultist", 4.0, 13000, 1.5, new Pack(DemonType.CULTIST, 1, 1)),
             new Group("big imps", 4.0, 15000, 1.0, new Pack(DemonType.IMP, 6, 8)),
             new Group("hound pair", 4.0, 15000, 1.0, new Pack(DemonType.HOUND, 2, 2)),
-            new Group("brute escort", 7.0, 18000, 1.0, new Pack(DemonType.BRUTE, 1, 1), new Pack(DemonType.HURLER, 1, 1)),
+            new Group("brute escort", 8.0, 18000, 1.0, new Pack(DemonType.BRUTE, 1, 1), new Pack(DemonType.HURLER, 1, 1)),
             new Group("coven", 6.5, 20000, 1.0, new Pack(DemonType.CULTIST, 1, 1), new Pack(DemonType.IMP, 3, 4)),
             new Group("night sky", 6.5, 22000, 1.0, new Pack(DemonType.BAT, 5, 7), new Pack(DemonType.HURLER, 1, 1))
     );

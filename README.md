@@ -147,10 +147,10 @@ Segment types:
 |Hellhound|2|2 000|
 |Brimstone Hurler|2.5|4 000|
 |4–6 Cinderbats|3|7 000|
-|Pit Brute|4.5|10 000|
+|Pit Brute|5.5|10 000|
 |Hellfire Cultist|4|13 000|
 |6–8 Imps, Hellhound pair|4|15 000|
-|Brute + Hurler, Cultist + Imps, Bats + Hurler|6.5–7|18 000–22 000|
+|Brute + Hurler, Cultist + Imps, Bats + Hurler|6.5–8|18 000–22 000|
 
 Entities more than 3500 px behind the viewport are removed each frame to keep Box2D stable.
 
@@ -212,7 +212,7 @@ Every demon extends `DemonBehaviour`: each frame it either thinks (moves and att
 |---|---|---|---|---|
 |Imp|34|ground melee, packs|Runs at you (each aims a bit to the side), crouches and hops claws-first|Wide swings, pierce|
 |Hellhound|70|ground melee|Fast; crouches growling, then lunges ~400 px; pants for 0.9 s after|Jump the lunge, punish the pant|
-|Pit Brute|260|ground heavy|Raises both fists, slams: fists in front plus a shockwave rolling both ways along the floor. Half knockback, half stun duration|Jump the shockwave; freeze + shatter|
+|Pit Brute|520|ground heavy|Raises both fists, slams: fists in front plus a shockwave rolling both ways along the floor. Half knockback, half stun duration|Jump the shockwave; freeze + shatter|
 |Brimstone Hurler|80|ground ranged|Keeps 330–650 px away, lobs magma that leaves a burning pool|Close the gap|
 |Cinderbat|18|flying, swarms|Flutters around its own spot above you, shrieks, dives at where you were, climbs back|Any hit kills; sinks when stunned|
 |Hellfire Cultist|90|ground mage|Keeps its distance, casts 3 slow homing orbs; teleports 450–600 px away when you get close|Cut the orbs (swings deflect them), catch it after a teleport, pin it|

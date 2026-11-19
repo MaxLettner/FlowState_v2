@@ -13,7 +13,7 @@ public enum DemonType {
             "#ff8a6a", "#e0473a", "#7a1826"),
     HOUND("DemonHound", 70, 70, 44, 64, 40, 32, 39, false, 1.0, 1.0, 1.0, 1.1,
             "#ff9a3d", "#7c3f3a", "#e8dcc0"),
-    BRUTE("DemonBrute", 260, 128, 240, 160, 168, 80, 165, false, 3.0, 0.45, 0.5, 0.6,
+    BRUTE("DemonBrute", 520, 128, 240, 160, 168, 80, 165, false, 5.0, 0.45, 0.5, 0.6,
             "#c2abd0", "#624a7a", "#ff8a2a"),
     HURLER("DemonHurler", 80, 46, 76, 56, 52, 28, 51, false, 1.2, 0.9, 1.0, 1.0,
             "#f4e690", "#93782c", "#ff8a2a"),
