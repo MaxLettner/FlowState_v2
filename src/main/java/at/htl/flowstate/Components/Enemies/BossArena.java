@@ -1,5 +1,6 @@
 package at.htl.flowstate.Components.Enemies;
 
+import at.htl.flowstate.Components.Identifier.EnemyIdentifierComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
@@ -7,9 +8,13 @@ import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Impact;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
+import com.almasb.fxgl.physics.PhysicsComponent;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
+
+import java.util.ArrayList;
+import java.util.List;
 
 import static com.almasb.fxgl.dsl.FXGL.*;
 
@@ -17,7 +22,8 @@ import static com.almasb.fxgl.dsl.FXGL.*;
  * The Pit Lord's arena. LevelGeneration lays a long flat stretch and {@link #plan plans} the arena on it; when the
  * camera reaches the arena it stops scrolling, a hellfire gate slams down at the right edge of the screen, then one
  * at the left edge, boxing the player in. In a short cutscene (no player control, letterbox bars) the Pit Lord
- * drops in behind the player and roars; then the fight starts. Killing it opens both gates and frees the camera.
+ * drops in behind the player and roars; then the fight starts. Every other demon and everything they threw or
+ * opened is frozen in place for the cutscene. Killing it opens both gates and frees the camera.
  */
 public final class BossArena {
     /** The arena is exactly one screen wide. */
@@ -38,6 +44,7 @@ public final class BossArena {
     private static boolean leftClosed, lordSpawned;
     private static Entity leftGate, rightGate;
     private static Rectangle barTop, barBottom;
+    private static final List<Entity> frozen = new ArrayList<>();
 
     private BossArena() {}
 
@@ -46,6 +53,7 @@ public final class BossArena {
         phase = Phase.NONE;
         leftGate = rightGate = null;
         barTop = barBottom = null;    // the UI was cleared with the old game
+        frozen.clear();               // ... and the world
     }
 
     /** The ground from lockX to lockX + WIDTH is flat at groundY; the arena closes when the camera gets there. */
@@ -86,6 +94,7 @@ public final class BossArena {
         // ends held actions (running, charging) before input goes deaf, so nothing sticks once it's back
         getInput().clearAll();
         getInput().setProcessInput(false);
+        freezeOthers();
         rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY);
         Impact.shake(16);
         Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
@@ -124,12 +133,16 @@ public final class BossArena {
     private static void startFight() {
         phase = Phase.FIGHT;
         restoreInput();
+        thaw();
     }
 
     /** The Pit Lord is gone (dead, or removed some other way): never leave the way barred. */
     static void end() {
         if (phase == Phase.NONE) return;
-        if (phase == Phase.CUTSCENE) restoreInput();
+        if (phase == Phase.CUTSCENE) {
+            restoreInput();
+            thaw();
+        }
         phase = Phase.NONE;
         BossGateComponent.open(leftGate);
         BossGateComponent.open(rightGate);
@@ -138,6 +151,34 @@ public final class BossArena {
 
     private static void restoreInput() {
         if (!Game.getPlayer().getComponent(PlayerStatsComponent.class).isDead()) getInput().setProcessInput(true);
+    }
+
+    //-----freezing-----
+    /** Every demon (the Pit Lord isn't there yet) and every projectile, hazard and portal they made. */
+    private static void freezeOthers() {
+        frozen.clear();
+        frozen.addAll(getGameWorld().getEntitiesFiltered(e ->
+                e.hasComponent(EnemyIdentifierComponent.class)
+                        || e.hasComponent(EnemyProjectileComponent.class)
+                        || e.hasComponent(ShockwaveComponent.class)
+                        || e.hasComponent(MagmaPoolComponent.class)
+                        || e.hasComponent(GravityWellComponent.class)
+                        || e.hasComponent(PortalComponent.class)));
+        // no AI, timers or animation, and out of the physics simulation (no falling, no drifting)
+        for (Entity e : frozen) setFrozen(e, true);
+    }
+
+    private static void thaw() {
+        for (Entity e : frozen) if (e.isActive()) setFrozen(e, false);
+        frozen.clear();
+    }
+
+    private static void setFrozen(Entity e, boolean frozen) {
+        e.setUpdateEnabled(!frozen);
+        if (e.hasComponent(PhysicsComponent.class)) {
+            PhysicsComponent physics = e.getComponent(PhysicsComponent.class);
+            if (physics.getBody() != null) physics.getBody().setActive(!frozen);
+        }
     }
 
     private static PlayerMovementComponent movement() {
