@@ -87,10 +87,13 @@ public class HurlerBehaviour extends GroundDemonBehaviour {
     private void launch() {
         Point2D from = entity.getCenter().add(facing * 14, -30);
         Point2D target = player.getCenter().add(FXGLMath.random(-20, 20), 10);
-        Point2D vel = Ballistics.velocity(from, target, BALL_SPEED, Ballistics.GRAVITY);
-        if (vel == null) return;
-        Sfx.ENEMY_THROW.at(entity.getCenter(), 1, 0.8);
+        if (lob(from, target, BALL_SPEED, BALL_DAMAGE, entity)) Sfx.ENEMY_THROW.at(entity.getCenter(), 1, 0.8);
+    }
 
+    /** Lobs a magma ball (pool where it lands) from {@code from} onto {@code target}; false if out of reach. */
+    public static boolean lob(Point2D from, Point2D target, double speed, double damage, Entity owner) {
+        Point2D vel = Ballistics.velocity(from, target, speed, Ballistics.GRAVITY);
+        if (vel == null) return false;
         Frames frames = Assets.frames("MagmaBall.png", 4, 2);
         FrameSprite view = new FrameSprite(frames).loop(frames, 12);
         view.setTranslateX(7 - frames.width() / 2);
@@ -100,11 +103,12 @@ public class HurlerBehaviour extends GroundDemonBehaviour {
                 .view(view)
                 .bbox(new HitBox(BoundingShape.box(14, 14)))
                 .with(new BallisticProjectileComponent(vel.getX(), vel.getY()))
-                .with(new EnemyProjectileComponent(BALL_DAMAGE, HurlerBehaviour::splash))
+                .with(new EnemyProjectileComponent(damage, HurlerBehaviour::splash).owner(owner))
                 .with(new DeleteAfterTimeComponent(8))
                 .with(new OffscreenCleanComponent())
                 .zIndex(12)
                 .buildAndAttach();
+        return true;
     }
 
     private static void splash(Entity ball) {

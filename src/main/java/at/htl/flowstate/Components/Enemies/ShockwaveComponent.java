@@ -28,18 +28,20 @@ public class ShockwaveComponent extends Component {
     private static final int SCALE = 2;
 
     private final int dir;
+    private final Entity owner;
     private final Entity player = Game.getPlayer();
     private double travelled;
     private double groundY;
     private boolean hit;
     private double dustTimer;
 
-    private ShockwaveComponent(int dir, double groundY) {
+    private ShockwaveComponent(int dir, double groundY, Entity owner) {
         this.dir = dir;
+        this.owner = owner;
         this.groundY = groundY;
     }
 
-    public static void spawn(double x, double groundY, int dir) {
+    public static void spawn(double x, double groundY, int dir, Entity owner) {
         Frames frames = Assets.frames("BruteShockwave.png", 4, SCALE);
         FrameSprite view = new FrameSprite(frames).loop(frames, 14);
         view.setTranslateX(W / 2 - frames.width() / 2);
@@ -49,7 +51,7 @@ public class ShockwaveComponent extends Component {
                 .at(x - W / 2, groundY - H)
                 .view(view)
                 .bbox(new HitBox(BoundingShape.box(W, H)))
-                .with(new ShockwaveComponent(dir, groundY))
+                .with(new ShockwaveComponent(dir, groundY, owner))
                 .zIndex(11)
                 .buildAndAttach();
     }
@@ -70,6 +72,7 @@ public class ShockwaveComponent extends Component {
 
         if (!hit && entity.isColliding(player)) {
             hit = player.getComponent(PlayerStatsComponent.class).takeDamage(DAMAGE, entity, false);
+            if (hit) EliteComponent.onHit(owner);
         }
         dustTimer -= tpf;
         if (dustTimer <= 0) {

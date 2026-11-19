@@ -96,7 +96,7 @@ public class CultistBehaviour extends GroundDemonBehaviour {
             Point2D from = entity.getCenter().add(facing * 16, -26);
             Point2D to = player.getCenter().subtract(from);
             double aim = Math.atan2(to.getY(), to.getX());
-            for (int k = -1; k <= 1; k++) HomingOrbComponent.spawn(from, aim + k * 0.6, ORB_DAMAGE);
+            for (int k = -1; k <= 1; k++) HomingOrbComponent.spawn(from, aim + k * 0.6, ORB_DAMAGE, entity);
             Sfx.HELLFIRE_LAUNCH.at(from);
         }
         if (timer >= T_END) {

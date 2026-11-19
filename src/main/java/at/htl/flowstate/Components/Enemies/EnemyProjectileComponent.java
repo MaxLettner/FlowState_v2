@@ -17,6 +17,8 @@ public class EnemyProjectileComponent extends Component {
     private final Entity player;
     private final double damage;
     private final Consumer<Entity> onImpact;
+    private Entity owner;
+    private Runnable onHurt;
 
     public EnemyProjectileComponent(double damage) {
         this(damage, null);
@@ -29,11 +31,26 @@ public class EnemyProjectileComponent extends Component {
         this.onImpact = onImpact;
     }
 
+    /** The demon that fired it: its elite effect applies when this hits. */
+    public EnemyProjectileComponent owner(Entity owner) {
+        this.owner = owner;
+        return this;
+    }
+
+    /** Runs when this actually damaged the player (the Hex Priest's curse). */
+    public EnemyProjectileComponent onHurt(Runnable onHurt) {
+        this.onHurt = onHurt;
+        return this;
+    }
+
     @Override
     public void onUpdate(double tpf) {
         if (entity.isColliding(player)) {
             // blocked projectiles (Metal Gloves) are destroyed without dealing damage
-            player.getComponent(PlayerStatsComponent.class).takeDamage(damage, entity, true);
+            if (player.getComponent(PlayerStatsComponent.class).takeDamage(damage, entity, true)) {
+                EliteComponent.onHit(owner);
+                if (onHurt != null) onHurt.run();
+            }
             if (onImpact != null) onImpact.accept(entity);
             entity.removeFromWorld();
             return;

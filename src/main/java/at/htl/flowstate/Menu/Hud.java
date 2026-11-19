@@ -1,5 +1,8 @@
 package at.htl.flowstate.Menu;
 
+import javafx.scene.image.ImageView;
+import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
+import at.htl.flowstate.Components.Enemies.PitLordBehaviour;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
@@ -26,6 +29,11 @@ public class Hud {
     private final HudBar hpBar = new HudBar("HP", 5, true);
     private final HudBar mpBar = new HudBar("MP", 8, true);
     private final HudBar xpBar = new HudBar("XP", 3, false);
+    // the Pit Lord's health, top centre while the fight is on
+    private static final double BOSS_TOP = 34;
+    private static final double BOSS_RANGE = 1700;
+    private final HudBar bossBar = new HudBar("BOSS", 4, true);
+    private final ImageView bossName = PixelText.view("PIT LORD", PixelText.MOLTEN, 3);
 
     private final Hotbar hotbar = new Hotbar();
 
@@ -55,12 +63,32 @@ public class Hud {
 
         addUINode(chargeBg);
         addUINode(chargeFill);
+
+        bossBar.setLayoutX(Math.round((width - bossBar.barWidth()) / 2));
+        bossBar.setLayoutY(BOSS_TOP + bossName.getImage().getHeight() + 6);
+        bossName.setLayoutX(Math.round((width - bossName.getImage().getWidth()) / 2));
+        bossName.setLayoutY(BOSS_TOP);
+        bossBar.setVisible(false);
+        bossName.setVisible(false);
+        addUINode(bossBar);
+        addUINode(bossName);
+    }
+
+    private void updateBoss() {
+        Entity boss = PitLordBehaviour.current();
+        boolean show = boss != null && Math.abs(boss.getCenter().getX() - player.getCenter().getX()) < BOSS_RANGE;
+        bossBar.setVisible(show);
+        bossName.setVisible(show);
+        if (!show) return;
+        HealthDoubleComponent hp = boss.getComponent(HealthDoubleComponent.class);
+        bossBar.update(hp.getValue(), hp.getMaxValue(), tpf());
     }
 
     public void update() {
         hpBar.update(stats.getHealth(), stats.getMaxHealth(), tpf());
         mpBar.update(stats.getMana(), stats.getMaxMana(), tpf());
         xpBar.update(stats.getExperience(), stats.getMaxExperience(), tpf());
+        updateBoss();
 
         hotbar.update(SkillManager.get(), loadout, tpf());
 

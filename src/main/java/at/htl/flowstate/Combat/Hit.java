@@ -64,4 +64,7 @@ public final class Hit {
     public double getKnockback() { return knockback; }
     public double getImpact() { return impact; }
     public DamageKind getKind() { return kind; }
+    public SkillType getFamily() { return family; }
+    /** The x the hit came from (NaN = from the player). */
+    public double getSourceX() { return sourceX; }
 }

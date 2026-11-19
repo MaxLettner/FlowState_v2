@@ -542,6 +542,87 @@ def teleport():
     return mix((up, 0.5), (puff, 0.8), (shimmer(0.35, 2000, 5000, seed=217), 0.35, 0.05))
 
 
+@sound
+def flail_swing():
+    """A heavy chain whirled through the air, links rattling."""
+    rattle = highpass(clicks(0.4, 55, 0.004, (2500, 6000), seed=230), 2000)
+    return mix((whoosh(0.4, 200, 1100, 1.2, 0.55, seed=231), 1.0), (amp(rattle, lambda t: math.sin(math.pi * min(1.0, t / 0.4))), 0.45))
+
+
+@sound
+def bloater_fuse():
+    """Hissing, bubbling tar swelling up to burst."""
+    dur = 1.4
+    hiss = amp(highpass(noise(dur, seed=232), 3000), lambda t: 0.3 + 0.7 * t / dur)
+    bubbles = mix(*[(squelch(0.06, 500 + k * 60, 1400 + k * 80, 4, seed=233 + k), 0.5, k * dur / 14) for k in range(14)])
+    groan = env(tone(dur, sweep(70, 140, dur), 'saw', vibrato=5, vib_rate=9), 0.2, dur, hold=dur * 0.7)
+    return mix((hiss, 0.4), (bubbles, 0.8), (lowpass(groan, 600), 0.5))
+
+
+@sound
+def stone_crack():
+    rng = random.Random(250)
+    cracks = mix(*[(highpass(env(noise(0.03, seed=251 + k), 0.0005, 0.025), 1500), rng.uniform(0.4, 1.0), k * rng.uniform(0.02, 0.05))
+                   for k in range(9)])
+    rumble = lowpass(env(noise(0.5, 'brown', seed=260), 0.01, 0.45), 300)
+    return mix((cracks, 1.0), (rumble, 0.7), (thump(0.2, 140, 60), 0.5))
+
+
+@sound
+def watcher_charge():
+    """A rising whine as the eye locks on."""
+    dur = 1.5
+    whine = mix((tone(dur, sweep(300, 1400, dur), 'sine', vibrato=12, vib_rate=7), 0.6), (tone(dur, sweep(600, 2800, dur)), 0.25))
+    return amp(mix((whine, 1.0), (shimmer(dur, 2000, 4000, seed=261), 0.2)), lambda t: (t / dur) ** 1.5)
+
+
+@sound
+def beam_fire():
+    zap = drive(mix((tone(0.4, sweep(900, 300, 0.4), 'saw'), 0.7), (bandpass(noise(0.4, seed=262), 2500, 1.0), 0.7)), 2.0)
+    return mix((env(zap, 0.002, 0.38), 1.0), (thump(0.25, 200, 60), 0.6))
+
+
+@sound
+def portal_open():
+    dur = 0.9
+    swirl = bandpass(noise(dur, 'pink', seed=263), lambda t: 300 + 1500 * math.sin(math.pi * t / dur), 2.0)
+    drone = mix((tone(dur, sweep(80, 160, dur), 'saw'), 0.4), (tone(dur, sweep(120, 240, dur)), 0.3))
+    return amp(mix((tremolo(swirl, 9, 0.5), 0.8), (lowpass(drone, 900), 0.6)), lambda t: math.sin(math.pi * min(1.0, t / dur)))
+
+
+@sound
+def hex_cast():
+    dur = 0.6
+    chant = mix(*[(env(tone(dur, f, 'saw', vibrato=4, vib_rate=5), 0.08, dur), 0.3) for f in (110, 131, 165)])
+    whisper = tremolo(bandpass(noise(dur, 'pink', seed=264), 1800, 3), 17, 0.7)
+    return mix((lowpass(chant, 1200), 0.8), (whisper, 0.5), (shimmer(dur, 1500, 3000, seed=265), 0.2))
+
+
+@sound
+def curse():
+    """A descending ghostly moan: you've been hexed."""
+    dur = 0.8
+    moan = env(tone(dur, sweep(520, 180, dur), 'sine', vibrato=18, vib_rate=6), 0.05, dur)
+    return mix((moan, 0.8), (env(bandpass(noise(dur, seed=266), 900, 2), 0.05, dur), 0.4))
+
+
+@sound
+def boss_roar():
+    dur = 1.6
+    voice = mix((tone(dur, sweep(55, 40, dur), 'saw', vibrato=3, vib_rate=5), 0.8),
+                (tone(dur, sweep(82, 61, dur), 'saw', vibrato=4, vib_rate=4), 0.5),
+                (tone(dur, sweep(110, 80, dur), 'square', vibrato=5, vib_rate=6), 0.2))
+    throat = bandpass(noise(dur, 'pink', seed=267), lambda t: 300 + 260 * math.sin(math.pi * min(1.0, t / dur)), 1.2)
+    sig = lowpass(drive(mix((voice, 0.8), (throat, 0.8)), 2.6), 1300)
+    return amp(sig, lambda t: min(1.0, t / 0.2) * math.exp(-max(0.0, t - 0.9) / 0.35))
+
+
+@sound
+def gate_slam():
+    roar = env(lowpass(noise(1.2, 'pink', seed=268), 1200), 0.01, 1.1)
+    return mix((thump(0.8, 90, 30), 1.0), (roar, 0.7), (lowpass(clicks(1.0, 25, 0.006, (500, 2500), seed=269), 4000), 0.4))
+
+
 #=====World=====
 @sound
 def chest_open():

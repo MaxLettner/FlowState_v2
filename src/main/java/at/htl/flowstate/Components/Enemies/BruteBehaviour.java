@@ -1,6 +1,5 @@
 package at.htl.flowstate.Components.Enemies;
 
-import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
@@ -96,10 +95,10 @@ public class BruteBehaviour extends GroundDemonBehaviour {
         double px = player.getCenter().getX() - entity.getCenter().getX();
         boolean inFront = px * facing > -entity.getWidth() / 2 && Math.abs(px) < entity.getWidth() / 2 + SLAM_RANGE;
         boolean low = player.getBottomY() > groundY - 110 && player.getY() < groundY + 10;
-        if (inFront && low) player.getComponent(PlayerStatsComponent.class).takeDamage(SLAM_DAMAGE, entity, false);
+        if (inFront && low) hurtPlayer(SLAM_DAMAGE);
 
-        ShockwaveComponent.spawn(fistX, groundY, 1);
-        ShockwaveComponent.spawn(entity.getCenter().getX() - facing * entity.getWidth() / 2, groundY, -1);
+        ShockwaveComponent.spawn(fistX, groundY, facing, entity);
+        ShockwaveComponent.spawn(entity.getCenter().getX() - facing * entity.getWidth() / 2, groundY, -facing, entity);
     }
 
     @Override

@@ -41,6 +41,10 @@ public class EnemyStatsComponent extends Component {
     private final DemonType type;
     private PhysicsComponent physics;
     private DemonSpriteComponent sprite;
+    private EliteComponent elite;
+    private boolean invulnerable;
+    private double ward;               // Hex Priest shield: soaks damage before the health
+    private boolean summoned;          // came through a portal: no experience, or a Gatekeeper is a farm
 
     private double stunLeft, freezeLeft, slowLeft, burnLeft, pinLeft;
     private int poisonStacks, bleedStacks;
@@ -92,12 +96,33 @@ public class EnemyStatsComponent extends Component {
         if (sprite != null) return;
         physics = entity.getComponent(PhysicsComponent.class);
         sprite = entity.getComponent(DemonSpriteComponent.class);
+        elite = entity.getComponentOptional(EliteComponent.class).orElse(null);
+    }
+
+    public EliteAffix getAffix() {
+        resolveComponents();
+        return elite == null ? null : elite.getAffix();
     }
 
     //-----Damage & death-----
     public void damage(double amount, DamageKind kind) {
-        if (dead || amount <= 0) return;
+        if (dead || amount <= 0 || invulnerable) return;
         resolveComponents();
+        if (ward > 0) {
+            double soaked = Math.min(ward, amount);
+            ward -= soaked;
+            amount -= soaked;
+            if (ward <= 0) {
+                sprite.setWard(false);
+                Sfx.SHIELD_BREAK.at(entity.getCenter(), 0.6, 1.2);
+            } else {
+                Sfx.SHIELD_HIT.at(entity.getCenter(), 0.6, 1.2);
+            }
+            if (amount <= 0) {
+                if (kind != DamageKind.DOT) sprite.flash();
+                return;
+            }
+        }
         if (freezeLeft > 0 && kind != DamageKind.DOT) { // shatter
             amount *= 2;
             freezeLeft = 0;
@@ -112,7 +137,7 @@ public class EnemyStatsComponent extends Component {
     private void die() {
         if (dead) return;
         dead = true;
-        player.getComponent(PlayerStatsComponent.class).addExperience(type.xp);
+        if (!summoned) player.getComponent(PlayerStatsComponent.class).addExperience(type.xp * (getAffix() != null ? EliteComponent.XP_MULT : 1));
         player.getComponent(LoadoutComponent.class).onKill();
         Point2D c = entity.getCenter();
         double size = Math.min(2.2, Math.sqrt(type.width * type.height) / 60);   // 1 = player sized
@@ -126,6 +151,33 @@ public class EnemyStatsComponent extends Component {
 
     public boolean isDead() {
         return dead;
+    }
+
+    /** Dies without giving experience (a Bloater bursting on its own). The behaviour's onDeath still runs. */
+    public void selfDestruct() {
+        if (dead) return;
+        dead = true;
+        entity.getComponentOptional(DemonBehaviour.class).ifPresent(DemonBehaviour::onDeath);
+        entity.removeFromWorld();
+    }
+
+    public void markSummoned() { summoned = true; }
+
+    /** Stone skin: no damage, no status effects, no knockback. */
+    public void setInvulnerable(boolean on) { invulnerable = on; }
+    public boolean isInvulnerable() { return invulnerable; }
+
+    /** A shield soaking the next {@code amount} damage (the Hex Priest's ward). */
+    public void ward(double amount) {
+        resolveComponents();
+        ward = Math.max(ward, amount);
+        sprite.setWard(true);
+    }
+    public boolean hasWard() { return ward > 0; }
+
+    public void heal(double amount) {
+        HealthDoubleComponent hp = entity.getComponent(HealthDoubleComponent.class);
+        hp.restore(amount);
     }
 
     private void tickDamageOverTime(double tpf) {
@@ -158,9 +210,18 @@ public class EnemyStatsComponent extends Component {
         if (!isStunned()) Sfx.STUN.at(entity.getCenter());
         stunLeft = Math.max(stunLeft, duration);
     }
-    public void freeze(double duration) { freezeLeft = Math.max(freezeLeft, duration * mastery()); }
-    public void slow(double duration) { slowLeft = Math.max(slowLeft, duration * mastery()); }
-    public void burn(double duration) { burnLeft = Math.max(burnLeft, duration * mastery()); }
+    public void freeze(double duration) {
+        if (getAffix() == EliteAffix.FROSTBOUND) return;
+        freezeLeft = Math.max(freezeLeft, duration * mastery());
+    }
+    public void slow(double duration) {
+        if (getAffix() == EliteAffix.FROSTBOUND) return;
+        slowLeft = Math.max(slowLeft, duration * mastery());
+    }
+    public void burn(double duration) {
+        if (getAffix() == EliteAffix.INFERNAL) return;
+        burnLeft = Math.max(burnLeft, duration * mastery());
+    }
     public void clearSlow() { slowLeft = 0; }
 
     public void addPoison(int stacks) {
@@ -183,7 +244,9 @@ public class EnemyStatsComponent extends Component {
     public boolean isStunned() { return stunLeft > 0 || freezeLeft > 0 || pinLeft > 0; }
     public boolean isFrozen() { return freezeLeft > 0; }
     public boolean isSlowed() { return slowLeft > 0; }
-    public double getSpeedMult() { return isSlowed() ? SLOW_FACTOR : 1.0; }
+    public double getSpeedMult() {
+        return (isSlowed() ? SLOW_FACTOR : 1.0) * (getAffix() == EliteAffix.SWIFT ? EliteComponent.SWIFT_MULT : 1.0);
+    }
     public int getPoisonStacks() { return poisonStacks; }
 
     //-----Knockback-----

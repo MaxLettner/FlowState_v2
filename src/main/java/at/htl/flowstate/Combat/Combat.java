@@ -1,5 +1,6 @@
 package at.htl.flowstate.Combat;
 
+import at.htl.flowstate.Components.Enemies.DemonBehaviour;
 import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Components.Identifier.EnemyIdentifierComponent;
 import at.htl.flowstate.Components.Identifier.PlatformIdentifierComponent;
@@ -125,6 +126,16 @@ public final class Combat {
         if (stats == null || stats.isDead()) return Result.NONE;
 
         Entity player = Game.getPlayer();
+        // stone skin (Gargoyle) and shields (Chainwarden): the demon decides how much of the hit gets through
+        double through = stats.isInvulnerable() ? 0 : 1;
+        if (through > 0 && h.kind != DamageKind.DOT) {
+            DemonBehaviour ai = enemy.getComponentOptional(DemonBehaviour.class).orElse(null);
+            if (ai != null) through = ai.guard(h, player);
+        }
+        if (through <= 0) {
+            blocked(enemy, player);
+            return Result.NONE;
+        }
         PlayerStatsComponent playerStats = player.getComponent(PlayerStatsComponent.class);
         LoadoutComponent loadout = player.getComponent(LoadoutComponent.class);
 
@@ -132,7 +143,7 @@ public final class Combat {
         boolean fist = h.family == SkillType.FISTICUFFS;
         boolean blunt = h.family == SkillType.BLUNT;
 
-        double damage = h.damage;
+        double damage = h.damage * through;
         if (h.kind == DamageKind.MELEE) damage *= playerStats.getMeleeMultiplier();
         if (h.kind == DamageKind.RANGED) damage *= playerStats.getRangedMultiplier();
         if (weaponHit && loadout.getActiveEnchant() == SkillType.ENCHANTING) damage *= LoadoutComponent.SHARPEN_MULT;
@@ -186,6 +197,15 @@ public final class Combat {
             stats.applyKnockback(h.knockback, dir, h.launch);
         }
         return new Result(true, damage, crit, false);
+    }
+
+    /** Sparks and a clang off a shield or stone skin; melee still gets a small freeze so it feels solid. */
+    private static void blocked(Entity enemy, Entity player) {
+        int dir = enemy.getCenter().getX() >= player.getCenter().getX() ? 1 : -1;
+        Point2D at = enemy.getCenter().subtract(dir * enemy.getWidth() * 0.4, 0);
+        Particles.burst(at, Particles.SPARK, 6, dir >= 0 ? 180 : 0, 50, 120, 300, 0.2, 3, 400);
+        Sfx.BLOCK_HIT.at(at, 0.8, 1.15);
+        Impact.hitStop(0.03);
     }
 
     /** The impact sound of a hit by what dealt it; heavier hits sound deeper. Kills are voiced by the enemy. */
