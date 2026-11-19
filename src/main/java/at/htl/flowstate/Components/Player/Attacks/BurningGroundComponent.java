@@ -7,6 +7,7 @@ import com.almasb.fxgl.entity.component.Component;
 import com.almasb.fxgl.physics.BoundingShape;
 import com.almasb.fxgl.physics.HitBox;
 import at.htl.flowstate.Assets;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Particles;
 import javafx.geometry.Point2D;
 import javafx.scene.paint.ImagePattern;
@@ -45,6 +46,8 @@ public class BurningGroundComponent extends Component {
     private static final double FPS = 10;
     private static ImagePattern[] patterns;
     private double animTime = 0;
+    private double crackleTimer = 0;
+    private static final double CRACKLE_INTERVAL = 0.5;
 
     private static Rectangle flames(double width) {
         if (patterns == null) {
@@ -72,6 +75,11 @@ public class BurningGroundComponent extends Component {
         }
         left -= tpf;
         entity.setOpacity(Math.min(1, left / Math.min(1, duration)));
+        crackleTimer -= tpf;
+        if (crackleTimer <= 0) {
+            crackleTimer = CRACKLE_INTERVAL;
+            Sfx.CRACKLE.at(entity.getCenter(), entity.getOpacity(), 1);
+        }
         if (left <= 0) entity.removeFromWorld();
     }
 }

@@ -1,6 +1,7 @@
 package at.htl.flowstate.Components.Player;
 
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillManager;
 import com.almasb.fxgl.entity.Entity;
@@ -70,18 +71,24 @@ public class PlayerStatsComponent extends Component {
     public boolean takeDamage(double amount, Entity source, boolean projectile) {
         LoadoutComponent loadout = entity.getComponent(LoadoutComponent.class);
 
-        if (loadout.isBlocking() && isInFront(source)) {
-            if (projectile) return false; // destroyed by the fists
+        boolean blocked = loadout.isBlocking() && isInFront(source);
+        if (blocked) {
+            if (projectile) { // destroyed by the fists
+                Sfx.BLOCK_HIT.play();
+                return false;
+            }
             amount *= 1 - BLOCK_REDUCTION;
         }
         if (invincibleLeft > 0) return false;
         invincibleLeft = INVINCIBILITY_TIME;
+        if (blocked) Sfx.BLOCK_HIT.play();
 
         if (loadout.isShieldActive()) {
             double fromMana = amount * SHIELD_ABSORB;
             if (mana >= fromMana) {
                 mana -= fromMana;
                 amount -= fromMana;
+                Sfx.SHIELD_HIT.play();
             } else {
                 amount -= mana;
                 mana = 0;
@@ -92,6 +99,7 @@ public class PlayerStatsComponent extends Component {
         SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
         sprite.flash();
         sprite.playHurt();
+        Sfx.PLAYER_HURT.play(blocked ? 0.6 : 1, 1);
         Impact.hitStop(HURT_HITSTOP);
         Impact.shake(HURT_SHAKE);
         return true;
@@ -138,6 +146,7 @@ public class PlayerStatsComponent extends Component {
             skillPoints++;
             maxExperience++;
             experience = 0;
+            Sfx.LEVEL_UP.play();
             fireSkillPointsChanged();
         }
     }

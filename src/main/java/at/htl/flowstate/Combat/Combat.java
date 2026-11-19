@@ -6,6 +6,7 @@ import at.htl.flowstate.Components.Identifier.PlatformIdentifierComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
@@ -154,6 +155,7 @@ public final class Combat {
             Particles.hit(enemy.getCenter().subtract(sparkDir * 12, 0), sparkDir);
             if (crit) Particles.burst(enemy.getCenter(), Particles.SPARK, 8, -90, 180, 200, 420, 0.3, 6, 200);
         }
+        if (h.kind != DamageKind.DOT) hitSound(enemy, h, damage, crit, shatteredSlow);
         if (fist) loadout.registerComboHit();
         if (h.kind == DamageKind.MELEE) meleeImpact(enemy, damage, crit, stats.isDead(), h.impact);
         if (stats.isDead()) return new Result(true, damage, crit, true);
@@ -184,6 +186,24 @@ public final class Combat {
             stats.applyKnockback(h.knockback, dir, h.launch);
         }
         return new Result(true, damage, crit, false);
+    }
+
+    /** The impact sound of a hit by what dealt it; heavier hits sound deeper. Kills are voiced by the enemy. */
+    private static void hitSound(Entity enemy, Hit h, double damage, boolean crit, boolean shatteredSlow) {
+        Point2D at = enemy.getCenter();
+        double rate = Math.max(0.75, Math.min(1.15, 1.15 - damage / 160));
+        SkillType f = h.family;
+        Sfx sound = switch (h.kind) {
+            case MELEE -> f == SkillType.FISTICUFFS ? Sfx.HIT_PUNCH : f == SkillType.BLUNT ? Sfx.HIT_BLUNT : Sfx.HIT_SLASH;
+            case RANGED -> f == SkillType.TRIDENT ? Sfx.HIT_SLASH : Sfx.HIT_ARROW;
+            case SPELL -> f == SkillType.FIRE_BALL ? null : Sfx.HIT_MAGIC;   // the explosion is loud enough
+            case OTHER -> Sfx.HIT_BLUNT;
+            case DOT -> null;
+        };
+        if (sound != null) sound.at(at, 1, rate);
+        if (h.launch) Sfx.BOUNCE.at(at);
+        if (crit) Sfx.CRIT.at(at);
+        if (shatteredSlow) Sfx.SHATTER.at(at, 0.7, 1.2);
     }
 
     /** Freeze frames, camera shake and a trembling target, scaled by how hard the hit was. */

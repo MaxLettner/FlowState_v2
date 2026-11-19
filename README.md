@@ -32,6 +32,8 @@ mvn javafx:run
 
 The Maven wrapper works too: `./mvnw javafx:run`.
 
+`FLOWSTATE_FPS=1 ./mvnw javafx:run` prints the frame rate and the game speed (game time vs real time) every 2 seconds.
+
 ### Standalone jar (Linux + Windows)
 
 ```bash
@@ -61,6 +63,7 @@ On Windows, double-clicking the jar also works when Java is associated with `.ja
 |I|Open / close skill tree (hover a skill + 1–4 to put it on the hotbar)|
 |Escape|Game menu (Resume / Exit)|
 |F11|Toggle fullscreen / windowed (the game starts in fullscreen)|
+|M|Mute / unmute all sound|
 
 ---
 
@@ -72,6 +75,7 @@ src/main/java/
 └── at/htl/flowstate/
     ├── Game.java                         # Entry point, input, camera, background, death/pit checks
     ├── Assets.java                       # Texture loading + cache
+    ├── Sfx.java                          # Every sound effect with its mix level; play / positional / loops / mute
     ├── Combat/
     │   ├── Combat                        # Central damage pipeline (multipliers, crits, passives, imbue, statuses)
     │   ├── Hit                           # Fluent description of one hit
@@ -127,6 +131,14 @@ Segment types:
 **Enemy generation** — every normal ground segment has a 20 % chance to spawn enemies: 80 % chance of melee (with a 5 % gang-of-five roll), 20 % chance of a ranged enemy.
 
 Entities more than 3500 px behind the viewport are removed each frame to keep Box2D stable.
+
+### Sound
+
+Every sound is synthesized by `python tools/sound/generate_all.py` (stdlib only, no samples) into
+`src/main/resources/assets/sounds` as WAV; `python tools/sound/generate_all.py jump land` regenerates single ones.
+The files are peak-normalized, and `Sfx.java` sets how loud each one plays. World sounds (enemies, impacts,
+explosions) are panned by screen position and fade out off screen; every sound gets a small random pitch so
+repeats don't sound identical. Ambience: a wind-and-drone loop in the abyss and torch fire in the rune menu.
 
 ### Physics & collision layers
 

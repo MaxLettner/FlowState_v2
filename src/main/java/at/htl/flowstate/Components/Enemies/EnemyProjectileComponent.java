@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Enemies;
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
 
@@ -23,6 +24,9 @@ public class EnemyProjectileComponent extends Component {
             entity.removeFromWorld();
             return;
         }
-        if (Combat.touchesTerrain(entity)) entity.removeFromWorld();
+        if (Combat.touchesTerrain(entity)) {
+            Sfx.ARROW_THUNK.at(entity.getCenter(), 0.6, 0.85);
+            entity.removeFromWorld();
+        }
     }
 }

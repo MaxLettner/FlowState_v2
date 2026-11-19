@@ -1,6 +1,7 @@
 package at.htl.flowstate.Menu.SkillTree;
 
 import at.htl.flowstate.Assets;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
 import at.htl.flowstate.Menu.PixelText;
@@ -148,6 +149,8 @@ public class SkillTreeView {
     public void open() {
         if (open) return;
         open = true;
+        Sfx.stopStarted();   // the game pauses underneath
+        Sfx.UI_OPEN.play();
         refresh();
         FXGL.getSceneService().pushSubScene(scene);
     }
@@ -155,6 +158,7 @@ public class SkillTreeView {
     public void close() {
         if (!open) return;
         open = false;
+        Sfx.UI_CLOSE.play();
         if (hovered != null) unhover(hovered);
         FXGL.getSceneService().popSubScene();
     }
@@ -234,6 +238,7 @@ public class SkillTreeView {
     //-----Hover / click-----
     private void hover(SkillNode node) {
         if (hovered != null) hovered.setHovered(false);
+        if (hovered != node) Sfx.UI_HOVER.play(0.7, 1.15);
         hovered = node;
         message = null;
         node.setHovered(true);
@@ -252,11 +257,14 @@ public class SkillTreeView {
         SkillType type = node.type;
         if (type.getKind() == NodeKind.STAT || !skills.owns(type)) {
             if (skills.lockReason(type) != null) {
+                Sfx.UI_DENY.play();
                 message = null;
             } else if (skills.buy(type)) {
+                Sfx.SKILL_LEARN.play();
                 node.flash();
                 message = null;
             } else {
+                Sfx.UI_DENY.play();
                 message = "Not enough skill points";
             }
             showTip();
@@ -266,7 +274,9 @@ public class SkillTreeView {
         int empty = skills.firstEmptySlot();
         if (empty >= 0) {
             skills.assign(type, empty);
+            Sfx.UI_SLOT.play();
         } else {
+            Sfx.UI_DENY.play();
             message = "Hotbar is full: press 1-4 to replace a slot";
             showTip();
         }
@@ -275,11 +285,13 @@ public class SkillTreeView {
     private void assignHovered(int slot) {
         if (hovered == null) return;
         if (!skills.owns(hovered.type) || !hovered.type.isUsable()) {
+            Sfx.UI_DENY.play();
             message = skills.owns(hovered.type) ? "This can't go on the hotbar" : "Learn it first";
             showTip();
             return;
         }
         skills.assign(hovered.type, slot);
+        Sfx.UI_SLOT.play();
     }
 
     //-----Refresh-----

@@ -129,6 +129,8 @@ public class Game extends GameApplication {
     protected void onPreInit() {
         // the golden arrow replaces FXGL's default cursor on every scene
         GoldCursor.install(getPrimaryStage());
+        Sfx.preload();
+        FrameRateLog.install();
     }
 
     @Override
@@ -157,6 +159,10 @@ public class Game extends GameApplication {
             @Override protected void onActionBegin() { movement().startDown(); }
             @Override protected void onActionEnd() { movement().stopDown(); }
         }, KeyCode.S);
+
+        getInput().addAction(new UserAction("Toggle Mute") {
+            @Override protected void onActionBegin() { Sfx.toggleMute(); }
+        }, KeyCode.M);
 
         getInput().addAction(new UserAction("Toggle Fullscreen") {
             @Override protected void onActionBegin() {
@@ -214,6 +220,8 @@ public class Game extends GameApplication {
         skillTree = new SkillTreeView();
         hud = new Hud();
         setupBg();
+        Sfx.stopStarted();
+        Sfx.ambient(Sfx.AMB_ABYSS);
     }
 
     //------SETUP-----
@@ -285,9 +293,11 @@ public class Game extends GameApplication {
 
     @Override
     protected void onUpdate(double tpf) {
+        FrameRateLog.gameUpdate(tpf);
         if (!dying && player.getY() > WINDOW_HEIGHT + 100) {
             // fell into the abyss: nothing left to animate
             dying = true;
+            Sfx.FALL.play();
             getGameController().gotoMainMenu();
             return;
         }
@@ -301,6 +311,7 @@ public class Game extends GameApplication {
             dying = true;
             getInput().setProcessInput(false);
             movement().die();
+            Sfx.PLAYER_DEATH.play();
             player.getComponent(SpriteComponent.class).playDeath(
                     () -> runOnce(() -> getGameController().gotoMainMenu(), Duration.seconds(DEATH_EXIT_DELAY)));
         }

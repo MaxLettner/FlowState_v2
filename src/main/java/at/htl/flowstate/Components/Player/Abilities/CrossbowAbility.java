@@ -9,6 +9,7 @@ import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.entity.Entity;
@@ -97,12 +98,22 @@ public class CrossbowAbility extends Ability {
         crossbowSprite = new FrameSprite(crossbowFrames);
         crossbowSprite.show(crossbowFrames, 1); // empty
         heldCrossbow = HeldWeaponComponent.spawnAimed(crossbowSprite, crossbow.gripX * SCALE, crossbow.gripY * SCALE, 16, 0);
+        Sfx.CRANK.start(true, crankRate());
+    }
+
+    /** Heavy crossbows ratchet slower and deeper. */
+    private double crankRate() {
+        return crossbow == Crossbow.HEAVY ? 0.75 : crossbow == Crossbow.POISON ? 1.2 : 1;
     }
 
     private void stopCrank(boolean done) {
         cranking = false;
         crankTime = 0;
-        if (done) loaded = true;
+        Sfx.CRANK.stop();
+        if (done) {
+            loaded = true;
+            Sfx.CROSSBOW_LOADED.play(1, crankRate());
+        }
         if (heldCrossbow != null) {
             crossbowSprite.show(crossbowFrames, done ? 0 : 1);
             heldCrossbow.getComponent(HeldWeaponComponent.class).setLifetime(done ? LOADED_SHOW : 0.05);
@@ -126,6 +137,8 @@ public class CrossbowAbility extends Ability {
     @Override
     public void update(double tpf) {
         if (cranking) {
+            // a pause (skill tree, menu) may have cut the ratchet loop
+            if (!Sfx.CRANK.isPlaying()) Sfx.CRANK.start(true, crankRate());
             crankTime += tpf;
             if (crankTime >= reloadTime()) stopCrank(true);
         }
@@ -166,6 +179,7 @@ public class CrossbowAbility extends Ability {
     }
 
     private void fireBolt() {
+        Sfx.CROSSBOW_FIRE.play(crossbow == Crossbow.HEAVY ? 1.3 : 1, crossbow == Crossbow.HEAVY ? 0.7 : crankRate());
         PlayerProjectileComponent bolt = new PlayerProjectileComponent(
                 aim().multiply(crossbow.speed),
                 pierce(crossbow.pierce),
@@ -174,7 +188,8 @@ public class CrossbowAbility extends Ability {
                     if (crossbow == Crossbow.POISON && index == 0) h.poison(POISON_STACKS); // only the first hit poisons
                     return h;
                 })
-                .gravity(crossbow.gravity);
+                .gravity(crossbow.gravity)
+                .terrainSound(Sfx.ARROW_THUNK, crossbow == Crossbow.HEAVY ? 0.7 : 1.1);
         if (crossbow.range > 0) bolt.maxDistance(crossbow.range);
         if (crossbow == Crossbow.HEAVY) {
             bolt.onStop((pos, vel, lastEnemy, terrain) -> {

@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Player.Abilities;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.Branch;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
@@ -21,6 +22,7 @@ public abstract class DrawnBowAbility extends Ability {
     private final String texture;
     private final double gripX, gripY, offset;
     private boolean drawing = false;
+    private boolean fullCue = false;
     private double drawTime = 0;
     private Entity heldBow;
     private Frames bowFrames;
@@ -41,6 +43,11 @@ public abstract class DrawnBowAbility extends Ability {
     /** Shoots the arrow. {@code drawTime} is how long the bow was drawn, uncapped. */
     protected abstract void release(double drawTime);
 
+    /** Pitch of the string's twang: big bows thrum lower. */
+    protected double twangPitch() {
+        return 1;
+    }
+
     @Override
     public void primaryPress() {
         if (!ready() || drawing) return;
@@ -49,6 +56,9 @@ public abstract class DrawnBowAbility extends Ability {
         bowFrames = Assets.frames(texture, 3, SCALE);
         bowSprite = new FrameSprite(bowFrames);
         heldBow = HeldWeaponComponent.spawnAimed(bowSprite, gripX * SCALE, gripY * SCALE, offset, 0);
+        // the creak lasts as long as the draw (the clip is 0.9 s)
+        Sfx.BOW_DRAW.start(false, 0.9 / fullDraw());
+        fullCue = false;
     }
 
     @Override
@@ -56,6 +66,10 @@ public abstract class DrawnBowAbility extends Ability {
         if (!drawing) return;
         drawTime += tpf;
         double f = drawFraction();
+        if (f >= 1 && !fullCue) {
+            fullCue = true;
+            Sfx.FLOW_READY.play(1.5, 0.8);   // fully drawn
+        }
         // rest -> half -> full draw as the charge builds
         bowSprite.show(bowFrames, f < HALF_FRAME_AT ? 0 : f < 1 ? 1 : 2);
     }
@@ -63,7 +77,9 @@ public abstract class DrawnBowAbility extends Ability {
     @Override
     public void primaryRelease() {
         if (!drawing) return;
+        double f = drawFraction();
         stopDrawing();
+        Sfx.BOW_RELEASE.play(0.45 + 0.55 * f, twangPitch() * (0.9 + 0.1 * f));
         release(drawTime);
         sprite().playShoot();
     }
@@ -75,6 +91,7 @@ public abstract class DrawnBowAbility extends Ability {
 
     private void stopDrawing() {
         drawing = false;
+        Sfx.BOW_DRAW.stop();
         if (heldBow != null) {
             // show the released (rest) frame briefly before putting the bow away
             bowSprite.show(bowFrames, 0);

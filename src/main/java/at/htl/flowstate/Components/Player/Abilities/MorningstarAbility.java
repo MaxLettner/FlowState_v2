@@ -6,6 +6,7 @@ import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.SpinVisualComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
@@ -121,6 +122,7 @@ public class MorningstarAbility extends MeleeAbility {
     }
 
     private void tick() {
+        Sfx.SPIN.play();
         double x = player.getCenter().getX();
         for (Entity e : Combat.enemiesInRadius(player.getCenter(), SPIN_RADIUS)) {
             Combat.hit(e, Hit.of(SPIN_DAMAGE, DamageKind.MELEE)

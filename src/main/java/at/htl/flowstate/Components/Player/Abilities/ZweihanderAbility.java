@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Player.Abilities;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.MeleeSwingComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Particles;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
@@ -60,6 +61,8 @@ public class ZweihanderAbility extends MeleeAbility {
         if (chargeTime >= TAP_THRESHOLD && pose == null) {
             // raised blade while charging; the facing is locked so the pose can't flip
             pose = SPEC.swing(slash(SPEC.hit(facing()), 1, false).params().held(), 1);
+            // the hum rises until the blade flashes
+            Sfx.CHARGE_WEAPON.start(false, 1.5 / (FULL_CHARGE - TAP_THRESHOLD));
         }
         if (pose != null) {
             double f = Math.min(chargeTime / FULL_CHARGE, 1);
@@ -68,6 +71,7 @@ public class ZweihanderAbility extends MeleeAbility {
         }
         if (!flashed && chargeTime >= FULL_CHARGE) {
             flashed = true;
+            Sfx.CHARGE_READY.play();
             Particles.glint(hand(), new Color[]{Color.WHITE, Color.web("#fff3a0")}, 14);
         }
     }
@@ -88,6 +92,7 @@ public class ZweihanderAbility extends MeleeAbility {
             double size = (160 + 20 * f) / 160;
             if (perfect) {
                 flow = Math.min(FLOW_MAX, flow + 1);
+                Sfx.PERFECT.play();
                 Particles.text(new Point2D(player.getCenter().getX(), player.getY() - 10), "PERFECT", Color.web("#62e0ff"), 20);
             }
             Hit hit = SPEC.hit(facing()).withDamage(damage).knockback(knockback, facing())
@@ -101,6 +106,7 @@ public class ZweihanderAbility extends MeleeAbility {
     }
 
     private void removePose() {
+        Sfx.CHARGE_WEAPON.stop();
         if (pose != null) {
             pose.removeFromWorld();
             pose = null;

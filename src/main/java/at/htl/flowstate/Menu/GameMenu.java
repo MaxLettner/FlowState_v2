@@ -1,6 +1,7 @@
 package at.htl.flowstate.Menu;
 
 import at.htl.flowstate.Assets;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.dsl.FXGL;
@@ -133,6 +134,9 @@ public class GameMenu extends FXGLMenu {
             mainButtons.add(b);
             mainGroup.getChildren().add(b);
         }
+        if (!inGame) mainButtons.get(0).sound = Sfx.UI_START;
+        mainButtons.get(1).sound = Sfx.UI_DENY;   // Save / Load: not there yet
+        mainButtons.get(2).sound = Sfx.UI_DENY;
         // the actions are only stubs until saving exists: fireSave() / fireLoad() of FXGLMenu are the hooks
 
         ImageView tablet = Assets.sprite("MenuControls.png", SCALE);
@@ -144,6 +148,7 @@ public class GameMenu extends FXGLMenu {
         prompt.setSmooth(false);
         prompt.setLayoutY(PROMPT_Y);
         startButton = new MenuButton("START", CONFIRM_LEFT_X, CONFIRM_Y, this::fireNewGame);
+        startButton.sound = Sfx.UI_START;
         quitButton = new MenuButton("QUIT", CONFIRM_LEFT_X, CONFIRM_Y, () -> getController().exit());
         cancelButton = new MenuButton("CANCEL", CONFIRM_RIGHT_X, CONFIRM_Y, () -> show(View.MAIN));
         confirmGroup.getChildren().addAll(prompt, startButton, quitButton, cancelButton);
@@ -171,6 +176,17 @@ public class GameMenu extends FXGLMenu {
         lastMain = 0;
         for (MenuButton b : mainButtons) b.soonLeft = 0;
         show(View.MAIN);
+        Sfx.stopStarted();   // charges and cranks of the paused or finished game
+        if (inGame) {
+            Sfx.UI_OPEN.play();
+        } else {
+            Sfx.ambient(Sfx.AMB_MENU);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (inGame) Sfx.UI_CLOSE.play();
     }
 
     @Override
@@ -236,16 +252,23 @@ public class GameMenu extends FXGLMenu {
         }
         keyboard = true;
         List<MenuButton> order = focusOrder();
-        int i = order.indexOf(focused);
+        // List.of(...).indexOf(null) throws: nothing is focused after the mouse leaves a button
+        int i = focused == null ? -1 : order.indexOf(focused);
         switch (k) {
-            case UP, W, LEFT, A -> setFocus(order.get(i < 0 ? order.size() - 1 : (i - 1 + order.size()) % order.size()));
-            case DOWN, S, RIGHT, D, TAB -> setFocus(order.get(i < 0 ? 0 : (i + 1) % order.size()));
+            case UP, W, LEFT, A -> hoverFocus(order.get(i < 0 ? order.size() - 1 : (i - 1 + order.size()) % order.size()));
+            case DOWN, S, RIGHT, D, TAB -> hoverFocus(order.get(i < 0 ? 0 : (i + 1) % order.size()));
             case ENTER, SPACE -> {
                 if (focused != null) focused.activate();
             }
             default -> { return; }
         }
         e.consume();
+    }
+
+    /** Focus moved by the player (mouse or keys), not by a view change: tick. */
+    private void hoverFocus(MenuButton b) {
+        if (b != focused && b != null) Sfx.UI_HOVER.play();
+        setFocus(b);
     }
 
     private void setFocus(MenuButton b) {
@@ -346,6 +369,7 @@ public class GameMenu extends FXGLMenu {
                 new DropShadow(BlurType.GAUSSIAN, Color.rgb(255, 122, 31, 0.7), 28, 0.2, 0, 0);
 
         final Runnable action;
+        Sfx sound = Sfx.UI_CLICK;
         private final Image normal, hover;
         private final ImageView img = new ImageView();
         private boolean down;
@@ -362,7 +386,7 @@ public class GameMenu extends FXGLMenu {
             setCursor(GoldCursor.hover());
             setOnMouseEntered(e -> {
                 keyboard = false;
-                setFocus(this);
+                hoverFocus(this);
             });
             setOnMouseExited(e -> {
                 setDown(false);
@@ -381,6 +405,7 @@ public class GameMenu extends FXGLMenu {
         void activate() {
             int i = mainButtons.indexOf(this);
             if (i >= 0) lastMain = i;
+            sound.play();
             action.run();
         }
 

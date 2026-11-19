@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.Player.Attacks;
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.app.scene.Viewport;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
@@ -84,13 +85,17 @@ public class ThrownTridentComponent extends Component {
         if (Combat.touchesTerrain(entity)) {
             land();
             state = State.STUCK;
+            Sfx.TRIDENT_STICK.at(entity.getCenter());
         }
     }
 
     private void drop(double tpf) {
         velocity = velocity.add(0, DROP_GRAVITY * tpf);
         entity.translate(velocity.multiply(tpf));
-        if (Combat.touchesTerrain(entity)) state = State.STUCK;
+        if (Combat.touchesTerrain(entity)) {
+            state = State.STUCK;
+            Sfx.ARROW_THUNK.at(entity.getCenter(), 0.8, 0.8);
+        }
         else if (entity.isColliding(player)) pickUp();
     }
 
@@ -111,11 +116,12 @@ public class ThrownTridentComponent extends Component {
         }
     }
 
-    /** Recall Trident: fly back to the player from wherever it is. */
-    public void recall() {
-        if (state == State.RETURNING) return;
+    /** Recall Trident: fly back to the player from wherever it is. @return false if it already was */
+    public boolean recall() {
+        if (state == State.RETURNING) return false;
         state = State.RETURNING;
         alreadyHit.clear();
+        return true;
     }
 
     private void land() {

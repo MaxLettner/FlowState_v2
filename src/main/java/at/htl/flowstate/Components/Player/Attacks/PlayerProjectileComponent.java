@@ -2,6 +2,7 @@ package at.htl.flowstate.Components.Player.Attacks;
 
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Combat.Hit;
+import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.app.scene.Viewport;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
@@ -34,6 +35,8 @@ public class PlayerProjectileComponent extends Component {
     private double maxDistance = 0;
     private double terrainGrace = 0;
     private StopListener stopListener;
+    private Sfx terrainSound;
+    private double terrainSoundRate = 1;
     private Entity homingTarget;
     private double homingTurnRad;
     private double homingAfter;
@@ -53,6 +56,8 @@ public class PlayerProjectileComponent extends Component {
     public PlayerProjectileComponent gravity(double g) { this.gravity = g; return this; }
     public PlayerProjectileComponent maxDistance(double d) { this.maxDistance = d; return this; }
     public PlayerProjectileComponent onStop(StopListener l) { this.stopListener = l; return this; }
+    /** Played where the projectile hits terrain (arrows thunk into the ground). */
+    public PlayerProjectileComponent terrainSound(Sfx s, double rate) { this.terrainSound = s; this.terrainSoundRate = rate; return this; }
     /** Ignore terrain for the first given distance (projectiles spawned on the ground). */
     public PlayerProjectileComponent terrainGrace(double distance) { this.terrainGrace = distance; return this; }
     /** The projectile passes through this enemy without hitting it. */
@@ -137,6 +142,7 @@ public class PlayerProjectileComponent extends Component {
 
     private void stop(boolean terrain) {
         stopped = true;
+        if (terrain && terrainSound != null) terrainSound.at(entity.getCenter(), 1, terrainSoundRate);
         if (stopListener != null) stopListener.onStop(entity.getCenter(), velocity, lastEnemy, terrain);
         entity.removeFromWorld();
     }
