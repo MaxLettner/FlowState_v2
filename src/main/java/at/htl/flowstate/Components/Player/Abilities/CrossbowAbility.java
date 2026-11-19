@@ -57,7 +57,8 @@ public class CrossbowAbility extends Ability {
     private static final double BURST_GAP = 0.1;
     private static final double PIN_DURATION = 2.0;
     private static final int POISON_STACKS = 2;
-    private static final int SCALE = 3;              // pixel upscale of the held crossbow sprite
+    private static final int SCALE = 3;              // on-screen size of one native crossbow pixel
+    private static final int ART_RES = 2;            // crossbow sprites are drawn at 2x detail (ranged.py XBOW_RES)
 
     private final Crossbow crossbow;
     private int pendingShots = 0;
@@ -95,10 +96,18 @@ public class CrossbowAbility extends Ability {
         cranking = true;
         crankTime = 0;
         crossbowFrames = Assets.frames(crossbow.texture, 2, SCALE);
-        crossbowSprite = new FrameSprite(crossbowFrames);
+        crossbowSprite = heldSprite(crossbowFrames);
         crossbowSprite.show(crossbowFrames, 1); // empty
         heldCrossbow = HeldWeaponComponent.spawnAimed(crossbowSprite, crossbow.gripX * SCALE, crossbow.gripY * SCALE, 16, 0);
         Sfx.CRANK.start(true, crankRate());
+    }
+
+    /** The hi-res art upscaled by SCALE, then shown at 1/ART_RES size: same on-screen size, twice the pixels. */
+    private static FrameSprite heldSprite(Frames frames) {
+        FrameSprite sprite = new FrameSprite(frames);
+        sprite.setFitWidth(frames.width() / ART_RES);
+        sprite.setFitHeight(frames.height() / ART_RES);
+        return sprite;
     }
 
     /** Heavy crossbows ratchet slower and deeper. */
@@ -129,7 +138,7 @@ public class CrossbowAbility extends Ability {
         burstTimer = BURST_GAP;
         // loaded -> empty, stays empty while the reload runs
         Frames frames = Assets.frames(crossbow.texture, 2, SCALE);
-        FrameSprite held = new FrameSprite(frames).play(frames, new int[]{0, 1}, 20, false, null);
+        FrameSprite held = heldSprite(frames).play(frames, new int[]{0, 1}, 20, false, null);
         HeldWeaponComponent.spawnAimed(held, crossbow.gripX * SCALE, crossbow.gripY * SCALE, 16,
                 0.15 + BURST_GAP * (crossbow.burst - 1) + 0.2);
     }

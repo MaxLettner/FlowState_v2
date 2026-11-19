@@ -390,7 +390,7 @@ def three_darts():
 
 
 def two_bolts_crossbow():
-    return fit(ranged.dual_crossbow()[0])
+    return fit(ranged.dual_crossbow(res=1)[0])
 
 
 def flail_spin():
@@ -401,7 +401,7 @@ def flail_spin():
 def icons():
     m, r, g = 'MELEE', 'RANGED', 'MAGIC'
     bow = lambda fn: fit(fn(res=1)[2])     # full-draw frame, drawn at icon resolution
-    xbow = lambda fn: fit(fn()[0])         # loaded frame
+    xbow = lambda fn: fit(fn(res=1)[0])    # loaded frame, drawn at icon resolution
     glove = lambda fn: rotate(fn(), 0)
     trident = trident_icon
     sprite = lambda frames, i=0, size=INNER: fit(frames[i], size)
