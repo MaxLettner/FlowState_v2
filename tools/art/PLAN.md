@@ -46,6 +46,11 @@ and integrated in Java. Backup of the pre-overhaul sources: `src_backup_pre_art_
   The Fisticuffs combo meter above the sockets is `HudBar_COMBO` / `HudFill_COMBO` (a thin fire trough with
   pointed ends, trough at (9, 4)), drawn by HudBar and faded in/out by Hotbar.
   `python tools/art/hotbar.py out.png [screenshot]`.
+- `foreground.py` (2026-11-19): Hollow-Knight-style foreground parallax in front of the world. `fg_mid` 1200x270 (x4,
+  factor 1.3: hanging rocks + stalactites, hanging/sagging chains with hooks, cages, spiked weights, small thorns) and
+  `fg_near` 800x180 (x6, factor 1.7: continuous cave ceiling, big hanging rocks, heavy chains, big thorns from the
+  bottom edge). Near-black, rim-lit from below. Game.setupFg puts them in a Group between gameRoot and uiRoot
+  (contentRoot index 1) so the HUD stays on top. `python tools/art/foreground.py out.png [cameraX]` renders a mock.
 - `pixfont.py` → `PixelFont.png` (2026-11-18): the menu's 5x7 font for runtime text. `Menu/PixelText.java` draws it
   with the menu looks (molten, inlaid in any colour, keycaps; `MouseIcon.png` from menu.py). All skill tree text
   uses it: x4 for the skill point count (on the deepened lintel, glyph top at art row 26) and tooltip names, x2 for

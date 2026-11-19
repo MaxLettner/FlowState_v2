@@ -15,6 +15,7 @@ import ranged
 import projectiles
 import effects
 import terrain
+import foreground
 import ruins
 import icons
 import skilltree
@@ -37,6 +38,7 @@ def main():
     effects.generate(OUT)
     icons.generate(OUT)
     terrain.generate(OUT)
+    foreground.generate(OUT)              # cave silhouettes in front of the world (parallax)
     ruins.generate(OUT)
     skilltree.generate(OUT)
     menu.generate(OUT)
