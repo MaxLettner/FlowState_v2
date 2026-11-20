@@ -121,6 +121,7 @@ public class PlayerMovementComponent extends Component {
         LoadoutComponent loadout = entity.getComponent(LoadoutComponent.class);
 
         sprite.setFacing(currentWatchDirection);
+        sprite.setMotion(physics.getVelocityX(), physics.getVelocityY(), isGrounded && !isLevitationActive);
         if (!wasGrounded && isGrounded) {
             if (diving) {
                 sprite.playSlam();   // the hammer plays the slam's boom
