@@ -63,6 +63,7 @@ public class FireballAbility extends Ability {
         double groundDuration = 2 + 4 * f;
 
         PlayerProjectileComponent ball = new PlayerProjectileComponent(aim().multiply(SPEED), 0, (e, i) -> null)
+                .light(170 + 90 * f)
                 .onStop((pos, vel, lastEnemy, terrain) -> {
                     Sfx.EXPLOSION.at(pos, 0.75 + 0.25 * f, 1.1 - 0.25 * f);
                     BlastComponent.spawn(pos, radius, 0.2, 0.4, BlastComponent.Style.FIRE,

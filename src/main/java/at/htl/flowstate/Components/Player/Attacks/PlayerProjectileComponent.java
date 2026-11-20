@@ -46,6 +46,7 @@ public class PlayerProjectileComponent extends Component {
     private Entity lastEnemy;
     private boolean stopped = false;
     private final Set<Entity> alreadyHit = new HashSet<>();
+    private double light;
 
     public PlayerProjectileComponent(Point2D velocity, int pierce, HitFactory hitFactory) {
         this.velocity = velocity;
@@ -54,6 +55,9 @@ public class PlayerProjectileComponent extends Component {
     }
 
     public PlayerProjectileComponent gravity(double g) { this.gravity = g; return this; }
+    /** It glows: lights up this radius around it in the dark (the Void Matriarch's last phase). */
+    public PlayerProjectileComponent light(double radius) { this.light = radius; return this; }
+    public double getLight() { return light; }
     public PlayerProjectileComponent maxDistance(double d) { this.maxDistance = d; return this; }
     public PlayerProjectileComponent onStop(StopListener l) { this.stopListener = l; return this; }
     /** Played where the projectile hits terrain (arrows thunk into the ground). */

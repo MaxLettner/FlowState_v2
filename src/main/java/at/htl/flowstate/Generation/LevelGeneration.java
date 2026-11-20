@@ -1,6 +1,8 @@
 package at.htl.flowstate.Generation;
 
 import at.htl.flowstate.Components.Enemies.BossArena;
+import at.htl.flowstate.Components.Enemies.MatriarchArena;
+import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.scene.paint.Color;
@@ -93,20 +95,38 @@ public class LevelGeneration {
     }
 
     /**
-     *the Pit Lord's arena: flat ground at the current height with no structures and no demons on it;
-     *BossArena closes it once the camera reaches lockX
+     *a boss arena: flat ground at the current height with no structures and no demons on it;
+     *BossArena closes it once the camera reaches lockX. The Void Matriarch's has a chasm in it: until the fight
+     *the chasm is covered by one plain floor slab (no decorations) that crumbles in her intro
      */
     private void spawnArena() {
+        BossArena.Boss boss = enemyGeneration.nextBoss();
         double start = lastGeneratedX;
         double lockX = start + ARENA_RUNWAY;
         double end = lockX + BossArena.WIDTH + ARENA_MARGIN;
-        for (double x = start; x < end; x += ARENA_SEGMENT) {
-            spawnGroundSegment(x, currentY, Math.min(ARENA_SEGMENT, end - x));
+        double chasmFrom = lockX + MatriarchArena.CHASM_FROM, chasmTo = lockX + MatriarchArena.CHASM_TO;
+        Entity chasmFloor = null;
+        for (double x = start; x < end; ) {
+            double w = Math.min(ARENA_SEGMENT, end - x);
+            if (boss == BossArena.Boss.MATRIARCH) {
+                if (x < chasmFrom && x + w > chasmFrom) w = chasmFrom - x;
+                if (Math.abs(x - chasmFrom) < 0.5) {
+                    chasmFloor = spawn("platform", new SpawnData(x, currentY)
+                            .put("color", Color.DARKSLATEGRAY)
+                            .put("width", chasmTo - chasmFrom)
+                            .put("height", DEEP_FLOOR - currentY));
+                    x = chasmTo;
+                    continue;
+                }
+            }
+            spawnGroundSegment(x, currentY, w);
+            x += w;
         }
         lastGeneratedX = end;
         terrainDrift = 0;
         slopeSegmentsLeft = 0;
-        BossArena.plan(lockX, currentY);
+        if (boss == BossArena.Boss.MATRIARCH) MatriarchArena.plan(lockX, currentY, chasmFloor);
+        BossArena.plan(lockX, currentY, boss);
         enemyGeneration.bossPlaced(end);
     }
 
@@ -173,13 +193,14 @@ public class LevelGeneration {
 
 
     //-----HELPERS-----
-    public static void spawnGroundSegment(double x, double y, double width) {
+    public static Entity spawnGroundSegment(double x, double y, double width) {
         double height = DEEP_FLOOR - y;
-        spawn("platform", new SpawnData(x, y)
+        Entity e = spawn("platform", new SpawnData(x, y)
                 .put("color", Color.DARKSLATEGRAY)
                 .put("width", width)
                 .put("height", height));
         spawnDecor(x, y, width);
+        return e;
     }
 
     //bones, thorns, skulls on stakes ... standing on the surface, purely visual

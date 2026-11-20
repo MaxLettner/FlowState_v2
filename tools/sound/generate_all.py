@@ -737,6 +737,63 @@ def mimic_chomp():
     return mix((knock, 1.0), (amp(crunch, lambda t: math.exp(-t / 0.05)), 0.5, 0.01), (wet, 0.4, 0.02))
 
 
+#=====Void Matriarch=====
+@sound
+def matriarch_screech():
+    """A huge spider's shriek: a chittering, ringing scream over a low void drone."""
+    dur = 1.4
+    scream = tone(dur, sweep(1300, 700, dur), 'saw', vibrato=60, vib_rate=23)
+    chitter = tremolo(bandpass(noise(dur, seed=320), sweep(3200, 1500, dur), 2.0), 31, 0.85)
+    drone = lowpass(mix((tone(dur, sweep(70, 52, dur), 'saw'), 0.6), (tone(dur, sweep(105, 78, dur), 'sine'), 0.4)), 500)
+    ring = shimmer(dur, 2500, 5200, seed=321)
+    sig = lowpass(drive(mix((scream, 0.55), (chitter, 0.6), (drone, 0.6), (ring, 0.12)), 1.9), 4200)
+    return amp(sig, lambda t: min(1.0, t / 0.08) * math.exp(-max(0.0, t - 0.7) / 0.3))
+
+
+@sound
+def thread_twang():
+    """A taut strand plucked: a low, bent twang."""
+    dur = 0.6
+    pl = pluck(dur, 98, 0.995, 0.6, seed=328)
+    bend = env(tone(dur, sweep(196, 150, dur), 'sine'), 0.002, 0.4)
+    return lowpass(mix((pl, 0.8), (bend, 0.35)), 2500)
+
+
+@sound
+def thread_snap():
+    """A strand snapping: a sharp crack and a whipping release."""
+    crack = env(highpass(noise(0.06, seed=322), 1500), 0.001, 0.05)
+    whip = whoosh(0.3, 600, 3500, q=2.5, peak=0.3, seed=323)
+    pl = env(tone(0.35, sweep(260, 70, 0.35), 'saw'), 0.001, 0.25)
+    return mix((crack, 1.0), (lowpass(pl, 1800), 0.5, 0.01), (whip, 0.6, 0.02))
+
+
+@sound
+def egg_hatch():
+    """A silk sac tearing open: a wet rip and skittering legs."""
+    rip = squelch(0.25, 2400, 700, 2.5, seed=324)
+    skitter = lowpass(clicks(0.5, 60, 0.002, (2500, 6000), seed=325), 7000)
+    return mix((rip, 1.0), (amp(skitter, lambda t: math.exp(-t / 0.3)), 0.6, 0.12))
+
+
+@sound
+def silk_spin():
+    """Silk paying out fast: a hissing, rising whirr."""
+    dur = 0.7
+    hiss = bandpass(noise(dur, seed=326), sweep(1800, 4200, dur), 3.0)
+    whirr = tremolo(tone(dur, sweep(320, 520, dur), 'square'), 45, 0.8)
+    return env(mix((hiss, 0.7), (lowpass(whirr, 1500), 0.3)), 0.05, dur)
+
+
+@sound
+def lights_out():
+    """The arena going dark: a long falling swell that swallows the room."""
+    dur = 2.2
+    fall = mix((tone(dur, sweep(220, 40, dur), 'saw'), 0.4), (tone(dur, sweep(330, 60, dur), 'sine'), 0.4))
+    air = lowpass(noise(dur, 'pink', seed=327), sweep(3000, 200, dur))
+    return amp(lowpass(mix((fall, 0.7), (air, 0.6)), 1600), lambda t: min(1.0, t / 0.4) * math.exp(-max(0.0, t - 1.4) / 0.4))
+
+
 @sound
 def amb_abyss():
     dur, xf = 17.0, 1.0

@@ -164,6 +164,7 @@ public class PlayerMovementComponent extends Component {
     public void pull(double dx) {
         if (dead || dashLeft > 0 || dx == 0) return;
         physics.overwritePosition(entity.getPosition().add(dx, 0));
+        physics.getBody().setAwake(true);      // a resting body sleeps: moved by hand it would hang in the air
     }
 
     /** Death: input stops moving the player, who just falls and melts. */
@@ -340,6 +341,19 @@ public class PlayerMovementComponent extends Component {
     }
 
     public boolean isGrounded() { return isGrounded; }
+
+    /** In the middle of a Leather Gloves dodge. */
+    public boolean isDodging() { return dodging; }
+
+    /** Puts the player down somewhere else, standing still (caught falling into the Void Matriarch's chasm). */
+    public void teleport(Point2D position) {
+        physics.overwritePosition(position);
+        physics.getBody().setAwake(true);
+        physics.setVelocityX(0);
+        physics.setVelocityY(0);
+        dashLeft = 0;
+        dodging = false;
+    }
 
     /** S is held (down-slash in the air, fly down while levitating). */
     public boolean isDownHeld() { return isLevitatingDown; }
