@@ -27,6 +27,7 @@ public class LevelGeneration {
     private static final double BASE_Y = 885;  //the base level the terrain hovers around
     private static final double MIN_Y = 735;  //highest the terrain can rise
     private static final double MAX_Y = 935; //lowest the terrain can sink before its a wall
+    private static final double MIN_STEP = 12; //height changes smaller than this are flattened out
 
     //no structures before this x, so the player always spawns on plain ground
     private static final double SAFE_START = 800;
@@ -179,6 +180,9 @@ public class LevelGeneration {
 
         //hard clamp
         newY = Math.max(MIN_Y, Math.min(MAX_Y, newY));
+
+        //a step of only a few pixels just looks like a glitch: keep the ground flat instead
+        if (Math.abs(newY - currentY) < MIN_STEP) newY = currentY;
 
         return newY;
     }
