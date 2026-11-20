@@ -145,13 +145,18 @@ public class EnemyStatsComponent extends Component {
         dead = true;
         if (!summoned) player.getComponent(PlayerStatsComponent.class).addExperience(type.xp * (getAffix() != null ? EliteComponent.XP_MULT : 1));
         player.getComponent(LoadoutComponent.class).onKill();
+        DemonBehaviour behaviour = DemonBehaviour.of(entity);
+        if (behaviour != null && behaviour.diesSlowly()) {      // a boss plays its own death scene
+            behaviour.onDeath();
+            return;
+        }
         Point2D c = entity.getCenter();
         double size = Math.min(2.2, Math.sqrt(type.width * type.height) / 60);   // 1 = player sized
         Sfx.ENEMY_DEATH.at(c, Math.min(1, 0.6 + size * 0.4), type.deathPitch);
         Particles.splat(c.add(0, type.height * 0.25), type.splat);
         // demons burn away: embers rising out of the body
         Particles.burst(c, Particles.EMBER, (int) (8 + 10 * size), -90, 70, 60, 220 * Math.max(1, size), 0.9, 5, -120);
-        entity.getComponentOptional(DemonBehaviour.class).ifPresent(DemonBehaviour::onDeath);
+        if (behaviour != null) behaviour.onDeath();
         entity.removeFromWorld();
     }
 

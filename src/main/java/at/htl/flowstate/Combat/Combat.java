@@ -99,7 +99,7 @@ public final class Combat {
         Entity best = null;
         double bestDist = maxDistance;
         for (Entity e : enemies()) {
-            DemonBehaviour ai = e.getComponentOptional(DemonBehaviour.class).orElse(null);
+            DemonBehaviour ai = DemonBehaviour.of(e);
             if (ai != null && ai.isLurking()) continue;
             double d = e.getCenter().distance(point);
             if (d <= bestDist) {
@@ -131,7 +131,7 @@ public final class Combat {
         // stone skin (Gargoyle) and shields (Chainwarden): the demon decides how much of the hit gets through
         double through = stats.isInvulnerable() ? 0 : 1;
         if (through > 0 && h.kind != DamageKind.DOT) {
-            DemonBehaviour ai = enemy.getComponentOptional(DemonBehaviour.class).orElse(null);
+            DemonBehaviour ai = DemonBehaviour.of(enemy);
             if (ai != null) through = ai.guard(h, player);
         }
         if (through <= 0) {

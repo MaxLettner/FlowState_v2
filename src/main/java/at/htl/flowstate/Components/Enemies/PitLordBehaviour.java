@@ -1,5 +1,6 @@
 package at.htl.flowstate.Components.Enemies;
 
+import at.htl.flowstate.Assets;
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Sfx;
@@ -10,11 +11,13 @@ import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.geometry.Point2D;
+import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 import static com.almasb.fxgl.dsl.FXGL.runOnce;
 import static com.almasb.fxgl.dsl.FXGL.spawn;
 
@@ -30,7 +33,9 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  *       landing) and calls down a rain of hellfire meteors on marked spots.</li>
  *   <li>Below 30 %: enraged; faster, double shockwaves, bigger volleys, more fissures and meteors.</li>
  * </ol>
- * No knockback, stuns are cut to a third. Killing it opens the arena and grants two skill points.
+ * No knockback, stuns are cut to a third. Its death is a cutscene: staggered, it drops the cleaver (which stays,
+ * stuck in the ground), sinks to its knees while lava cracks spread from the core, roars once more and bursts,
+ * taking its minions with it; then the gates open and it grants two skill points.
  * <p>
  * Art: rendered in 3D by tools/art/lord3d.py. Every strip is a set of key poses sampled at twice the old frame
  * count, so animations are driven by a key position over time ({@link #keyAt}, {@link #showKey}) rather than by
@@ -74,7 +79,11 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     private static final Strip SLAM = new Strip("slam", 6, 12), CAST = new Strip("cast", 4, 8),
             SHEATHE = new Strip("sheathe", 4, 8), CRASH = new Strip("crash", 2, 4), DRAW = new Strip("draw", 4, 8),
-            LEAP = new Strip("leap", 3, 6), STAB = new Strip("stab", 3, 6), SWING = new Strip("swing", 6, 12);
+            LEAP = new Strip("leap", 3, 6), STAB = new Strip("stab", 3, 6), SWING = new Strip("swing", 6, 12),
+            DEATH = new Strip("death", 5, 10);
+    // death scene timeline (s after the killing blow)
+    private static final double D_DROP = 0.45, D_KNEEL = 1.0, D_SLUMP = 1.45, D_ROAR = 2.5, D_FLARE = 2.8, D_BURST = 3.1;
+    private static final double STUCK_CLEAVER_X = 152;   // where the dropped cleaver sticks, ahead of the centre (px)
     // looping strips and their rates (twice the old ones)
     private static final double IDLE_FPS = 12, WALK_FPS = 14, RAGE_WALK_FPS = 18, CHARGE_FPS = 28, DAZED_FPS = 10, ROAR_FPS = 12;
     // leap: jumps onto the spot the player stood on
@@ -103,6 +112,9 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private int chargeDir, left;
     private double chargeStartX, lastX, next, leapTargetX, leapGroundY;
     private int hits;                                    // swing blows landed so far this swing
+    private boolean dying;
+    private double deathT;
+    private int deathCue;
 
     /** The living Pit Lord, if any (the HUD shows its health bar). */
     public static Entity current() {
@@ -709,23 +721,96 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     }
 
     @Override
+    public boolean diesSlowly() {
+        return true;
+    }
+
+    /** The killing blow: the death scene starts (BossArena takes control away and freezes everything else). */
+    @Override
     public void onDeath() {
-        BossArena.end();
-        PlayerStatsComponent stats = player.getComponent(PlayerStatsComponent.class);
-        for (int i = 0; i < REWARD_SP; i++) stats.addSkillPoint();
-        Sfx.LEVEL_UP.play();
-        Impact.shake(24);
+        if (current == entity) current = null;             // the boss bar goes
+        dying = true;
+        deathT = 0;
+        deathCue = 0;
+        physics.setVelocityX(0);
+        sprite.setTelegraph(null);
+        Sfx.BOSS_ROAR.at(entity.getCenter(), 1, 0.55);
+        Impact.shake(18);
+        Particles.burst(entity.getCenter().add(0, -40), Particles.EMBER, 30, -90, 120, 100, 380, 0.8, 6, 300);
+        BossArena.bossDying(entity);
+    }
+
+    @Override
+    protected void dying(double tpf) {
+        deathT += tpf;
+        physics.setVelocityX(0);
+        showKey(DEATH, keyAt(deathT, 0, 0, D_DROP, 1, D_KNEEL, 2, D_SLUMP, 3, D_ROAR, 3, D_FLARE, 4));
         Point2D c = entity.getCenter();
+        double feet = entity.getBottomY();
+        if (deathCue == 0 && deathT >= D_DROP * 0.7) {        // the cleaver drops and sticks in the ground
+            deathCue++;
+            Point2D tip = new Point2D(c.getX() + facing * STUCK_CLEAVER_X, feet - 4);
+            Sfx.BLOCK_HIT.at(tip, 1, 0.5);
+            Sfx.BRUTE_SLAM.at(tip, 0.5, 1.4);
+            Particles.burst(tip, Particles.DUST, 16, -90, 60, 60, 200, 0.5, 6, 700);
+            Particles.burst(tip, Particles.SPARK, 8, -90, 70, 80, 240, 0.4, 4, 600);
+        }
+        if (deathCue == 1 && deathT >= D_KNEEL) {             // the knees hit the ground
+            deathCue++;
+            Sfx.BRUTE_SLAM.at(c, 0.9, 0.5);
+            Impact.shake(14);
+            Particles.burst(new Point2D(c.getX(), feet - 4), Particles.DUST, 30, -90, 85, 120, 420, 0.8, 8, 900);
+        }
+        if (deathT >= D_KNEEL) {                               // the cracks spread: embers leak, the ground trembles
+            double k = Math.min(1, (deathT - D_KNEEL) / (D_BURST - D_KNEEL));
+            if (Math.random() < tpf * (8 + 45 * k)) {
+                Particles.burst(c.add(FXGLMath.random(-70, 70), FXGLMath.random(-130, 40)), Particles.EMBER, 2, -90, 40, 40, 160, 0.7, 5, -80);
+            }
+            if (Math.random() < tpf * 6) Impact.shake(2 + 9 * k);
+            if (Math.random() < tpf * 3) Sfx.CRACKLE.at(c, 0.9, 0.6 + 0.4 * k);
+        }
+        if (deathCue == 2 && deathT >= D_ROAR) {              // one last roar, head thrown back
+            deathCue++;
+            Sfx.BOSS_ROAR.at(c, 1, 0.7);
+        }
+        if (deathT >= D_FLARE && Math.random() < tpf * 16) sprite.flash();     // white-hot
+        if (deathT >= D_BURST) burst();
+    }
+
+    /** The core bursts: the Lord is gone, its cleaver stays stuck in the ground, the arena opens. */
+    private void burst() {
+        Point2D c = entity.getCenter();
+        Sfx.EXPLOSION.at(c, 1, 0.6);
+        Sfx.BOSS_ROAR.at(c, 0.6, 0.45);
+        Impact.shake(32);
+        Particles.burst(c, Particles.EMBER, 90, -90, 180, 150, 900, 1.4, 8, 350);
+        Particles.burst(c, Particles.SPARK, 40, -90, 180, 200, 700, 0.8, 5, 200);
+        Particles.burst(new Point2D(c.getX(), entity.getBottomY() - 4), Particles.DUST, 40, -90, 80, 150, 500, 1.0, 9, 900);
         for (int k = 0; k < 6; k++) {
             Particles.burst(c.add(FXGLMath.random(-60, 60), FXGLMath.random(-140, 120)), Particles.EMBER, 20, -90, 180, 100, 520, 1.0, 7, 300);
         }
-        if (current == entity) current = null;
+        PlayerStatsComponent stats = player.getComponent(PlayerStatsComponent.class);
+        for (int i = 0; i < REWARD_SP; i++) stats.addSkillPoint();
+        runOnce(Sfx.LEVEL_UP::play, Duration.seconds(0.9));
+        leaveCleaver();
+        BossArena.bossExploded();
+        entity.removeFromWorld();
     }
 
-    /** Gone without dying (fell into a pit, a new game): never leave the way barred. */
+    /** The dropped cleaver stays where it stuck: the same frame and anchor as the Lord's sprite. */
+    private void leaveCleaver() {
+        DemonType t = DemonType.LORD;
+        ImageView view = Assets.sprite("DemonLord_cleaver.png", 2);
+        view.setTranslateX(t.width / 2 - t.anchorX * 2);
+        view.setTranslateY(t.height - t.anchorY * 2);
+        view.setScaleX(facing);
+        entityBuilder().at(entity.getPosition()).view(view).zIndex(-1).buildAndAttach();
+    }
+
+    /** Gone without its death scene (fell into a pit, a new game): never leave the way barred. */
     @Override
     public void onRemoved() {
-        BossArena.end();
+        if (!dying) BossArena.end();
         if (current == entity) current = null;
     }
 }

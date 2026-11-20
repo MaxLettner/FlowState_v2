@@ -412,7 +412,7 @@ def build_lord(s, phase=0.0, breathe=0.0):
         h = 14 + 8 * math.sin(phase * 6.28 + k * 1.3) ** 2 + (2 - abs(k - 2)) * 6
         sway = math.sin(phase * 6.28 + k) * 3
         pts = bez3((fx, hy - 22, hz + 2), (fx - 1, hy - 22 - h * 0.6, hz + 2), (fx - 4 + sway, hy - 22 - h, hz + 2), 6)
-        s.tube(pts, 5, 0.8, FIRE, heat=0.75)
+        s.tube(pts, 5 * min(1.3, max(0.4, P['crown'])), 0.8, FIRE, heat=0.75)
 
     # pauldrons with spikes
     def pauldron(c, side):
@@ -674,7 +674,10 @@ BACK_ANG = 1.98                 # the sheathed cleaver's angle standing upright
 DEFAULT = dict(bob=0.0, lean=0.0, hunch=0.0, twist=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0),
                near=(1.15, 0.85), near_out=(0.0, 0.0), far=(1.35, 1.6), far_out=(0.0, 0.0),
                sword=1.02, blade=None, edge=None, grip2=0.0, sheathed=0.0,
-               mouth=0.0, head_up=0.0, horn_tilt=0.0, crown_lean=-0.2, fire=0.0, heat=0.4, phase=0.0)
+               mouth=0.0, head_up=0.0, horn_tilt=0.0, crown_lean=-0.2, fire=0.0, heat=0.4, phase=0.0,
+               kneel=0.0, drop=0.0, cracks=0.0, crown=1.0)
+# death poses: kneel folds the near leg onto the ground; drop leaves the cleaver stuck in the ground in front;
+# cracks spreads glowing lava cracks over the body (0..1); heat above 1 swells the core; crown scales the fire
 
 
 def pose(**kw):
@@ -758,6 +761,16 @@ def cleaver3d(s, G, D, E, heat):
     s.sphere(at(-17, 0), 5, STEEL)                                                  # pommel
 
 
+STUCK_AT = (292, 204)            # the dropped cleaver's grip (model units): fixed, so the prop matches the last frame
+
+
+def stuck_cleaver(s, hip=None):
+    """The cleaver, dropped and stuck point-first in the ground in front of him (also left behind as a prop)."""
+    G = (STUCK_AT[0], STUCK_AT[1], 30)
+    D = norm((0.22, 1.0, -0.05))
+    cleaver3d(s, G, D, _edge(dict(edge=None), D), 0.3)
+
+
 def build_pose(s, P):
     bob, lean, hunch, tw, ph = P['bob'] * U, P['lean'], P['hunch'], P['twist'], P['phase']
     hip = (172 + lean * 2 * U, 172 + bob, 0)
@@ -776,6 +789,11 @@ def build_pose(s, P):
         hoof = (h[0] + 12 + math.sin(a) * 26, 262 - L, z + 2 * side)
         knee = (h[0] + 26 + math.sin(a) * 12, (h[1] + hoof[1]) / 2 - 14 - L * 0.2, z + 2 * side)
         hock = (hoof[0] - 12 - math.sin(a) * 4, hoof[1] - 22, z)
+        kn = P['kneel'] if side > 0 else P['kneel'] * 0.35
+        if kn > 0:                                     # knee down on the ground, shin lying back along it
+            knee = lerp3(knee, (h[0] + 30, 250, z + 2 * side), kn)
+            hock = lerp3(hock, (h[0] - 18, 256, z), kn)
+            hoof = lerp3(hoof, (h[0] - 34, 260, z + 2 * side), kn)
         s.tube([h, lerp3(h, knee, 0.5), knee], 21, 14, FUR)
         s.ellipsoid(lerp3(h, knee, 0.45), 20, 15, 18, 0.7, FUR)
         s.tube([knee, hock], 13, 8.5, FUR)
@@ -789,20 +807,53 @@ def build_pose(s, P):
     sh_f = (168 + lean * 5 * U + hunch * 12 - tw * 8, 92 + bob + hunch * 18, -40 - tw * 4)
     sh_n = (216 + lean * 6 * U + hunch * 14 + tw * 10, 92 + bob + hunch * 20, 40 + tw * 6)
     s.ellipsoid((hip[0] - 2, hip[1] - 12, 0), 36, 24, 34, 0, FUR)
-    s.ellipsoid(belly, 32, 26, 32, -0.15 - hunch * 0.2, SKIN)
-    s.ellipsoid(chest, 46, 40, 40, -0.5 - hunch * 0.45, SKIN)
-    s.ellipsoid(add(chest, (20, -6, 22)), 24, 21, 20, -0.5 - hunch * 0.4, SKIN)     # near pec
-    s.ellipsoid(add(chest, (-16, -14, -26)), 22, 20, 18, -0.4, SKIN)                # far pec / lat
-    s.ellipsoid(add(belly, (20, -6, 24)), 16, 20, 10, -0.1, SKIN)                   # abs
+    torso = [(belly, 32, 26, 32, -0.15 - hunch * 0.2), (chest, 46, 40, 40, -0.5 - hunch * 0.45),
+             (add(chest, (20, -6, 22)), 24, 21, 20, -0.5 - hunch * 0.4),              # near pec
+             (add(chest, (-16, -14, -26)), 22, 20, 18, -0.4),                         # far pec / lat
+             (add(belly, (20, -6, 24)), 16, 20, 10, -0.1)]                            # abs
+    for c, rx, ry, rz, ang in torso:
+        s.ellipsoid(c, rx, ry, rz, ang, SKIN)
+
+    def on_torso(x, y):
+        """Depth of the torso's outer surface at model point (x, y): decals (cracks) sit just on top of it."""
+        best = None
+        for (cx, cy, cz), rx, ry, rz, ang in torso:
+            dx, dy = x - cx, y - cy
+            u = dx * math.cos(ang) + dy * math.sin(ang)
+            v = -dx * math.sin(ang) + dy * math.cos(ang)
+            q = 1 - (u / rx) ** 2 - (v / ry) ** 2
+            if q > 0:
+                z = cz + rz * math.sqrt(q)
+                best = z if best is None else max(best, z)
+        return best
     core = add(chest, (18, 6, 40))
-    s.sphere(core, 9, LAVA, heat=0.6 + 0.4 * P['heat'])
+    s.sphere(core, 9 * (1 + max(0.0, P['heat'] - 1) * 0.7), LAVA, heat=min(1.0, 0.6 + 0.4 * P['heat']))
     for k in range(7):
         a = k * 0.9 + 0.4
         ln = 14 + (k % 3) * 6
         p0 = (core[0] + math.cos(a) * 7, core[1] + math.sin(a) * 7, core[2] + 3)
         p1 = (core[0] + math.cos(a + 0.15) * ln, core[1] + math.sin(a + 0.15) * ln, core[2] - ln * 0.25)
-        s.tube([p0, p1], 1.8, 0.9, LAVA, heat=0.3 + 0.4 * P['heat'])
-
+        s.tube([p0, p1], 1.8, 0.9, LAVA, heat=min(1.0, 0.3 + 0.4 * P['heat']))
+    # dying: the cracks spread from the core over the chest, belly and shoulders, one after another
+    if P['cracks'] > 0:
+        spread = [((18, 6), (52, -30), 40), ((18, 6), (-30, -26), 40), ((18, 6), (6, 48), 44),
+                  ((18, 6), (44, 30), 30), ((18, 6), (-34, 22), 36), ((-20, -18), (-44, -40), 28),
+                  ((30, -20), (50, -46), 26), ((0, 30), (-20, 60), 28), ((40, 20), (66, 34), 22)]
+        for k, ((ax, ay), (bx, by), _) in enumerate(spread):
+            f = clamp(P['cracks'] * len(spread) - k)
+            if f <= 0:
+                continue
+            pts = []
+            for j in range(9):                         # a jagged line following the skin
+                t = j / 8 * f
+                x = chest[0] + ax + (bx - ax) * t + (3 if j % 2 else -3) * (k % 2 * 2 - 1)
+                y = chest[1] + ay + (by - ay) * t
+                z = on_torso(x, y)
+                if z is None:
+                    break
+                pts.append((x, y, z + 0.5))
+            if len(pts) >= 2:
+                s.tube(pts, 2.2, 1.0, LAVA, heat=0.55 + 0.35 * f)
     # war belt with hanging plates and a skull buckle
     bc = (hip[0], hip[1] - 20, 0)
     ring = [(bc[0] + 38 * math.cos(t), bc[1] + 2 * math.cos(t), 34 * math.sin(t))
@@ -860,7 +911,7 @@ def build_pose(s, P):
 
     for k in range(5):                                                              # crown of fire
         fx = hx - 12 + k * 6
-        h = 14 + 8 * math.sin(ph * 6.28 + k * 1.3) ** 2 + (2 - abs(k - 2)) * 6
+        h = (14 + 8 * math.sin(ph * 6.28 + k * 1.3) ** 2 + (2 - abs(k - 2)) * 6) * P['crown']
         sway = math.sin(ph * 6.28 + k) * 3 + P['crown_lean'] * 14
         pts = bez3((fx, hy - 22, hz + 2), (fx - 1 + sway * 0.4, hy - 22 - h * 0.6, hz + 2), (fx - 4 + sway, hy - 22 - h, hz + 2), 6)
         s.tube(pts, 5, 0.8, FIRE, heat=0.75)
@@ -905,7 +956,9 @@ def build_pose(s, P):
     for k in (0.45, 0.7):
         q = lerp3(el_n, wr_n, k)
         s.sphere((q[0] + 6, q[1], q[2] + 12), 2.2, STEEL)
-    if P['sheathed'] <= 0.5:
+    if P['drop'] > 0.5:
+        stuck_cleaver(s, hip)
+    elif P['sheathed'] <= 0.5:
         D = _blade(P)
         E = _edge(P, D)
         cleaver3d(s, add(fist, mul(D, 4)), D, E, P['heat'])
@@ -1048,15 +1101,40 @@ def lord_poses():
              far=(1.7, 2.0), blade=(0.25, 0.1, -1.0), edge=(-0.8, 0.8, 0.0), mouth=0.6, heat=0.9, phase=0.6),
         ready,
     ]
+    # death: staggered by the killing blow, drops the cleaver and clutches the core, the knees give, he slumps while
+    # the cracks spread, then throws his head back in a last roar as the core flares (the game makes him burst)
+    death = [
+        pose(lean=-0.35, head_up=0.9, mouth=1.0, near=(1.9, 2.3), far=(2.1, 2.5), sword=2.4, heat=1.0, phase=0.1,
+             legs=(-0.2, 0.3)),
+        pose(lean=-0.15, hunch=0.2, near=(1.95, -0.55), far=(1.7, 2.0), drop=1, mouth=0.7, head_up=0.3, heat=1.1,
+             cracks=0.2, phase=0.3),
+        pose(hunch=0.4, bob=10, kneel=0.6, near=(1.9, -0.4), far=(1.6, 1.9), drop=1, mouth=0.5, head_up=-0.2,
+             heat=1.25, cracks=0.45, crown=0.8, phase=0.5),
+        pose(hunch=0.7, bob=16, kneel=1.0, near=(1.6, 1.75), far=(1.65, 1.85), drop=1, mouth=0.3, head_up=-0.8,
+             heat=1.5, cracks=0.75, crown=0.55, phase=0.7),
+        pose(lean=-0.2, hunch=0.35, bob=15, kneel=1.0, near=(1.75, 2.2), far=(1.9, 2.4), drop=1, mouth=1.0,
+             head_up=1.0, heat=2.3, cracks=1.0, crown=1.6, crown_lean=0.2, phase=0.9),
+    ]
     return dict(
+        death=keys_strip(death, 10),
         idle=loop_strip(idle, 8), walk=loop_strip(walk, 12), slam=keys_strip(slam, 12), cast=keys_strip(cast, 8),
         roar=loop_strip(roar, 4), sheathe=keys_strip(sheathe, 8), charge=loop_strip(charge, 12),
         crash=keys_strip(crash, 4), dazed=loop_strip(dazed, 8), draw=keys_strip(draw, 8), leap=keys_strip(leap, 6),
         stab=keys_strip(stab, 6), swing=keys_strip(swing, 12))
 
 
+def cleaver_prop():
+    """The dropped cleaver alone, in a full Lord frame (same anchor), so the game can leave it exactly where it
+    stuck after he bursts."""
+    s = Scene(scale=MODEL_SCALE, anchor=FRAME_ANCHOR)
+    stuck_cleaver(s)
+    return render(s, 'prerender')
+
+
 def lord_strips():
-    return {f'DemonLord_{name}': [lord_frame(P) for P in poses] for name, poses in lord_poses().items()}
+    out = {f'DemonLord_{name}': [lord_frame(P) for P in poses] for name, poses in lord_poses().items()}
+    out['DemonLord_cleaver'] = [cleaver_prop()]
+    return out
 
 
 def strip_image(frames):

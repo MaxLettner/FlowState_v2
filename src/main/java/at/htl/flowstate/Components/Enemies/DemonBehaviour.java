@@ -34,6 +34,17 @@ public abstract class DemonBehaviour extends Component {
         player = Game.getPlayer();
     }
 
+    /**
+     * The demon's behaviour, whatever its subclass. FXGL files a component only under its exact class, so
+     * {@code getComponentOptional(DemonBehaviour.class)} never finds an ImpBehaviour or a PitLordBehaviour.
+     */
+    public static DemonBehaviour of(Entity e) {
+        for (Component c : e.getComponents()) {
+            if (c instanceof DemonBehaviour b) return b;
+        }
+        return null;
+    }
+
     @Override
     public void onAdded() {
         physics = entity.getComponent(PhysicsComponent.class);
@@ -48,7 +59,10 @@ public abstract class DemonBehaviour extends Component {
             sprite = entity.getComponent(DemonSpriteComponent.class);
             onReady();
         }
-        if (stats.isDead()) return;
+        if (stats.isDead()) {                   // only a demon that diesSlowly() is still here
+            dying(tpf);
+            return;
+        }
         if (entity.getY() > ABYSS_Y) {          // fell into a pit (a leaping imp, a knocked-back hound)
             entity.removeFromWorld();
             return;
@@ -78,8 +92,19 @@ public abstract class DemonBehaviour extends Component {
     /** A wind-up or attack was cut short by a disable: go back to the neutral state. */
     protected void interrupt() {}
 
-    /** Called by the stats right before the entity is removed. */
+    /** Called by the stats right before the entity is removed (or, if it {@link #diesSlowly}, instead of that). */
     public void onDeath() {}
+
+    /**
+     * A boss with a death scene: the stats grant the experience and call {@link #onDeath} but leave the entity in
+     * the world, without the usual burst; it plays {@link #dying} every frame and removes itself when done.
+     */
+    public boolean diesSlowly() {
+        return false;
+    }
+
+    /** Every frame after death, for a demon that {@link #diesSlowly}. */
+    protected void dying(double tpf) {}
 
     /**
      * How much of a player hit gets through (1 = all, 0 = blocked): Combat.hit asks before applying it.
