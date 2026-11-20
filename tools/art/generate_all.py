@@ -12,6 +12,7 @@ import slimes
 import demons
 import demons2
 import demons3
+import lord3d
 import player_slime
 import weapons
 import ranged
@@ -36,7 +37,8 @@ def main():
     slimes.generate(OUT)
     player_slime.generate(OUT)             # the player's extra animations (run, dash, hurt, death, ...)
     demons.generate(OUT)                   # the enemies: demons, their projectiles and effects
-    demons2.generate(OUT)                  # wave 2 demons, the Pit Lord boss and their effects
+    demons2.generate(OUT)                  # wave 2 demons and their effects (portal, hex bolt, boss gate)
+    lord3d.generate(OUT)                   # the Pit Lord boss, rendered in 3D (pre-rendered style)
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
     weapons.generate(OUT)
     ranged.generate(OUT)
