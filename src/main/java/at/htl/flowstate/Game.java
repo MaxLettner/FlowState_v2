@@ -2,6 +2,9 @@ package at.htl.flowstate;
 
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Enemies.BossArena;
+import at.htl.flowstate.Components.Enemies.MatriarchArena;
+import at.htl.flowstate.Components.Enemies.ThreadBridgeComponent;
+import at.htl.flowstate.Visuals.Darkness;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
@@ -243,7 +246,7 @@ public class Game extends GameApplication {
     private void setupPlayer() {
         FixtureDef playerFd = new FixtureDef().friction(0).density(1.0f);
         playerFd.getFilter().categoryBits = CATEGORY_PLAYER;
-        playerFd.getFilter().maskBits = CATEGORY_TERRAIN;
+        playerFd.getFilter().maskBits = (short) (CATEGORY_TERRAIN | ThreadBridgeComponent.CATEGORY_PLAYER_FLOOR);
 
         PhysicsComponent physics = new PhysicsComponent();
         physics.setBodyType(BodyType.DYNAMIC);
@@ -280,6 +283,8 @@ public class Game extends GameApplication {
         // between the game world (right after the background) and the UI root, so the HUD stays on top
         var content = getGameScene().getContentRoot().getChildren();
         if (!content.contains(foreground)) content.add(content.indexOf(background) + 2, foreground);
+        // the Void Matriarch's lights-out goes over the world and the foreground, under the HUD
+        Darkness.install(content, content.indexOf(foreground) + 1);
         foreground.setMouseTransparent(true);
         foreground.getChildren().clear();
         fgLayers.clear();
@@ -309,6 +314,7 @@ public class Game extends GameApplication {
     @Override
     protected void onUpdate(double tpf) {
         FrameRateLog.gameUpdate(tpf);
+        MatriarchArena.catchFall(player);      // her chasm hurts, but isn't the bottomless abyss
         if (!dying && player.getY() > WINDOW_HEIGHT + 100) {
             // fell into the abyss: nothing left to animate
             dying = true;
@@ -319,6 +325,7 @@ public class Game extends GameApplication {
         Impact.update(tpf);
         updateCamera();
         BossArena.update(tpf);
+        Darkness.update(tpf);
         levelGeneration.generateLevel(player.getX());
         cleanupPlatforms(tpf);
         scrollBg(tpf);

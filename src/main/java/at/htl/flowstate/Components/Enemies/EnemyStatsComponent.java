@@ -143,8 +143,10 @@ public class EnemyStatsComponent extends Component {
     private void die() {
         if (dead) return;
         dead = true;
-        if (!summoned) player.getComponent(PlayerStatsComponent.class).addExperience(type.xp * (getAffix() != null ? EliteComponent.XP_MULT : 1));
-        player.getComponent(LoadoutComponent.class).onKill();
+        if (!type.isPart()) {
+            if (!summoned) player.getComponent(PlayerStatsComponent.class).addExperience(type.xp * (getAffix() != null ? EliteComponent.XP_MULT : 1));
+            player.getComponent(LoadoutComponent.class).onKill();
+        }
         DemonBehaviour behaviour = DemonBehaviour.of(entity);
         if (behaviour != null && behaviour.diesSlowly()) {      // a boss plays its own death scene
             behaviour.onDeath();
@@ -257,6 +259,7 @@ public class EnemyStatsComponent extends Component {
 
     public boolean isStunned() { return stunLeft > 0 || freezeLeft > 0 || pinLeft > 0; }
     public boolean isFrozen() { return freezeLeft > 0; }
+    public boolean isBurning() { return burnLeft > 0; }
     public boolean isSlowed() { return slowLeft > 0; }
     public double getSpeedMult() {
         return (isSlowed() ? SLOW_FACTOR : 1.0) * (getAffix() == EliteAffix.SWIFT ? EliteComponent.SWIFT_MULT : 1.0);

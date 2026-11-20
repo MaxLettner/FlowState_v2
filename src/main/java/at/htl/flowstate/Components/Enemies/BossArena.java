@@ -31,6 +31,9 @@ import static com.almasb.fxgl.dsl.FXGL.*;
  * away with a flash, the gates open, and control returns. Killing it opens both gates and frees the camera.
  */
 public final class BossArena {
+    /** Which boss the arena is for. */
+    public enum Boss { PIT_LORD, MATRIARCH }
+
     /** The arena is exactly one screen wide. */
     public static final double WIDTH = 1920;
     // cutscene timeline (s after the camera locks)
@@ -41,12 +44,16 @@ public final class BossArena {
     private static final double LORD_X = 380;                  // the Lord's left edge, from the arena's left edge
     private static final double DROP_HEIGHT = 800;             // above its standing height
     private static final double BAR_H = 90, BAR_SPEED = 260;   // letterbox
+    // the Void Matriarch's intro: the floor over the chasm crumbles, she spins her bridges and lowers herself in
+    private static final double CRUMBLE_AT = 1.0, WEAVE_AT = 1.25, BRIDGE_WEAVE = 1.0, MATRIARCH_AT = 1.4;
 
     private enum Phase { NONE, PENDING, CUTSCENE, FIGHT, DEATH }
     // death scene, after the burst (s)
     private static final double GATES_OPEN_AFTER = 0.7, CONTROL_AFTER = 1.6, FLASH_TIME = 0.6;
 
     private static Phase phase = Phase.NONE;
+    private static Boss boss = Boss.PIT_LORD;
+    private static boolean crumbled, woven;
     private static double lockX, groundY, time, landedAt;
     private static boolean leftClosed, lordSpawned;
     private static Entity leftGate, rightGate;
@@ -60,6 +67,7 @@ public final class BossArena {
     /** A new game. */
     public static void reset() {
         phase = Phase.NONE;
+        MatriarchArena.reset();
         leftGate = rightGate = null;
         barTop = barBottom = flash = null;    // the UI was cleared with the old game
         frozen.clear();               // ... and the world
@@ -67,9 +75,18 @@ public final class BossArena {
 
     /** The ground from lockX to lockX + WIDTH is flat at groundY; the arena closes when the camera gets there. */
     public static void plan(double lockX, double groundY) {
+        plan(lockX, groundY, Boss.PIT_LORD);
+    }
+
+    public static void plan(double lockX, double groundY, Boss which) {
         BossArena.lockX = lockX;
         BossArena.groundY = groundY;
+        boss = which;
         phase = Phase.PENDING;
+    }
+
+    public static Boss boss() {
+        return boss;
     }
 
     /** From the planned arena until the boss is dead: no other demons spawn. */
@@ -117,9 +134,12 @@ public final class BossArena {
         getInput().clearAll();
         getInput().setProcessInput(false);
         freezeOthers(null);
-        rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY);
+        crumbled = woven = false;
+        boolean silk = boss == Boss.MATRIARCH;
+        rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY, silk);
         Impact.shake(16);
-        Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
+        if (silk) Sfx.MATRIARCH_SCREECH.at(new Point2D(lockX + WIDTH / 2, 0), 0.3, 0.6);
+        else Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
         letterbox();
     }
 
@@ -145,10 +165,12 @@ public final class BossArena {
         time += tpf;
         if (!leftClosed && time >= LEFT_GATE_AT) {
             leftClosed = true;
-            leftGate = BossGateComponent.spawn(lockX, groundY);
+            leftGate = BossGateComponent.spawn(lockX, groundY, boss == Boss.MATRIARCH);
             Impact.shake(16);
         }
-        if (!lordSpawned && time >= DROP_AT) {
+        if (boss == Boss.MATRIARCH) {
+            matriarchIntro();
+        } else if (!lordSpawned && time >= DROP_AT) {
             lordSpawned = true;
             DemonType lord = DemonType.LORD;
             spawn(lord.spawnName(), new SpawnData(lockX + LORD_X, groundY - lord.height - 2 - DROP_HEIGHT));
@@ -157,6 +179,24 @@ public final class BossArena {
             movement().faceAttack(-1, 3);
         }
         if ((landedAt >= 0 && time >= landedAt + CONTROL_AFTER_LANDING) || time >= MAX_CUTSCENE) startFight();
+    }
+
+    private static void matriarchIntro() {
+        if (!crumbled && time >= CRUMBLE_AT) {
+            crumbled = true;
+            MatriarchArena.crumble();
+        }
+        if (!woven && time >= WEAVE_AT) {
+            woven = true;
+            MatriarchArena.weaveBridges(BRIDGE_WEAVE);
+        }
+        if (!lordSpawned && time >= MATRIARCH_AT) {
+            lordSpawned = true;
+            DemonType m = DemonType.MATRIARCH;
+            spawn(m.spawnName(), new SpawnData(lockX + MatriarchBehaviour.INTRO_SPOT - m.width / 2, -m.height - 260));
+            int dir = lockX + MatriarchBehaviour.INTRO_SPOT < Game.getPlayer().getCenter().getX() ? -1 : 1;
+            movement().faceAttack(dir, 3);
+        }
     }
 
     /** The Pit Lord hit the ground. */
@@ -191,18 +231,20 @@ public final class BossArena {
     static void bossExploded() {
         if (phase != Phase.DEATH) {                 // died outside a closed arena (tests): just clear the way
             end();
+            if (boss == Boss.MATRIARCH) MatriarchArena.finish();
             return;
         }
         for (Entity e : frozen) {
             if (!e.isActive()) continue;
             if (e.hasComponent(EnemyIdentifierComponent.class)) {
-                Particles.burst(e.getCenter(), Particles.EMBER, 14, -90, 80, 60, 260, 0.8, 5, -100);
+                Particles.burst(e.getCenter(), boss == Boss.MATRIARCH ? Particles.VOID : Particles.EMBER, 14, -90, 80, 60, 260, 0.8, 5, -100);
             }
             e.removeFromWorld();
         }
         frozen.clear();
         exploded = true;
         deathTime = 0;
+        if (boss == Boss.MATRIARCH) MatriarchArena.finish();
         screenFlash();
     }
 
@@ -217,6 +259,7 @@ public final class BossArena {
         BossGateComponent.open(leftGate);
         BossGateComponent.open(rightGate);
         leftGate = rightGate = null;
+        if (boss == Boss.MATRIARCH) MatriarchArena.finish();
     }
 
     private static void restoreInput() {
@@ -235,7 +278,8 @@ public final class BossArena {
                         || e.hasComponent(GravityWellComponent.class)
                         || e.hasComponent(PortalComponent.class)
                         || e.hasComponent(FissureComponent.class)
-                        || e.hasComponent(MeteorComponent.class))));
+                        || e.hasComponent(MeteorComponent.class)
+                        || e.hasComponent(SilkHazardComponent.class))));
         // no AI, timers or animation, and out of the physics simulation (no falling, no drifting)
         for (Entity e : frozen) setFrozen(e, true);
     }
@@ -260,7 +304,8 @@ public final class BossArena {
     //-----flash (the Lord bursting)-----
     private static void screenFlash() {
         if (flash == null) {
-            flash = new Rectangle(getAppWidth(), getAppHeight(), Color.rgb(255, 230, 170));
+            flash = new Rectangle(getAppWidth(), getAppHeight(),
+                    boss == Boss.MATRIARCH ? Color.rgb(225, 205, 255) : Color.rgb(255, 230, 170));
             flash.setMouseTransparent(true);
             addUINode(flash);
         }

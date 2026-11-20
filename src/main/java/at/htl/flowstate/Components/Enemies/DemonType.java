@@ -40,7 +40,17 @@ public enum DemonType {
     MIMIC("DemonMimic", 220, 80, 50, 56, 48, 28, 47, false, DemonNature.FLESH, 3.0, 0.7, 0.8, 0.9,
             "#f5cd52", "#8a5a3a", "#e05a86"),
     LORD("DemonLord", 1600, 150, 320, 352, 280, 176, 269, false, DemonNature.FIRE, 20, 0.0, 0.3, 0.5,
-            "#ff8a2a", "#c04a3e", "#fff6c0");
+            "#ff8a2a", "#c04a3e", "#fff6c0"),
+    // the Void Matriarch (second boss, tools/art/matriarch3d.py) and the parts of her fight
+    MATRIARCH("DemonMatriarch", 2400, 170, 170, 288, 240, 144, 130, true, DemonNature.VOID, 30, 0.0, 0.25, 0.5,
+            "#b98cff", "#4a2f7a", "#e8dcff"),
+    MITE("DemonMite", 18, 34, 22, 48, 40, 24, 37, false, DemonNature.VOID, 0.15, 1.3, 1.0, 1.7,
+            "#b98cff", "#2d2244", "#e8dcff"),
+    EGG("DemonEgg", 20, 24, 30, 28, 34, 14, 33, false, DemonNature.VOID, 0, 0.0, 0.0, 1.5,
+            "#d8ccef", "#a898c4", "#8c4dff"),
+    /** One of the strands she hangs from: a tall, thin target (the strand is drawn by ThreadBehaviour). */
+    THREAD("DemonThread", 80, 28, 600, 10, 10, 5, 9, false, DemonNature.VOID, 0, 0.0, 0.0, 1.8,
+            "#d8ccef", "#b98cff");
 
     public final String prefix;
     public final double hp;
@@ -76,6 +86,11 @@ public enum DemonType {
         this.deathPitch = deathPitch;
         this.splat = new Color[splat.length];
         for (int i = 0; i < splat.length; i++) this.splat[i] = Color.web(splat[i]);
+    }
+
+    /** Part of a boss fight rather than a demon (a strand, an egg sac): no experience, no on-kill effects. */
+    public boolean isPart() {
+        return this == THREAD || this == EGG;
     }
 
     /** Spawn name in {@link at.htl.flowstate.Factories.EnemyFactory}. */

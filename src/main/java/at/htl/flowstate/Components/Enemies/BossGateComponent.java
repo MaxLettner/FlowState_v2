@@ -28,18 +28,31 @@ public class BossGateComponent extends Component {
     private static final int FRAMES = 4;
     private static final double TILE_W = 48, TILE_H = 128;      // BossGate.png 24x64 at x2
     private static final double FPS = 10;
-    private static ImagePattern[] patterns;
+    private static ImagePattern[] fire, web;
 
+    private final ImagePattern[] patterns;
     private double time;
 
-    /** A gate standing on groundY at x (its left edge). */
+    private BossGateComponent(ImagePattern[] patterns) {
+        this.patterns = patterns;
+    }
+
+    private static ImagePattern[] load(String file) {
+        ImagePattern[] p = new ImagePattern[FRAMES];
+        for (int i = 0; i < FRAMES; i++) p[i] = new ImagePattern(Assets.frameImage(file, FRAMES, 2, i), 0, 0, TILE_W, TILE_H, false);
+        return p;
+    }
+
+    /** A gate of hellfire standing on groundY at x (its left edge). */
     public static Entity spawn(double x, double groundY) {
-        if (patterns == null) {
-            patterns = new ImagePattern[FRAMES];
-            for (int i = 0; i < FRAMES; i++) {
-                patterns[i] = new ImagePattern(Assets.frameImage("BossGate.png", FRAMES, 2, i), 0, 0, TILE_W, TILE_H, false);
-            }
-        }
+        return spawn(x, groundY, false);
+    }
+
+    /** A gate standing on groundY at x (its left edge): hellfire, or a curtain of void silk (the Void Matriarch's). */
+    public static Entity spawn(double x, double groundY, boolean silk) {
+        if (fire == null) fire = load("BossGate.png");
+        if (web == null) web = load("WebGate.png");
+        ImagePattern[] patterns = silk ? web : fire;
         FixtureDef fd = new FixtureDef();
         fd.getFilter().categoryBits = 0x0001;           // terrain, like LevelFactory's platforms
         fd.getFilter().maskBits = (short) 0xFFFF;
@@ -47,17 +60,22 @@ public class BossGateComponent extends Component {
         physics.setBodyType(BodyType.STATIC);
         physics.setFixtureDef(fd);
 
-        Rectangle fire = new Rectangle(W, H, patterns[0]);
-        fire.setEffect(new DropShadow(30, Color.rgb(255, 110, 30, 0.8)));
-        Sfx.GATE_SLAM.at(new Point2D(x, groundY));
-        Particles.burst(new Point2D(x + W / 2, groundY - 10), Particles.EMBER, 30, -90, 60, 150, 500, 0.8, 6, 300);
+        Rectangle wall = new Rectangle(W, H, patterns[0]);
+        wall.setEffect(new DropShadow(30, silk ? Color.rgb(140, 77, 255, 0.8) : Color.rgb(255, 110, 30, 0.8)));
+        if (silk) {
+            Sfx.SILK_SPIN.at(new Point2D(x, groundY), 1, 0.8);
+            Sfx.GATE_SLAM.at(new Point2D(x, groundY), 0.5, 1.4);
+        } else {
+            Sfx.GATE_SLAM.at(new Point2D(x, groundY));
+        }
+        Particles.burst(new Point2D(x + W / 2, groundY - 10), silk ? Particles.VOID : Particles.EMBER, 30, -90, 60, 150, 500, 0.8, 6, 300);
         return entityBuilder()
                 .at(x, groundY - H)
                 .bbox(BoundingShape.box(W, H))
-                .view(fire)
+                .view(wall)
                 .with(physics)
                 .with(new PlatformIdentifierComponent())
-                .with(new BossGateComponent())
+                .with(new BossGateComponent(patterns))
                 .zIndex(13)
                 .buildAndAttach();
     }
@@ -73,8 +91,9 @@ public class BossGateComponent extends Component {
     public static void open(Entity gate) {
         if (gate == null || !gate.isActive()) return;
         double bottom = gate.getBottomY();
+        boolean silk = gate.getComponent(BossGateComponent.class).patterns == web;
         for (int k = 0; k < 8; k++) {
-            Particles.burst(new Point2D(gate.getCenter().getX(), bottom - 60 - k * 90), Particles.EMBER, 8, -90, 80, 80, 300, 0.8, 6, 200);
+            Particles.burst(new Point2D(gate.getCenter().getX(), bottom - 60 - k * 90), silk ? Particles.VOID : Particles.EMBER, 8, -90, 80, 80, 300, 0.8, 6, 200);
         }
         Sfx.GATE_SLAM.at(gate.getCenter(), 0.8, 1.3);
         gate.removeFromWorld();

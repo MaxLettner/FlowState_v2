@@ -97,11 +97,36 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.LORD, new PitLordBehaviour());
     }
 
+    @Spawns("matriarch")
+    public Entity matriarch(SpawnData data) {
+        return demon(data, DemonType.MATRIARCH, new MatriarchBehaviour());
+    }
+
+    @Spawns("mite")
+    public Entity mite(SpawnData data) {
+        return demon(data, DemonType.MITE, new MiteBehaviour());
+    }
+
+    @Spawns("egg")
+    public Entity egg(SpawnData data) {
+        return demon(data, DemonType.EGG, new EggBehaviour());
+    }
+
+    /** An anchor strand: drawn standing on its knot, but it never falls (kinematic). */
+    @Spawns("thread")
+    public Entity thread(SpawnData data) {
+        return demon(data, DemonType.THREAD, new ThreadBehaviour(), true);
+    }
+
     /** SpawnData "elite" (an EliteAffix) makes it an elite. */
     private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour) {
+        return demon(data, type, behaviour, type.flying);
+    }
+
+    private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour, boolean kinematic) {
         var builder = FXGL.entityBuilder(data)
                 .bbox(new HitBox(BoundingShape.box(type.width, type.height)))
-                .with(physics(type.flying))
+                .with(physics(kinematic))
                 .with(behaviour);
         if (data.hasKey("elite")) builder.with(new EliteComponent(data.<EliteAffix>get("elite")));
         return builder
@@ -117,7 +142,7 @@ public class EnemyFactory implements EntityFactory {
     private PhysicsComponent physics(boolean flying) {
         FixtureDef enemyFd = new FixtureDef().friction(0).density(1.0f);
         enemyFd.getFilter().categoryBits = CATEGORY_ENEMY;
-        enemyFd.getFilter().maskBits = CATEGORY_TERRAIN;
+        enemyFd.getFilter().maskBits = CATEGORY_TERRAIN | ThreadBridgeComponent.CATEGORY_DEMON_FLOOR;
 
         PhysicsComponent physics = new PhysicsComponent();
         physics.setBodyType(flying ? BodyType.KINEMATIC : BodyType.DYNAMIC);

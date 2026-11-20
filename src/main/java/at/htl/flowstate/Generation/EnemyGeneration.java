@@ -25,7 +25,7 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * comes up (LevelGeneration asks {@link #bossDue}); nothing else spawns from then until the Lord is dead.
  * <p>
  * Testing: {@code FLOWSTATE_DEMONS=imp,bat} spawns only those demons (all distances, one kind per group;
- * {@code lord} brings the boss arena right away, {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
+ * {@code lord} brings the boss arena right away ({@code matriarch}: the Void Matriarch's), {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
  * every single demon an elite; {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic (StructureGeneration).
  */
 public class EnemyGeneration {
@@ -78,6 +78,8 @@ public class EnemyGeneration {
     private final boolean testing;
     private final boolean allElite = "1".equals(System.getenv("FLOWSTATE_ELITES"));
     private double nextBossX = BOSS_FIRST;
+    private int bossesPlaced;
+    private BossArena.Boss testBoss;
     private double budget = 1.5;                         // the first group comes soon after the empty start
     private Group next;
 
@@ -94,7 +96,8 @@ public class EnemyGeneration {
             }
             // the Mimic normally hides among the chests; tests can have it on the ground
             if (names.contains(DemonType.MIMIC.name())) groups.add(new Group("mimic", 2.5, 0, 1, new Pack(DemonType.MIMIC, 1, 1)));
-            boolean lord = names.contains(DemonType.LORD.name());
+            boolean lord = names.contains(DemonType.LORD.name()) || names.contains(DemonType.MATRIARCH.name());
+            testBoss = names.contains(DemonType.MATRIARCH.name()) ? BossArena.Boss.MATRIARCH : BossArena.Boss.PIT_LORD;
             nextBossX = lord ? START_X * 0.6 + 300 : Double.MAX_VALUE;
             if (groups.isEmpty() && !lord) throw new IllegalArgumentException("FLOWSTATE_DEMONS: no demon named in " + only);
             budget = MAX_BUDGET;    // something to look at right away
@@ -108,8 +111,15 @@ public class EnemyGeneration {
         return x >= nextBossX && !BossArena.isActive();
     }
 
+    /** Which boss the next arena is for: the Pit Lord first, then the Void Matriarch, taking turns. */
+    public BossArena.Boss nextBoss() {
+        if (testBoss != null) return testBoss;
+        return bossesPlaced % 2 == 0 ? BossArena.Boss.PIT_LORD : BossArena.Boss.MATRIARCH;
+    }
+
     /** LevelGeneration laid the arena's flat ground; it ends at endX. */
     public void bossPlaced(double endX) {
+        bossesPlaced++;
         nextBossX = testing ? Double.MAX_VALUE : endX + BOSS_EVERY;
         budget = 0;
         next = null;

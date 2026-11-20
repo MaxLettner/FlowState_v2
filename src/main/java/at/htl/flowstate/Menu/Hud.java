@@ -2,6 +2,7 @@ package at.htl.flowstate.Menu;
 
 import javafx.scene.image.ImageView;
 import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
+import at.htl.flowstate.Components.Enemies.MatriarchBehaviour;
 import at.htl.flowstate.Components.Enemies.PitLordBehaviour;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
@@ -34,6 +35,8 @@ public class Hud {
     private static final double BOSS_RANGE = 1700;
     private final HudBar bossBar = new HudBar("BOSS", 4, true);
     private final ImageView bossName = PixelText.view("PIT LORD", PixelText.MOLTEN, 3);
+    private final ImageView matriarchName = PixelText.view("VOID MATRIARCH",
+            PixelText.inlaid(Color.web("#eadcff"), Color.web("#a77bff")), 3);
 
     private final Hotbar hotbar = new Hotbar();
 
@@ -68,17 +71,23 @@ public class Hud {
         bossBar.setLayoutY(BOSS_TOP + bossName.getImage().getHeight() + 6);
         bossName.setLayoutX(Math.round((width - bossName.getImage().getWidth()) / 2));
         bossName.setLayoutY(BOSS_TOP);
+        matriarchName.setLayoutX(Math.round((width - matriarchName.getImage().getWidth()) / 2));
+        matriarchName.setLayoutY(BOSS_TOP + bossName.getImage().getHeight() - matriarchName.getImage().getHeight());
         bossBar.setVisible(false);
         bossName.setVisible(false);
+        matriarchName.setVisible(false);
         addUINode(bossBar);
         addUINode(bossName);
+        addUINode(matriarchName);
     }
 
     private void updateBoss() {
-        Entity boss = PitLordBehaviour.current();
+        Entity lord = PitLordBehaviour.current();
+        Entity boss = lord != null ? lord : MatriarchBehaviour.current();
         boolean show = boss != null && Math.abs(boss.getCenter().getX() - player.getCenter().getX()) < BOSS_RANGE;
         bossBar.setVisible(show);
-        bossName.setVisible(show);
+        bossName.setVisible(show && boss == lord);
+        matriarchName.setVisible(show && boss != lord);
         if (!show) return;
         HealthDoubleComponent hp = boss.getComponent(HealthDoubleComponent.class);
         bossBar.update(hp.getValue(), hp.getMaxValue(), tpf());
