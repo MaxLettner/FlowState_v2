@@ -14,10 +14,7 @@ public class PlayerMovementComponent extends Component {
     private PhysicsComponent physics;
 
     private static final double JUMP_FORCE = 600.0;
-    private static final double START_MOVE_SPEED_PCT = 60.0;
     private static final double MAX_MOVE_SPEED = 400;
-    private static final double MAX_SPEED_FRAMES = 80;
-    private static final double MAX_SPEED_THRESHOLD = 20;
     private static final int COYOTE_FRAMES = 5;
     private static final double LEVITATION_SPEED = 300.0;
     private static final double SLOW_FALL_SPEED = 120.0;
@@ -241,14 +238,11 @@ public class PlayerMovementComponent extends Component {
         if (dashLeft > 0) return;
         double speedMult = entity.getComponent(LoadoutComponent.class).getMoveSpeedMult()
                 * entity.getComponent(PlayerStatsComponent.class).getMoveMult();
-        double speed = (MAX_MOVE_SPEED * speedMult / 100.0)
-                * (START_MOVE_SPEED_PCT + ((100.0 - START_MOVE_SPEED_PCT) / 100.0) * (currentRunningFrames / MAX_SPEED_FRAMES) * 100.0);
+        // no acceleration curve and no air drag: full speed from the first frame, on the ground and in the air
+        double speed = MAX_MOVE_SPEED * speedMult;
 
-        if (isGrounded) {
-            if (currentRunningFrames < MAX_SPEED_FRAMES) currentRunningFrames++;
-        } else {
-            if (currentRunningFrames > MAX_SPEED_THRESHOLD) currentRunningFrames -= 0.5;
-        }
+        // only picks walk vs. run animation and footstep pace now, it no longer changes the speed
+        if (isGrounded && currentRunningFrames < RUN_FRAMES) currentRunningFrames++;
 
         physics.setVelocityX(speed * direction);
     }
