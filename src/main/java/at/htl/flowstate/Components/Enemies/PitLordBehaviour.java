@@ -49,11 +49,15 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double ROAR_TIME = 1.2;
     private static final double GRAVITY = 800;          // Game's physics gravity
     // charge: a bull rush across the arena that ends against a gate
-    private static final double CHARGE_WINDUP = 0.8, CHARGE_SPEED = 950, CHARGE_DAMAGE = 24, CHARGE_MAX = 2200;
+    // it straps the cleaver to its back, paws the ground, gallops head down, crashes, shakes it off, draws again
+    private static final double SHEATHE_TIME = 0.75, PAW_TIME = 0.55, CHARGE_WINDUP = SHEATHE_TIME + PAW_TIME;
+    private static final double CHARGE_SPEED = 950, CHARGE_DAMAGE = 24, CHARGE_MAX = 2200;
+    private static final double IMPACT_TIME = 0.22, REBOUND_TIME = 0.3, REBOUND_SPEED = 260, DRAW_TIME = 0.9;
     private static final double CHARGE_LOW = 130;       // only its lowered horns and cleaver hit: jump over it
     private static final double DAZE_TIME = 1.5;
-    // the hitbox is far narrower than the drawn body: keep the body out of the gates
-    private static final double CRASH_GAP = 150;        // head and shoulders reach this far past the hitbox
+    // the hitbox (150 px) is far narrower than the drawn body: keep the drawing out of the gates
+    private static final double CRASH_GAP = 40;         // the lowered horns reach this far past the hitbox
+    private static final double WALL_MARGIN = 150;      // the cleaver held forward reaches this far
     // leap: jumps onto the spot the player stood on
     private static final double LEAP_CROUCH = 0.55, LEAP_VY = 700, LEAP_DAMAGE = 30, LEAP_REACH = 140, LAND_TIME = 0.6;
     // fissures: the ground erupts under the player, one after another
@@ -63,7 +67,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     private static Entity current;
 
-    private enum State { DROP, WALK, SLAM, VOLLEY, SUMMON, ROAR, RECOVER, CHARGE, DAZED, LEAP, LAND, FISSURE, RAIN }
+    private enum State { DROP, WALK, SLAM, VOLLEY, SUMMON, ROAR, RECOVER, CHARGE, CRASHED, DAZED, DRAW, LEAP, LAND, FISSURE, RAIN }
 
     private State state = State.DROP;
     private double timer;
@@ -75,7 +79,8 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private double rainCooldown = 6;
     private State lastAttack;
     // the attack in progress
-    private boolean hitDone, airborne;
+    private boolean hitDone, airborne, cue;
+    private boolean sheathed;                            // the cleaver is on its back (charge to draw)
     private int chargeDir, left;
     private double chargeStartX, lastX, next, leapTargetX, leapGroundY;
 
@@ -129,18 +134,31 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
                 }
             }
             case CHARGE -> charge(tpf, t);
+            case CRASHED -> {
+                // horns into the gate, then bouncing back off it
+                timer += t;
+                if (timer < IMPACT_TIME) {
+                    stop();
+                    sprite.show("crash", 0);
+                } else if (timer < IMPACT_TIME + REBOUND_TIME) {
+                    physics.setVelocityX(-chargeDir * REBOUND_SPEED);
+                    sprite.show("crash", 1);
+                } else {
+                    stop();
+                    state = State.DAZED;
+                    timer = DAZE_TIME;
+                }
+            }
             case DAZED -> {
                 stop();
                 timer -= t;
-                sprite.loop("idle", 3);
+                sprite.loop("dazed", 5);
                 if (Math.random() < t * 6) {
-                    Particles.burst(entity.getCenter().add(FXGLMath.random(-40, 40), -170), Particles.SPARK, 2, -90, 60, 40, 90, 0.5, 4, 100);
+                    Particles.burst(entity.getCenter().add(facing * 30 + FXGLMath.random(-40, 40), -140), Particles.SPARK, 2, -90, 60, 40, 90, 0.5, 4, 100);
                 }
-                if (timer <= 0) {
-                    state = State.RECOVER;
-                    timer = 0.3;
-                }
+                if (timer <= 0) startDraw();
             }
+            case DRAW -> draw(t);
             case LEAP -> leap(t);
             case LAND -> {
                 stop();
@@ -263,6 +281,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         fired = false;
         hitDone = false;
         airborne = false;
+        cue = false;
         if (s != State.SUMMON && s != State.ROAR) lastAttack = s;
         face(dirToPlayer());
     }
@@ -271,18 +290,31 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private void charge(double tpf, double t) {
         timer += t;
         double front = entity.getCenter().getX() + facing * entity.getWidth() / 2;
-        if (timer < CHARGE_WINDUP) {
-            // pawing the ground, cleaver scraping sparks
+        if (timer < SHEATHE_TIME) {
+            // the cleaver goes up over the shoulder and onto the back
             stop();
             face(dirToPlayer());
-            sprite.show("slam", 3);
-            if (Math.random() < t * 30) {
-                Point2D tip = new Point2D(entity.getCenter().getX() + facing * (entity.getWidth() / 2 + 90), entity.getBottomY() - 8);
-                Particles.burst(tip, Particles.SPARK, 3, -90 - facing * 50, 30, 120, 260, 0.3, 4, 600);
+            int frame = Math.min(3, (int) (timer / SHEATHE_TIME * 4));
+            sprite.show("sheathe", frame);
+            if (frame >= 2 && !cue) {
+                cue = true;
+                sheathed = true;
+                Sfx.BLOCK_RAISE.at(entity.getCenter(), 1, 0.55);
             }
-            if (Math.random() < t * 12) {
-                Particles.burst(new Point2D(entity.getCenter().getX() - facing * 60, entity.getBottomY() - 4),
-                        Particles.DUST, 3, -90 - facing * 60, 25, 80, 200, 0.4, 6, 600);
+            return;
+        }
+        if (timer < CHARGE_WINDUP) {
+            // head down, pawing the ground like a bull
+            stop();
+            face(dirToPlayer());
+            sprite.show("sheathe", 3);
+            if (cue) {
+                cue = false;
+                Sfx.HOUND_GROWL.at(entity.getCenter(), 1, 0.4);
+            }
+            if (Math.random() < t * 14) {
+                Particles.burst(new Point2D(entity.getCenter().getX() - facing * 20, entity.getBottomY() - 4),
+                        Particles.DUST, 4, -90 - facing * 65, 20, 90, 230, 0.45, 6, 600);
             }
             return;
         }
@@ -298,7 +330,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         facing = chargeDir;
         double speed = CHARGE_SPEED * stats.getSpeedMult() * (phase == 3 ? 1.15 : 1);
         physics.setVelocityX(chargeDir * speed);
-        sprite.loop("roar", 10);
+        sprite.loop("charge", 14);
         if (Math.random() < tpf * 30) {
             Particles.burst(new Point2D(entity.getCenter().getX() - chargeDir * 70, entity.getBottomY() - 4),
                     Particles.DUST, 2, -90 - chargeDir * 60, 25, 60, 180, 0.45, 7, 500);
@@ -306,22 +338,58 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         if (!hitDone && entity.isColliding(player) && player.getBottomY() > entity.getBottomY() - CHARGE_LOW) {
             hitDone = hurtPlayer(CHARGE_DAMAGE);
         }
-        boolean wall = BossArena.wallGap(front, chargeDir) < CRASH_GAP;
+        // look one frame ahead: a long frame at this speed would otherwise carry the horns into the gate
+        boolean wall = BossArena.wallGap(front, chargeDir) - speed * tpf < CRASH_GAP;
         boolean stalled = !Double.isNaN(lastX) && Math.abs(entity.getX() - lastX) < 0.5 && timer > CHARGE_WINDUP + 0.2;
         lastX = entity.getX();
         if (wall || stalled) {
             crash(front);
         } else if (Math.abs(entity.getX() - chargeStartX) > CHARGE_MAX) {
+            // ran out of steam without hitting anything: skid to a halt and arm itself again
             stop();
+            Particles.burst(new Point2D(entity.getCenter().getX(), entity.getBottomY() - 4), Particles.DUST, 20, -90 - chargeDir * 50, 40, 100, 300, 0.6, 7, 700);
+            startDraw();
+        }
+    }
+
+    private void startDraw() {
+        state = State.DRAW;
+        timer = 0;
+        cue = false;
+    }
+
+    /** The cleaver comes back off its back: reach, grip, swing it overhead, a flourish forward. */
+    private void draw(double t) {
+        stop();
+        timer += t;
+        int frame = Math.min(3, (int) (timer / DRAW_TIME * 4.5));
+        sprite.show("draw", frame);
+        if (frame >= 1) sheathed = false;
+        if (frame >= 2 && !cue) {
+            cue = true;
+            Sfx.SWING_HEAVY.at(entity.getCenter(), 1, 0.6);
+        }
+        if (frame == 3 && !fired) {
+            fired = true;
+            Point2D blade = entity.getCenter().add(facing * 150, 20);
+            Particles.burst(blade, Particles.EMBER, 14, facing > 0 ? 0 : 180, 40, 80, 260, 0.5, 5, 200);
+            Sfx.BRUTE_ROAR.at(entity.getCenter(), 0.7, 0.8);
+        }
+        if (timer >= DRAW_TIME + 0.15) {
             state = State.RECOVER;
-            timer = 0.6;
-            cooldown = FXGLMath.random(1.2, 1.6);
+            timer = 0.3;
         }
     }
 
     /** Head first into the gate: the arena shakes, rubble rains down, and the Lord is dazed for a moment. */
     private void crash(double front) {
         stop();
+        // horns exactly at the gate, not in it or short of it (at most a frame's worth of movement)
+        double shift = BossArena.wallGap(front, chargeDir) - CRASH_GAP;
+        if (Math.abs(shift) < 120) {
+            physics.overwritePosition(entity.getPosition().add(chargeDir * shift, 0));
+            front += chargeDir * shift;
+        }
         Point2D at = new Point2D(front + chargeDir * CRASH_GAP, entity.getBottomY() - 160);
         Sfx.BRUTE_SLAM.at(at, 1, 0.55);
         Sfx.GATE_SLAM.at(at, 0.8, 0.8);
@@ -330,8 +398,9 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         Particles.burst(at, Particles.DUST, 24, 180 + chargeDir * 180, 80, 100, 360, 0.7, 8, 700);
         int rubble = phase == 3 ? 5 : phase == 2 ? 3 : 2;
         for (int i = 0; i < rubble; i++) meteor(BossArena.randomX(100, entity.getCenter().getX()));
-        state = State.DAZED;
-        timer = DAZE_TIME;
+        state = State.CRASHED;
+        timer = 0;
+        fired = false;
         cooldown = FXGLMath.random(1.0, 1.4);
     }
 
@@ -341,13 +410,13 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         if (!airborne) {
             stop();
             face(dirToPlayer());
-            sprite.show("slam", 0);
+            sprite.show("leap", 0);
             if (timer < LEAP_CROUCH) return;
             airborne = true;
             falling = false;
             sprite.setTelegraph(null);
             leapGroundY = entity.getBottomY();
-            leapTargetX = BossArena.insideX(player.getCenter().getX(), entity.getWidth() / 2 + CRASH_GAP);
+            leapTargetX = BossArena.insideX(player.getCenter().getX(), entity.getWidth() / 2 + WALL_MARGIN);
             double flight = 2 * LEAP_VY / GRAVITY;
             physics.setVelocityY(-LEAP_VY);
             physics.setVelocityX((leapTargetX - entity.getCenter().getX()) / flight);
@@ -356,7 +425,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
             Particles.burst(new Point2D(entity.getCenter().getX(), leapGroundY - 4), Particles.DUST, 24, -90, 80, 120, 380, 0.7, 8, 800);
             return;
         }
-        sprite.show("slam", 1);
+        sprite.show("leap", physics.getVelocityY() < 0 ? 1 : 2);
         // the landing spot smoulders
         if (Math.random() < t * 25) {
             Particles.burst(new Point2D(leapTargetX + FXGLMath.random(-90, 90), leapGroundY - 2),
@@ -395,7 +464,8 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private void fissure(double t) {
         stop();
         timer += t;
-        sprite.show("slam", timer < FISSURE_STAB * 0.5 ? 0 : timer < FISSURE_STAB ? 1 : timer < FISSURE_STAB + 0.1 ? 3 : 4);
+        // cleaver raised point-up, driven into the ground, held there glowing while the cracks run
+        sprite.show("stab", timer < FISSURE_STAB ? 0 : timer < FISSURE_STAB + 0.12 ? 1 : 1 + (int) (timer * 5) % 2);
         if (!fired && timer >= FISSURE_STAB) {
             // the cleaver goes into the ground and the cracks run out from it
             fired = true;
@@ -547,13 +617,17 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     protected void interrupt() {
         if (state == State.DROP) return;      // nothing cuts the entrance short
         airborne = false;
+        if (sheathed) {                        // never pop back to a cleaver in hand: draw it first
+            startDraw();
+            return;
+        }
         state = State.RECOVER;
         timer = 0.3;
     }
 
     @Override
     protected void disabledPose() {
-        sprite.loop("idle", 5);
+        sprite.loop(sheathed ? "dazed" : "idle", 5);
     }
 
     @Override

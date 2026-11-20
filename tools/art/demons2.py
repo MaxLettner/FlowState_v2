@@ -7,7 +7,8 @@ plus their effects. Same Rig as demons.py (wave 1). Faces right, shown at x2. Mu
   DemonWatcher     48x48     (24, 24)*     idle 4, look 8 (pupil at k * 45 deg), charge 2
   DemonGatekeeper  56x72     (28, 71)      idle 4, summon 4
   DemonPriest      48x56     (24, 55)      idle 4, walk 6, cast 4
-  DemonLord        352x280   (176, 269)    idle 4, walk 6, slam 6, cast 4, roar 2   (twice the pixel detail)
+  DemonLord        352x280   (176, 269)    idle 4, walk 6, slam 6, cast 4, roar 2, sheathe 4, charge 6, crash 2, dazed 4,
+                                           draw 4, leap 3, stab 3   (twice the pixel detail)
 
 Effects: Portal (6f 40x56, bottom-anchored), HexBolt (4f 14x14, flies right), BossGate (4f 24x64 tile, repeats
 upward).
@@ -617,12 +618,16 @@ LORD_K = 2
 # The frame is wide and tall enough for the cleaver at full swing (raised overhead, swept forward, roar): the
 # body is drawn LORD_OX design units in from the left so it stays centred (the sprite flips around its centre).
 LORD_W, LORD_H, LORD_FEET, LORD_OX = 352, 280, 134, 28    # LORD_FEET in design units (x LORD_K = pixel row 268)
+LORD_BACK_ANG = 1.98         # the sheathed cleaver's angle standing upright (also the in-hand angle right as it goes on/off)
 
 
 def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.9), far=(1.4, 1.6), sword=1.05,
-              mouth=0.0, head_up=0.0, fire=0.0, heat=0.4, phase=0.0, grip2=False):
+              mouth=0.0, head_up=0.0, fire=0.0, heat=0.4, phase=0.0, grip2=False, sheathed=False, hunch=0.0,
+              horn_tilt=0.0, crown_lean=-0.2):
     """Design units (x2 to pixels), offset LORD_OX to the right inside the frame. near/far: (upper, fore) arm angles; sword: blade angle from the
-    near hand; fire: radius of a fireball in the far hand (0 = none); grip2: both hands on the hilt (the slam)."""
+    near hand; fire: radius of a fireball in the far hand (0 = none); grip2: both hands on the hilt (the slam).
+    sheathed: the cleaver hangs on his back instead (grip over the far shoulder); hunch: torso pitched forward and head
+    lowered like a charging bull; horn_tilt: horns rotated forward (radians); crown_lean: the crown flames' lean."""
     K = LORD_K
     r = Rig(LORD_W, LORD_H, rim=0.5)
     X = lambda x: (x + LORD_OX) * K
@@ -639,9 +644,14 @@ def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.
 
     bob += LORD_FEET - 98            # the pose numbers below are for feet at y = 98
     hip = (56.0 + lean * 2, 64 + bob)
-    chest = (62.0 + lean * 5, 44 + bob)
-    head = (76.0 + lean * 8, 23 + bob - head_up * 3)
-    sh_near, sh_far = (67.0 + lean * 6, 37 + bob), (52.0 + lean * 5, 35 + bob)
+    chest = (62.0 + lean * 5 + hunch * 4, 44 + bob + hunch * 7)
+    head = (76.0 + lean * 8 + hunch * 9, 23 + bob - head_up * 3 + hunch * 17)
+    sh_near = (67.0 + lean * 6 + hunch * 6, 37 + bob + hunch * 9)
+    sh_far = (52.0 + lean * 5 + hunch * 5, 35 + bob + hunch * 8)
+    # where the cleaver hangs on the back: grip over the far shoulder, blade slanting down and back past the spine
+    # (flatter when the torso pitches forward, so it keeps lying along the back)
+    back_grip = (sh_far[0] - 3, sh_far[1] - 19 + hunch * 4)
+    back_ang = LORD_BACK_ANG + hunch * 0.55 - lean * 0.15
 
     def leg(i, bias):
         a = legs[i]
@@ -713,12 +723,16 @@ def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.
     r.part(C(tp, 2.4, 0.8), skin, bias=0.25)
     tt = tp[-1]
     r.part(PG([(tt[0] + 1, tt[1] - 3), (tt[0] - 5, tt[1] - 2.5), (tt[0] - 1, tt[1] + 3)], 0.3), skin, bias=0.2)
+    if sheathed:                                                            # strapped across the back
+        cleaver(back_grip, back_ang, 0.4)
+        sb = polar(back_grip, 14, back_ang)
+        r.part(L(sb[0] - 3, sb[1] - 3, sb[0] + 5, sb[1] + 4, 1.3), LORD_FUR, bias=0.3)     # strap
     # far side: horn, arm, pauldron, leg
     pauldron((sh_far[0] - 1, sh_far[1] - 1), 0.3)
     far_fist = arm(sh_far, far, 0.32)
     leg(1, 0.3)
     # torso: broad chest, abdomen, molten core
-    r.part(union(E(chest[0], chest[1], 15, 13, -0.2), E(hip[0] + 3, hip[1] - 7, 11, 10), E(sh_far[0] + 3, sh_far[1] + 2, 8, 6)), skin)
+    r.part(union(E(chest[0], chest[1], 15, 13, -0.2 - hunch * 0.35), E(hip[0] + 3, hip[1] - 7, 11, 10), E(sh_far[0] + 3, sh_far[1] + 2, 8, 6)), skin)
     S(chest[0] - 2, chest[1] - 6, chest[0] + 3, chest[1] - 1, crease)          # pecs
     S(chest[0] + 3, chest[1] - 1, chest[0] + 10, chest[1] - 3, crease)
     for k in range(3):
@@ -744,6 +758,10 @@ def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.
     leg(0, 0.0)
     # head: horns sweeping up, crown of fire, fanged jaw
     def horn(hb, ctrl, end, bias):
+        if horn_tilt:                                                       # lowered for a charge: points forward
+            ca, sa = math.cos(horn_tilt), math.sin(horn_tilt)
+            rot = lambda p: (hb[0] + (p[0] - hb[0]) * ca - (p[1] - hb[1]) * sa, hb[1] + (p[0] - hb[0]) * sa + (p[1] - hb[1]) * ca)
+            ctrl, end = rot(ctrl), rot(end)
         pts = bezier(hb, ctrl, end, 12)
         r.part(C(pts, 3.6, 0.8), HORN, bias=bias)
         for k in range(2, len(pts) - 2, 2):
@@ -757,7 +775,7 @@ def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.
     for k in range(5):                                                      # crown of fire
         fx = head[0] - 6 + k * 3
         FL(fx, head[1] - 5 + abs(k - 2) * 0.8, 6 + 4 * math.sin(phase * 6.28 + k * 1.3) ** 2 + (2 - abs(k - 2)) * 1.5, 1.4,
-           phase + k * 0.2, ln=-0.2)
+           phase + k * 0.2, ln=crown_lean)
     G(head[0] - 1, head[1] - 10, 9, EMBER[2], 0.35)
     jaw_open = mouth * 4
     if mouth > 0.2:
@@ -787,8 +805,9 @@ def draw_lord(bob=0.0, lean=0.0, legs=(0.0, 0.0), lift=(0.0, 0.0), near=(1.2, 0.
         FL(fb[0], fb[1] - fire * 0.6, fire * 1.8, fire * 0.6, phase)
         G(fb[0], fb[1], fire + 7, EMBER[2], 0.6)
     near_fist = arm(sh_near, near, 0.0)
-    cleaver(near_fist, sword, 0.0)
-    if grip2:
+    if not sheathed:
+        cleaver(near_fist, sword, 0.0)
+    if grip2 and not sheathed:
         r.part(E(near_fist[0] - 2, near_fist[1] + 1.5, 4.4, 4.0), skin, bias=0.15)
     return r.render()
 
@@ -819,7 +838,60 @@ def lord_anims():
     ]
     roar = [draw_lord(lean=-0.2, head_up=1.0, mouth=1.0, near=(0.5, 0.3), far=(-0.2, -0.5), sword=0.5, heat=1.0, phase=k * 0.5)
             for k in range(2)]
-    return dict(idle=idle, walk=walk, slam=slam, cast=cast, roar=roar)
+    # the bull charge: hang the cleaver on the back, gallop head down with the horns forward, crash, shake it off,
+    # pull the cleaver back out with a flourish
+    on_back = LORD_BACK_ANG
+    sheathe = [
+        draw_lord(lean=-0.1, near=(-0.6, -1.3), far=(1.3, 1.5), sword=-2.1, heat=0.6, phase=0.1),
+        draw_lord(lean=-0.15, head_up=0.3, near=(-1.9, -2.6), far=(1.2, 1.4), sword=on_back, heat=0.5, phase=0.3),
+        draw_lord(lean=0.1, near=(0.2, -0.5), far=(1.1, 1.0), sheathed=True, mouth=0.3, heat=0.6, phase=0.5),
+        draw_lord(lean=0.3, hunch=0.55, bob=3, legs=(0.25, -0.3), near=(1.0, 0.55), far=(1.5, 1.2), sheathed=True,
+                  mouth=0.6, horn_tilt=0.45, crown_lean=-0.5, heat=0.8, phase=0.7),
+    ]
+    charge = []
+    for i in range(6):
+        p = i / 6 * 2 * math.pi
+        a = math.sin(p) * 1.1
+        charge.append(draw_lord(lean=0.45, hunch=1.0, bob=-abs(math.cos(p)) * 3 + 2.5, legs=(a, -a),
+                                lift=(max(0, -math.cos(p)) * 9, max(0, math.cos(p)) * 9),
+                                near=(1.0 + math.sin(p) * 0.9, 0.5 + math.sin(p) * 0.9),
+                                far=(1.0 - math.sin(p) * 0.9, 0.5 - math.sin(p) * 0.9),
+                                sheathed=True, horn_tilt=0.95, mouth=0.7, crown_lean=-1.0, heat=1.0, phase=i / 6))
+    crash = [   # horns into the gate, then the rebound
+        draw_lord(lean=0.6, hunch=1.1, bob=4, legs=(0.6, -0.5), near=(0.6, 0.0), far=(0.4, -0.2), sheathed=True,
+                  horn_tilt=1.0, mouth=1.0, crown_lean=0.6, heat=1.0, phase=0.2),
+        draw_lord(lean=-0.35, hunch=0.3, bob=2, legs=(-0.3, 0.35), near=(1.9, 2.3), far=(2.1, 2.5), sheathed=True,
+                  horn_tilt=0.3, head_up=0.6, mouth=0.8, heat=0.7, phase=0.5),
+    ]
+    dazed = [draw_lord(lean=math.sin(k / 4 * 6.28) * 0.15, hunch=0.35 + math.cos(k / 4 * 6.28) * 0.1,
+                       bob=1.5 + math.sin(k / 4 * 6.28) * 1.0, near=(1.45, 1.7), far=(1.6, 1.85), sheathed=True,
+                       horn_tilt=math.sin(k / 4 * 6.28) * 0.18, mouth=0.35, heat=0.25, phase=k / 4) for k in range(4)]
+    draw = [
+        draw_lord(lean=-0.05, near=(-1.7, -2.4), far=(1.3, 1.5), sheathed=True, heat=0.4, phase=0.1),
+        draw_lord(lean=-0.15, head_up=0.3, near=(-1.9, -2.6), far=(1.2, 1.4), sword=on_back, heat=0.6, phase=0.3),
+        draw_lord(lean=-0.25, bob=-1, near=(-1.4, -2.0), far=(-0.2, -0.6), sword=-2.5, mouth=0.8, head_up=0.4, heat=0.9, phase=0.5),
+        draw_lord(lean=0.2, near=(0.6, 0.2), far=(0.9, 1.2), sword=0.35, mouth=1.0, head_up=0.6, heat=1.0, phase=0.7),
+    ]
+    # leap: crouch with the cleaver cocked, rising with it overhead and hooves tucked, coming down
+    leap = [
+        draw_lord(lean=0.1, hunch=0.35, bob=7, legs=(0.35, -0.4), near=(-0.9, -1.5), far=(-0.7, -1.3), sword=-2.3,
+                  mouth=0.5, heat=0.8, phase=0.1, grip2=True),
+        draw_lord(lean=-0.25, bob=-3, lift=(10, 7), legs=(-0.35, 0.45), near=(-1.55, -2.1), far=(-1.45, -2.0),
+                  sword=-2.55, mouth=1.0, head_up=0.5, heat=1.0, phase=0.4, grip2=True),
+        draw_lord(lean=0.0, bob=-1, lift=(3, 2), legs=(0.25, -0.15), near=(-1.3, -1.85), far=(-1.2, -1.75),
+                  sword=-2.35, mouth=0.9, heat=1.0, phase=0.7, grip2=True),
+    ]
+    # stab (the fissures): cleaver raised point-up, then driven straight down into the ground, held there glowing
+    stab = [
+        draw_lord(lean=-0.1, near=(-1.25, -1.6), far=(-1.15, -1.5), sword=-1.57, mouth=0.5, head_up=0.3, heat=0.7,
+                  phase=0.1, grip2=True),
+        draw_lord(lean=0.4, hunch=0.35, bob=5, legs=(0.3, -0.35), near=(0.95, 1.3), far=(0.85, 1.25), sword=1.5,
+                  mouth=1.0, heat=1.0, phase=0.4, grip2=True),
+        draw_lord(lean=0.4, hunch=0.35, bob=5.5, legs=(0.3, -0.35), near=(0.95, 1.3), far=(0.85, 1.25), sword=1.5,
+                  mouth=0.6, heat=0.75, phase=0.8, grip2=True),
+    ]
+    return dict(idle=idle, walk=walk, slam=slam, cast=cast, roar=roar, sheathe=sheathe, charge=charge, crash=crash,
+                dazed=dazed, draw=draw, leap=leap, stab=stab)
 
 
 # =====================================================================================================
