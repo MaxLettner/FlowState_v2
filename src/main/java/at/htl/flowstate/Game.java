@@ -34,6 +34,7 @@ import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
 import javafx.scene.input.MouseButton;
+import javafx.scene.paint.Color;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -63,6 +64,8 @@ public class Game extends GameApplication {
     private static final double DEATH_EXIT_DELAY = 0.8; // puddle stays on screen before returning to the main menu
     private static final double EMBER_INTERVAL = 0.35; // faint embers rising out of the abyss
     private final List<ParallaxLayer> layers = new ArrayList<>();
+    // behind the game world, inside the content root so it is scaled to the screen like everything else
+    private final Group background = new Group();
     // foreground cave silhouettes (tools/art/foreground.py), in front of the world, scrolling faster than the camera
     private final List<ParallaxLayer> fgLayers = new ArrayList<>();
     private final Group foreground = new Group();
@@ -106,8 +109,11 @@ public class Game extends GameApplication {
         settings.setVersion("0.7.0");
         settings.setWidth((int) WINDOW_WIDTH);
         settings.setHeight((int) WINDOW_HEIGHT);
-        // the 1920x1080 game is scaled (letterboxed) to the screen; F11 toggles windowed mode
+        // the 1920x1080 game is scaled to the screen; F11 toggles windowed mode
         settings.setFullScreenAllowed(true);
+        // same scale on both axes: other aspect ratios get black bars instead of stretched pixel art,
+        // and every screen shows exactly the same part of the world
+        settings.setPreserveResizeRatio(true);
         settings.setFullScreenFromStart(true);
         // the game starts in the rune menu; the world is only built once "Start New Game" is pressed
         settings.setMainMenuEnabled(!DevShots.AUTOSTART);
@@ -130,6 +136,8 @@ public class Game extends GameApplication {
     protected void onPreInit() {
         // the golden arrow replaces FXGL's default cursor on every scene
         GoldCursor.install(getPrimaryStage());
+        // on screens that are not 16:9 FXGL letterboxes the 1920x1080 game: never let JavaFX's white scene fill show
+        getPrimaryStage().getScene().setFill(Color.BLACK);
         Sfx.preload();
         FrameRateLog.install();
     }
@@ -255,8 +263,13 @@ public class Game extends GameApplication {
     }
 
     private void setupBg() {
-        // a new game keeps the scene root (only the game world and UI are cleared)
-        for (ParallaxLayer l : layers) getGameScene().getRoot().getChildren().removeAll(l.a(), l.b());
+        // FXGL scales only the content root to the screen (letterboxed, any aspect ratio), so the background
+        // lives there, behind the game world (the root itself stays unscaled: 1080 px tall on a 1440p screen).
+        // A new game keeps the content root (only the game world and UI are cleared).
+        var content = getGameScene().getContentRoot().getChildren();
+        if (!content.contains(background)) content.add(0, background);
+        background.setMouseTransparent(true);
+        background.getChildren().clear();
         layers.clear();
         layers.add(addLayer(Assets.pixels("bg_far.png", BG_SCALE), 0.03, 0));
         layers.add(addLayer(Assets.pixels("bg_mid.png", BG_SCALE), 0.08, 0));
@@ -264,9 +277,9 @@ public class Game extends GameApplication {
     }
 
     private void setupFg() {
-        // between the game world (contentRoot child 0) and the UI root, so the HUD stays on top
+        // between the game world (right after the background) and the UI root, so the HUD stays on top
         var content = getGameScene().getContentRoot().getChildren();
-        if (!content.contains(foreground)) content.add(1, foreground);
+        if (!content.contains(foreground)) content.add(content.indexOf(background) + 2, foreground);
         foreground.setMouseTransparent(true);
         foreground.getChildren().clear();
         fgLayers.clear();
@@ -287,9 +300,9 @@ public class Game extends GameApplication {
         for (ImageView v : new ImageView[]{a, b}) {
             v.setSmooth(false);
             v.setLayoutY(y);
-            // behind the game world, in front of the previously added layers
-            getGameScene().getRoot().getChildren().add(layers.size() * 2 + (v == a ? 0 : 1), v);
         }
+        // in front of the previously added layers
+        background.getChildren().addAll(a, b);
         return new ParallaxLayer(a, b, factor);
     }
 
