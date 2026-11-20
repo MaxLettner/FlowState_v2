@@ -105,6 +105,7 @@ public class Game extends GameApplication {
     }
 
     private static final KeyCode[] SLOT_KEYS = {KeyCode.DIGIT1, KeyCode.DIGIT2, KeyCode.DIGIT3, KeyCode.DIGIT4};
+    private static final KeyCode[] JUMP_KEYS = {KeyCode.W, KeyCode.SPACE};
 
     @Override
     protected void initSettings(GameSettings settings) {
@@ -162,10 +163,18 @@ public class Game extends GameApplication {
             @Override protected void onActionEnd() { movement().stopHorizontalMovement(); }
         }, KeyCode.D);
 
-        getInput().addAction(new UserAction("Jump") {
-            @Override protected void onActionBegin() { movement().startJump(); }
-            @Override protected void onActionEnd() { movement().stopJump(); }
-        }, KeyCode.W);
+        // W and Space both jump; letting go of one doesn't cut the jump short while the other is still held
+        boolean[] jumpHeld = new boolean[JUMP_KEYS.length];
+        for (int i = 0; i < JUMP_KEYS.length; i++) {
+            final int k = i;
+            getInput().addAction(new UserAction("Jump " + JUMP_KEYS[i]) {
+                @Override protected void onActionBegin() { jumpHeld[k] = true; movement().startJump(); }
+                @Override protected void onActionEnd() {
+                    jumpHeld[k] = false;
+                    if (!jumpHeld[1 - k]) movement().stopJump();
+                }
+            }, JUMP_KEYS[i]);
+        }
 
         getInput().addAction(new UserAction("Down") {
             @Override protected void onActionBegin() { movement().startDown(); }
@@ -203,6 +212,14 @@ public class Game extends GameApplication {
                 @Override protected void onActionBegin() { loadout().pressSlot(slot); }
             }, SLOT_KEYS[i]);
         }
+
+        // Q / E step to the next attack slot on the left / right (wrapping, skipping empty and toggle slots)
+        getInput().addAction(new UserAction("Hotbar Left") {
+            @Override protected void onActionBegin() { loadout().cycleSlot(-1); }
+        }, KeyCode.Q);
+        getInput().addAction(new UserAction("Hotbar Right") {
+            @Override protected void onActionBegin() { loadout().cycleSlot(1); }
+        }, KeyCode.E);
     }
 
     private static PlayerMovementComponent movement() {

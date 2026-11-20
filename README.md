@@ -65,9 +65,10 @@ On Windows, double-clicking the jar also works when Java is associated with `.ja
 |Key / Button|Action|
 |---|---|
 |A / D|Move left / right|
-|W|Jump (hold for higher jump; coyote time) / fly up while levitating|
+|W / Space|Jump (hold for higher jump; coyote time) / fly up while levitating|
 |S|Fly down while levitating|
 |1 – 4|Hotbar: select an attack, or switch a toggle (Mana Shield, enchantments) / use an instant (Levitation)|
+|Q / E|Hotbar: switch to the next attack slot on the left / right (wraps around; skips empty slots and toggles)|
 |Left click|Use the active attack (hold to charge Zweihander, Fire Ball; hold for Morningstar spin). Bows: hold to draw, release to shoot; a partial draw is weaker and doesn't fly as far. Crossbows: hold to crank a bolt in (letting go early resets it); it stays loaded until the next click fires it. You move slower while drawing or cranking.|
 |Right click|Weapon secondary: dodge (Leather Gloves), block (Metal Gloves), throw / recall / wind up (tridents)|
 |I|Open / close skill tree (hover a skill + 1–4 to put it on the hotbar)|

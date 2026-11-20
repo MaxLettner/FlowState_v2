@@ -113,6 +113,19 @@ public class LoadoutComponent extends Component {
         }
     }
 
+    /** Q / E: selects the nearest attack slot to the left (dir -1) or right (dir 1), wrapping around. */
+    public void cycleSlot(int dir) {
+        int n = SkillManager.HOTBAR_SIZE;
+        for (int step = 1; step < n; step++) {
+            int slot = Math.floorMod(activeSlot + dir * step, n);
+            SkillType type = skills.getSlot(slot);
+            if (type != null && type.getSlotKind() == SlotKind.ATTACK) {
+                pressSlot(slot);
+                return;
+            }
+        }
+    }
+
     public void primaryPress() { Ability a = activeAbility(); if (a != null) a.primaryPress(); }
     public void primaryRelease() { Ability a = activeAbility(); if (a != null) a.primaryRelease(); }
     public void secondaryPress() { Ability a = activeAbility(); if (a != null) a.secondaryPress(); }
