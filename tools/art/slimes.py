@@ -34,10 +34,12 @@ def drop_profile(v, m=None):
     return math.sin(t) * math.sin(t / 2) ** m / _DROP_MAX[m]
 
 
-def half_width(v, w, round=0.0, tip_top=0.0, tip_bot=0.0, **_):
+def half_width(v, w, round=0.0, tip_top=0.0, tip_bot=0.0, tip_from=0.0, ripple=None, **_):
     """Half width of the slime at relative height v (0 bottom .. 1 top).
     round 0: sat on the ground, flat bottom spreading into a foot; 1: airborne, an egg with a round bottom.
-    tip_top / tip_bot (0..1): airflow pulls that end out into a water-drop tail (falling: tail up, rising: down)."""
+    tip_top / tip_bot (0..1): airflow pulls that end out into a water-drop tail (falling: tail up, rising: down).
+    tip_from (0..1): the top tail only pulls above this height (a body sat on the ground keeps its foot).
+    ripple = (amplitude, waves over the height, phase): a surface wave running over the skin (impacts, pops)."""
     if v < 0 or v > 1:
         return -1
     hw = (w / 2) * (1 - v ** 2.4) ** 0.5
@@ -48,10 +50,34 @@ def half_width(v, w, round=0.0, tip_top=0.0, tip_bot=0.0, **_):
         ball = (w / 2) * (1 - ROUND_FROM ** 2.4) ** 0.5 * max(0.0, 1 - t ** 2.2) ** (1 / 2.2)
         hw += (ball - hw) * round
     if tip_top > 0:
-        hw += ((w / 2) * drop_profile(v) - hw) * tip_top
+        k = tip_top
+        if tip_from > 0:
+            k *= min(1.0, max(0.0, (v - tip_from) / (1 - tip_from))) ** 0.7
+        hw += ((w / 2) * drop_profile(v) - hw) * k
     if tip_bot > 0:
         hw += ((w / 2) * drop_profile(1 - v) - hw) * tip_bot
+    if ripple:
+        amp, waves, ph = ripple
+        hw *= 1 + amp * math.sin(2 * math.pi * waves * v - ph) * math.sin(math.pi * v)
     return hw
+
+
+def side_scale(v, bulge=0.0, **_):
+    """(back, front) half-width factors: bulge > 0 fills the front low down (the mass surging forward over
+    the foot) and thins the back by as much, < 0 the other way. 1, 1 without a bulge."""
+    if not bulge:
+        return 1.0, 1.0
+    vv = min(1.0, max(0.0, v))
+    g = math.sin(math.pi * vv) * (1 - vv) * 1.6           # peaks ~0.3 up the body
+    return 1 - bulge * g, 1 + bulge * g
+
+
+def warp_dy(x, w, cup=0.0, tilt=0.0, **_):
+    """px column x is lifted (+ = up): cup lifts both edges (a canopy in the updraft), tilt the front (+x) edge."""
+    if not cup and not tilt:
+        return 0.0
+    n = (x - CX) / max(1.0, w / 2)
+    return cup * n * n + tilt * n
 
 
 def row_cx(v, lean, sweep_top=0.0, sweep_bot=0.0, **_):
@@ -66,16 +92,31 @@ def body_mask(w, h, lift, lean, round=0.0, form=None):
     form.setdefault('round', round)
     mask = {}
     bottom = BASE_Y - lift
+    warped = form.get('cup') or form.get('tilt')
     for y in range(SIZE):
+        if warped:                                    # the height depends on the column: test every pixel
+            for x in range(SIZE):
+                v = (bottom - (y + 0.5 + warp_dy(x + 0.5, w, **form))) / h
+                hw = half_width(v, w, **form)
+                if hw <= 0:
+                    continue
+                back, front = side_scale(v, **form)
+                d = x + 0.5 - row_cx(v, lean, **form)
+                lim = hw * (front if d >= 0 else back)
+                if abs(d) <= lim:
+                    mask[(x, y)] = (d / max(lim, 1e-3), v)
+            continue
         v = (bottom - (y + 0.5)) / h
         hw = half_width(v, w, **form)
         if hw <= 0:
             continue
         cx = row_cx(v, lean, **form)
+        back, front = side_scale(v, **form)
         for x in range(SIZE):
             d = (x + 0.5 - cx)
-            if abs(d) <= hw:
-                mask[(x, y)] = (d / max(hw, 1e-3), v)
+            lim = hw * (front if d >= 0 else back)
+            if abs(d) <= lim:
+                mask[(x, y)] = (d / max(lim, 1e-3), v)
     return mask
 
 
@@ -119,9 +160,9 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
 
     # specular highlight
     hv = 0.78 - 0.3 * form.get('tip_top', 0.0)          # slides down off a thin drop tail, into the bulb
-    hhw = half_width(hv, w, **form)
+    hhw = half_width(hv, w, **form) * side_scale(hv, **form)[0]
     hx = row_cx(hv, lean, **form) - hhw * 0.42
-    hy = bottom - hv * h
+    hy = bottom - hv * h - warp_dy(hx, w, **form)
     shine = mix(look.body[0], (255, 255, 255, 255), 0.75)
     ellipse(px, SIZE, SIZE, hx, hy, max(1.5, min(w * 0.07, hhw * 0.3)), max(1.2, h * 0.06), shine)
     put(px, SIZE, SIZE, int(hx - 1), int(hy - 1), (255, 255, 255, 255))
@@ -132,7 +173,8 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
     # face
     ev = 0.55 + eye_dy / max(h, 1)
     ey = bottom - ev * h
-    ecx = row_cx(ev, lean, **form) + min(w * 0.12, half_width(ev, w, **form) * 0.6)   # face looks to the right (+x)
+    ecx = row_cx(ev, lean, **form) + min(w * 0.12, half_width(ev, w, **form) * side_scale(ev, **form)[1] * 0.6)   # face looks to the right (+x)
+    ey -= warp_dy(ecx, w, **form)
     look.eye_style(px, ecx, ey, w, h, blink, info)
     look.mouth(px, ecx, ey, w, h, info)
 
@@ -302,7 +344,9 @@ def rel(info, nx, v):
     """Body-relative point (nx -1 back .. 1 front, v 0 bottom .. 1 top) -> pixel coords."""
     form = info.get('form') or {'round': info.get('round', 0.0)}
     hw = half_width(v, info['w'], **form)
-    return row_cx(v, info['lean'], **form) + nx * hw, info['bottom'] - v * info['h']
+    back, front = side_scale(v, **form)
+    x = row_cx(v, info['lean'], **form) + nx * hw * (front if nx > 0 else back)
+    return x, info['bottom'] - v * info['h'] - warp_dy(x, info['w'], **form)
 
 
 def inside(px, x, y):
@@ -520,9 +564,6 @@ def frozen_overlay(look):
 
 def generate(out_dir):
     # the slime enemies (BRUTE, HUNTER) were replaced by the demons in demons.py; their looks stay for reference
-    for name, look in [('Player', PLAYER)]:
-        strip(anim_idle(look)).save(f'{out_dir}/{name}_idle.png')
-        strip(anim_walk(look)).save(f'{out_dir}/{name}_walk.png')
-        strip(anim_air(look)).save(f'{out_dir}/{name}_air.png')
-        strip(anim_land(look)).save(f'{out_dir}/{name}_land.png')
+    # the player's idle / walk / land are physics-driven now (player_slime.py); air stays as the fallback strip
+    strip(anim_air(PLAYER)).save(f'{out_dir}/Player_air.png')
     frozen_overlay(BRUTE).save(f'{out_dir}/FrozenOverlay.png')
