@@ -1,6 +1,7 @@
 package at.htl.flowstate;
 
 import at.htl.flowstate.Combat.Combat;
+import at.htl.flowstate.Components.Enemies.BossArena;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
@@ -207,6 +208,7 @@ public class Game extends GameApplication {
         levelGeneration = new LevelGeneration();
         Combat.init();
         Impact.reset();
+        BossArena.reset();
         cameraX = 0;
         // a new game keeps the viewport: left where the last run ended, keepOnScreen would drag the new player there
         getGameScene().getViewport().setX(0);
@@ -303,6 +305,7 @@ public class Game extends GameApplication {
         }
         Impact.update(tpf);
         updateCamera();
+        BossArena.update(tpf);
         levelGeneration.generateLevel(player.getX());
         cleanupPlatforms(tpf);
         scrollBg(tpf);
@@ -345,6 +348,7 @@ public class Game extends GameApplication {
     private void updateCamera() {
         double threshold = cameraX + WINDOW_WIDTH * 0.75;
         if (player.getX() > threshold) cameraX = player.getX() - WINDOW_WIDTH * 0.75;
+        cameraX = BossArena.clampCamera(cameraX);   // the Pit Lord's arena holds the camera still
         // whole pixels: a fractional camera offset makes JavaFX resample (blur) every sprite
         getGameScene().getViewport().setX(Math.round(cameraX + Impact.getShakeX()));
         getGameScene().getViewport().setY(Math.round(Impact.getShakeY()));

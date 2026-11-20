@@ -2,7 +2,7 @@ package at.htl.flowstate.Generation;
 
 import at.htl.flowstate.Components.Enemies.DemonType;
 import at.htl.flowstate.Components.Enemies.EliteComponent;
-import at.htl.flowstate.Components.Enemies.PitLordBehaviour;
+import at.htl.flowstate.Components.Enemies.BossArena;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.SpawnData;
 
@@ -21,11 +21,11 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * the group spawns on that segment and its cost is paid. Early on that means a pack of imps or a hound now
  * and then; later on brutes, cultists, bat swarms and mixed groups, closer together.
  * <p>
- * Single demons can roll an elite affix (more often the further you go), and every so often the Pit Lord
- * blocks the way; nothing else spawns while it lives.
+ * Single demons can roll an elite affix (more often the further you go), and every so often the Pit Lord's arena
+ * comes up (LevelGeneration asks {@link #bossDue}); nothing else spawns from then until the Lord is dead.
  * <p>
  * Testing: {@code FLOWSTATE_DEMONS=imp,bat} spawns only those demons (all distances, one kind per group;
- * {@code lord} brings the boss right away, {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
+ * {@code lord} brings the boss arena right away, {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
  * every single demon an elite; {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic (StructureGeneration).
  */
 public class EnemyGeneration {
@@ -36,9 +36,8 @@ public class EnemyGeneration {
     private static final double ELITE_FROM = 9000;        // elite chance grows from 0 here ...
     private static final double ELITE_PER_PX = 1 / 70000.0;
     private static final double ELITE_MAX = 0.22;          // ... up to this
-    private static final double BOSS_FIRST = 18000;        // the first Pit Lord, then one every BOSS_EVERY px
+    private static final double BOSS_FIRST = 18000;        // the first Pit Lord's arena, then one every BOSS_EVERY px
     private static final double BOSS_EVERY = 24000;
-    private static final double BOSS_MIN_WIDTH = 200;
 
     /** A spawnable group: demons with a count range, its cost, from which distance on, how often. */
     private record Group(String name, double cost, double unlockX, double weight, Pack... packs) {}
@@ -104,18 +103,22 @@ public class EnemyGeneration {
         }
     }
 
+    /** Whether the terrain at x should become the Pit Lord's arena. */
+    public boolean bossDue(double x) {
+        return x >= nextBossX && !BossArena.isActive();
+    }
+
+    /** LevelGeneration laid the arena's flat ground; it ends at endX. */
+    public void bossPlaced(double endX) {
+        nextBossX = testing ? Double.MAX_VALUE : endX + BOSS_EVERY;
+        budget = 0;
+        next = null;
+    }
+
     /** Called for every plain ground segment: (x, groundY) is its top left corner. */
     public void trySpawn(double x, double groundY, double width) {
         if (x < (testing ? START_X * 0.6 : START_X)) return;
-        if (PitLordBehaviour.current() != null) return;            // the boss fight has the stage
-        if (x >= nextBossX && width >= BOSS_MIN_WIDTH) {
-            DemonType lord = DemonType.LORD;
-            spawn(lord.spawnName(), new SpawnData(x + width / 2 - lord.width / 2, groundY - lord.height - 2));
-            nextBossX = testing ? Double.MAX_VALUE : x + BOSS_EVERY;
-            budget = 0;
-            next = null;
-            return;
-        }
+        if (BossArena.isActive()) return;            // the boss fight has the stage
         if (groups.isEmpty()) return;
         double danger = DANGER_PER_PX * (1 + x / DANGER_GROWTH);
         if (testing) danger *= 1.5;
