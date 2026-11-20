@@ -55,6 +55,7 @@ public final class BossArena {
     private static Boss boss = Boss.PIT_LORD;
     private static boolean crumbled, woven;
     private static double lockX, groundY, time, landedAt;
+    private static double hpScale = 1;
     private static boolean leftClosed, lordSpawned;
     private static Entity leftGate, rightGate;
     private static Rectangle barTop, barBottom, flash;
@@ -75,13 +76,15 @@ public final class BossArena {
 
     /** The ground from lockX to lockX + WIDTH is flat at groundY; the arena closes when the camera gets there. */
     public static void plan(double lockX, double groundY) {
-        plan(lockX, groundY, Boss.PIT_LORD);
+        plan(lockX, groundY, Boss.PIT_LORD, 1);
     }
 
-    public static void plan(double lockX, double groundY, Boss which) {
+    /** hpScale: the boss's share of its full HP (the first bosses of a run are weaker). */
+    public static void plan(double lockX, double groundY, Boss which, double hpScale) {
         BossArena.lockX = lockX;
         BossArena.groundY = groundY;
         boss = which;
+        BossArena.hpScale = hpScale;
         phase = Phase.PENDING;
     }
 
@@ -173,7 +176,8 @@ public final class BossArena {
         } else if (!lordSpawned && time >= DROP_AT) {
             lordSpawned = true;
             DemonType lord = DemonType.LORD;
-            spawn(lord.spawnName(), new SpawnData(lockX + LORD_X, groundY - lord.height - 2 - DROP_HEIGHT));
+            spawn(lord.spawnName(), new SpawnData(lockX + LORD_X, groundY - lord.height - 2 - DROP_HEIGHT)
+                    .put("hpScale", hpScale));
             Sfx.BOSS_ROAR.at(new Point2D(lockX + LORD_X, groundY), 0.6, 0.8);
             // the player hears it coming and turns round
             movement().faceAttack(-1, 3);
@@ -193,7 +197,8 @@ public final class BossArena {
         if (!lordSpawned && time >= MATRIARCH_AT) {
             lordSpawned = true;
             DemonType m = DemonType.MATRIARCH;
-            spawn(m.spawnName(), new SpawnData(lockX + MatriarchBehaviour.INTRO_SPOT - m.width / 2, -m.height - 260));
+            spawn(m.spawnName(), new SpawnData(lockX + MatriarchBehaviour.INTRO_SPOT - m.width / 2, -m.height - 260)
+                    .put("hpScale", hpScale));
             int dir = lockX + MatriarchBehaviour.INTRO_SPOT < Game.getPlayer().getCenter().getX() ? -1 : 1;
             movement().faceAttack(dir, 3);
         }

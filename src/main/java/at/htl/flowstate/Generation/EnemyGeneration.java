@@ -117,6 +117,16 @@ public class EnemyGeneration {
         return bossesPlaced % 2 == 0 ? BossArena.Boss.PIT_LORD : BossArena.Boss.MATRIARCH;
     }
 
+    /** The next boss's share of its full HP: the first has a third, the second two thirds, every later one all of it. */
+    public double nextBossHpScale() {
+        if (testing) return 1;    // FLOWSTATE_DEMONS=lord/matriarch tests the full fight
+        return switch (bossesPlaced) {
+            case 0 -> 1 / 3.0;
+            case 1 -> 2 / 3.0;
+            default -> 1;
+        };
+    }
+
     /** LevelGeneration laid the arena's flat ground; it ends at endX. */
     public void bossPlaced(double endX) {
         bossesPlaced++;

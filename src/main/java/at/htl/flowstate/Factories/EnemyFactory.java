@@ -118,7 +118,7 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.THREAD, new ThreadBehaviour(), true);
     }
 
-    /** SpawnData "elite" (an EliteAffix) makes it an elite. */
+    /** SpawnData "elite" (an EliteAffix) makes it an elite; "hpScale" (a double) scales its HP (weaker early bosses). */
     private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour) {
         return demon(data, type, behaviour, type.flying);
     }
@@ -129,9 +129,10 @@ public class EnemyFactory implements EntityFactory {
                 .with(physics(kinematic))
                 .with(behaviour);
         if (data.hasKey("elite")) builder.with(new EliteComponent(data.<EliteAffix>get("elite")));
+        double hp = type.hp * (data.hasKey("hpScale") ? data.<Double>get("hpScale") : 1.0);
         return builder
                 .with(new EnemyStatsComponent(type))
-                .with(new HealthDoubleComponent(type.hp))
+                .with(new HealthDoubleComponent(hp))
                 .with(new EnemyIdentifierComponent())
                 .with(new DemonSpriteComponent(type))
                 .collidable()

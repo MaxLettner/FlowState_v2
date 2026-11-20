@@ -126,7 +126,7 @@ public class LevelGeneration {
         terrainDrift = 0;
         slopeSegmentsLeft = 0;
         if (boss == BossArena.Boss.MATRIARCH) MatriarchArena.plan(lockX, currentY, chasmFloor);
-        BossArena.plan(lockX, currentY, boss);
+        BossArena.plan(lockX, currentY, boss, enemyGeneration.nextBossHpScale());
         enemyGeneration.bossPlaced(end);
     }
 
