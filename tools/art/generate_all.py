@@ -12,7 +12,7 @@ import slimes
 import demons
 import demons2
 import demons3
-import lord3d
+import lord2d
 import matriarch3d
 import player_slime
 import weapons
@@ -39,7 +39,7 @@ def main():
     player_slime.generate(OUT)             # the player's extra animations (run, dash, hurt, death, ...)
     demons.generate(OUT)                   # the enemies: demons, their projectiles and effects
     demons2.generate(OUT)                  # wave 2 demons and their effects (portal, hex bolt, boss gate)
-    lord3d.generate(OUT)                   # the Pit Lord boss, rendered in 3D (pre-rendered style)
+    lord2d.generate(OUT)                   # the Pit Lord boss: the goat-skull executioner (2D, lord3d.py stays for the Matriarch)
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
     matriarch3d.generate(OUT)              # the Void Matriarch boss (3D), her mites, egg sacs, strands and web gates
     weapons.generate(OUT)
