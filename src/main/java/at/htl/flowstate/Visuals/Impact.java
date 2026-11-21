@@ -17,6 +17,7 @@ import static com.almasb.fxgl.dsl.FXGL.getGameScene;
 public final class Impact {
     private static final double MAX_FREEZE = 0.22;
     private static final double MAX_SHAKE = 14;
+    private static final double MAX_QUAKE = 26;     // bosses' heaviest blows may shake past the usual cap
     private static final double SHAKE_DECAY = 18;   // per second, exponential
     private static final double JITTER = 4;
 
@@ -42,6 +43,11 @@ public final class Impact {
 
     public static void shake(double power) {
         shakePower = Math.min(MAX_SHAKE, Math.max(shakePower, power));
+    }
+
+    /** A boss-sized shake: like {@link #shake}, but allowed well past the usual cap. */
+    public static void quake(double power) {
+        shakePower = Math.min(MAX_QUAKE, Math.max(shakePower, power));
     }
 
     /** Makes the entity's sprite tremble while the game is frozen. */

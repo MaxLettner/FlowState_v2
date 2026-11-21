@@ -16,6 +16,7 @@ import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 public final class Particles {
     public static final Color[] SPARK = {Color.WHITE, Color.web("#fff3a0"), Color.web("#ffc23d")};
     public static final Color[] DUST = {Color.web("#c4a77a"), Color.web("#9b7f57"), Color.web("#e8d2a8")};
+    public static final Color[] ROCK = {Color.web("#2a1f1f"), Color.web("#3e2e2c"), Color.web("#5a4440"), Color.web("#7a6458")};
     public static final Color[] EMBER = {Color.web("#ffc23d"), Color.web("#ff7a1f"), Color.web("#d1361a")};
     public static final Color[] ICE = {Color.WHITE, Color.web("#a2e0f7"), Color.web("#62b6df")};
     public static final Color[] POISON = {Color.web("#a8f046"), Color.web("#5fc22a")};

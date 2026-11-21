@@ -39,7 +39,7 @@ public enum DemonType {
             "#9cc2ff", "#382696", "#e8f6ff"),
     MIMIC("DemonMimic", 220, 80, 50, 56, 48, 28, 47, false, DemonNature.FLESH, 3.0, 0.7, 0.8, 0.9,
             "#f5cd52", "#8a5a3a", "#e05a86"),
-    LORD("DemonLord", 1600, 150, 320, 352, 280, 176, 269, false, DemonNature.FIRE, 20, 0.0, 0.3, 0.5,
+    LORD("DemonLord", 1600, 150, 320, 480, 320, 240, 309, false, DemonNature.FIRE, 20, 0.0, 0.3, 0.5,
             "#ff8a2a", "#c04a3e", "#fff6c0"),
     // the Void Matriarch (second boss, tools/art/matriarch3d.py) and the parts of her fight
     MATRIARCH("DemonMatriarch", 2400, 170, 170, 288, 240, 144, 130, true, DemonNature.VOID, 30, 0.0, 0.25, 0.5,
