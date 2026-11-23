@@ -53,12 +53,7 @@ public abstract class DemonBehaviour extends Component {
 
     @Override
     public final void onUpdate(double tpf) {
-        // looked up here, not in onAdded: FXGL calls onAdded before the entity's later components exist
-        if (stats == null) {
-            stats = entity.getComponent(EnemyStatsComponent.class);
-            sprite = entity.getComponent(DemonSpriteComponent.class);
-            onReady();
-        }
+        ready();
         if (stats.isDead()) {                   // only a demon that diesSlowly() is still here
             dying(tpf);
             return;
@@ -112,6 +107,23 @@ public abstract class DemonBehaviour extends Component {
      */
     public double guard(Hit h, Entity player) {
         return 1;
+    }
+
+    /**
+     * What Combat.hit calls: {@link #guard} on a demon that is surely set up. A demon spawned this frame (a fresh
+     * Matriarch strand) can be hit before its first onUpdate, while {@code stats} and {@code sprite} are still null.
+     */
+    public final double guardHit(Hit h, Entity player) {
+        ready();
+        return guard(h, player);
+    }
+
+    /** Looks the other components up once. Not in onAdded: FXGL calls that before the entity's later components exist. */
+    private void ready() {
+        if (stats != null) return;
+        stats = entity.getComponent(EnemyStatsComponent.class);
+        sprite = entity.getComponent(DemonSpriteComponent.class);
+        onReady();
     }
 
     /** Hidden in plain sight (a sleeping Mimic): auto-aim leaves it alone. */
