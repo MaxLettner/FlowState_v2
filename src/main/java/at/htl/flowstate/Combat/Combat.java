@@ -132,7 +132,7 @@ public final class Combat {
         double through = stats.isInvulnerable() ? 0 : 1;
         if (through > 0 && h.kind != DamageKind.DOT) {
             DemonBehaviour ai = DemonBehaviour.of(enemy);
-            if (ai != null) through = ai.guard(h, player);
+            if (ai != null) through = ai.guardHit(h, player);
         }
         if (through <= 0) {
             blocked(enemy, player);
