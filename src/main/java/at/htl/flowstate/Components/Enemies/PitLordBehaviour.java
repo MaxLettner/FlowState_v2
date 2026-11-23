@@ -37,10 +37,10 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * stuck in the ground), sinks to its knees while lava cracks spread from the core, roars once more and bursts,
  * taking its minions with it; then the gates open and it grants two skill points.
  * <p>
- * Every blow is announced: a long wind-up with the sprite's telegraph glow, a {@link TelegraphZone} on the ground
- * showing where (and how high) it will land from the first moment of the wind-up, a glint just before it falls, and
- * aimed spots marked before anything is thrown. The blows themselves land heavy: a freeze frame, a quake, rubble and
- * layered low impacts; a hit on the player freezes longer.
+ * Every blow is announced: a long wind-up with the sprite's telegraph glow and a glint just before it falls; aims
+ * (the charge's direction, the leap's landing spot, the volley's targets) are fixed when the wind-up starts.
+ * The blows themselves land heavy: a freeze frame, a quake, rubble and layered low impacts; a hit on the player
+ * freezes longer.
  * <p>
  * Art: the goat-skull executioner with a two-handed flamberge, drawn by tools/art/lord2d.py. Every strip is a set of
  * key poses sampled at twice the key count, so animations are driven by a key position over time ({@link #keyAt},
@@ -62,8 +62,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double S_RAISE = 0.35, S_HOLD = 0.9, S_DOWN = 0.98, S_IMPACT = 1.2, S_SETTLE = 1.4, S_END = 1.75;
     // volley timeline (s)
     private static final double V_RELEASE = 0.9, V_END = 1.3;
-    private static final double V_AIM = 0.4;             // the volley's spots are picked (and marked) this early
-    private static final double V_MARK = 1.6;            // ... and stay marked about until the magma lands
+    private static final double V_AIM = 0.4;             // the volley's spots are picked this early
     private static final double ROAR_TIME = 1.2;
     private static final double GRAVITY = 800;          // Game's physics gravity
     // charge: a bull rush across the arena that ends against a gate
@@ -78,7 +77,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double WALL_MARGIN = 300;      // the sword chopped into the ground reaches this far
     // the sideways swing: a wide sweep at waist height, jump over it (enraged: a backhand follows)
     private static final double SWING_DAMAGE = 26, SWING_RANGE = 400, SWING_REACH = 320, SWING_HIGH = 170;
-    // wound back and held (the zone fills), then a fast sweep: the blade is a blur for under a tenth of a second
+    // wound back and held, then a fast sweep: the blade is a blur for under a tenth of a second
     private static final double[] SWING_ONCE = {0, 0, 0.45, 1, 0.85, 1, 0.9, 2, 0.96, 3, 1.12, 4, 1.55, 5};
     private static final double[] SWING_TWICE = {0, 0, 0.45, 1, 0.85, 1, 0.9, 2, 0.96, 3, 1.12, 4, 1.3, 3, 1.38, 2, 1.6, 1, 2.0, 0};
     private static final double[] SWING_HITS_ONCE = {0.95}, SWING_HITS_TWICE = {0.95, 1.31};
@@ -126,7 +125,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private boolean dying;
     private double deathT;
     private int deathCue;
-    private final List<TelegraphZone> zones = new ArrayList<>();
     private final List<Point2D> aims = new ArrayList<>();
     private boolean glinted;
 
@@ -350,51 +348,14 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         glinted = false;
         if (s != State.SUMMON && s != State.ROAR) lastAttack = s;
         face(dirToPlayer());
-        clearZones();
-        warn(s);
+        aim(s);
     }
 
     //-----telegraphs-----
-    /** Attack timers run faster when enraged (and slower under Slow): wind-up seconds in real seconds. */
-    private double real(double attackSeconds) {
-        return attackSeconds / Math.max(0.05, dt(1) * (phase == 3 ? RAGE : 1));
-    }
-
-    /** Shows where the attack just started will land, for its whole wind-up. */
-    private void warn(State s) {
-        double half = entity.getWidth() / 2;
-        switch (s) {
-            case SLAM -> zoneFront(-half, half + SLAM_REACH, SLAM_LOW, real(S_DOWN));
-            case SWING -> zoneFront(-half, half + SWING_REACH, SWING_HIGH, real(SWING_HITS_ONCE[0]));
-            case CHARGE -> {
-                // the lane up to where the horns will stop, short of the gate: only the lowered horns hit (jump)
-                chargeDir = facing;
-                double front = entity.getCenter().getX() + facing * half;
-                double run = Math.min(CHARGE_MAX, Math.max(0, BossArena.wallGap(front, facing) - CRASH_GAP));
-                zoneFront(-half, half + run, CHARGE_LOW, real(CHARGE_WINDUP));
-            }
-            case LEAP -> {
-                // the landing spot is picked now, not at take-off: it is marked for the crouch and the whole flight
-                leapTargetX = BossArena.insideX(player.getCenter().getX(), half + WALL_MARGIN);
-                double flight = 2 * LEAP_VY / GRAVITY;
-                double r = half + LEAP_REACH;
-                zones.add(TelegraphZone.spawn(leapTargetX - r, leapTargetX + r, entity.getBottomY(), LEAP_LOW,
-                        real(LEAP_CROUCH) + flight, facing));
-            }
-            default -> {}
-        }
-    }
-
-    /** A zone from a to b px in front of the centre (negative = behind), filling from the Lord's side. */
-    private void zoneFront(double a, double b, double height, double lead) {
-        double cx = entity.getCenter().getX();
-        double x0 = cx + facing * a, x1 = cx + facing * b;
-        zones.add(TelegraphZone.spawn(Math.min(x0, x1), Math.max(x0, x1), entity.getBottomY(), height, lead, facing));
-    }
-
-    private void clearZones() {
-        for (TelegraphZone z : zones) z.dismiss();
-        zones.clear();
+    /** Fixes where the attack just started is going, at the start of its wind-up (no tracking during it). */
+    private void aim(State s) {
+        if (s == State.CHARGE) chargeDir = facing;
+        if (s == State.LEAP) leapTargetX = BossArena.insideX(player.getCenter().getX(), entity.getWidth() / 2 + WALL_MARGIN);
     }
 
     /** The last beat before a blow: the blade (or the eyes) flash and ring. */
@@ -465,7 +426,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         if (!fired) {
             fired = true;
             sprite.setTelegraph(null);
-            clearZones();
             chargeStartX = entity.getX();
             lastX = Double.NaN;
             Sfx.BOSS_ROAR.at(entity.getCenter(), 0.9, 1.25);
@@ -585,7 +545,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
 
     private void land() {
         stop();
-        clearZones();
         double groundY = entity.getBottomY();
         double cx = entity.getCenter().getX();
         heavy(new Point2D(cx, groundY - 4), 24, 0.09);
@@ -714,10 +673,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
                 Particles.burst(new Point2D(entity.getCenter().getX() + facing * reach, entity.getBottomY() - 4),
                         Particles.DUST, 4, facing > 0 ? -20 : -160, 25, 120, 380, 0.5, 7, 400);
             }
-            if (hits == 1 && twice) {
-                // the backhand comes straight back over the same ground
-                zoneFront(-entity.getWidth() / 2, entity.getWidth() / 2 + SWING_REACH, SWING_HIGH, real(hitsAt[1] - hitsAt[0]));
-            }
             if (hits == 2) {
                 Sfx.SWING_HEAVY.at(entity.getCenter(), 1, 0.5);   // the backhand
                 Sfx.FLAIL_SWING.at(entity.getCenter(), 0.8, 0.55);
@@ -748,7 +703,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     }
 
     private void impact() {
-        clearZones();
         double groundY = entity.getBottomY();
         // where the blade bites into the ground
         double tipX = entity.getCenter().getX() + facing * (entity.getWidth() / 2 + SLAM_REACH);
@@ -773,17 +727,12 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         timer += t;
         showKey(CAST, keyAt(timer, 0, 0, V_RELEASE, 2, V_RELEASE + 0.12, 3));
         if (!fired && aims.isEmpty() && timer >= V_AIM) {
-            // the spots are picked well before the throw and glow until the magma comes down on them
+            // the spots are picked well before the throw: no last-moment tracking
             int count = phase == 3 ? 5 : 3;
             for (int i = 0; i < count; i++) {
                 double offset = (i - (count - 1) / 2.0) * 130;
                 Point2D target = player.getCenter().add(offset, 20);
                 aims.add(target);
-                double ground = Combat.groundYBelow(target.getX(), entity.getY());
-                if (!Double.isNaN(ground)) {
-                    zones.add(TelegraphZone.spawn(target.getX() - 50, target.getX() + 50, ground, 26,
-                            real(V_RELEASE - V_AIM) + V_MARK - 0.3, 1));
-                }
             }
         }
         if (!fired && timer >= V_RELEASE) {
@@ -792,7 +741,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
             Point2D hand = entity.getCenter().add(facing * 40, -150);
             for (Point2D target : aims) HurlerBehaviour.lob(hand, target, BALL_SPEED, BALL_DAMAGE, entity);
             aims.clear();
-            zones.clear();      // the marks stay until the magma lands (they time out on their own)
             Sfx.ENEMY_THROW.at(entity.getCenter(), 1, 0.6);
         }
         if (timer >= V_END) {
@@ -829,7 +777,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     protected void interrupt() {
         if (state == State.DROP) return;      // nothing cuts the entrance short
         airborne = false;
-        clearZones();
         aims.clear();
         if (sheathed) {                        // never pop back to a sword in hand: draw it first
             startDraw();
@@ -858,7 +805,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         deathCue = 0;
         physics.setVelocityX(0);
         sprite.setTelegraph(null);
-        clearZones();
         Sfx.BOSS_ROAR.at(entity.getCenter(), 1, 0.55);
         Impact.quake(18);
         Particles.burst(entity.getCenter().add(0, -40), Particles.EMBER, 30, -90, 120, 100, 380, 0.8, 6, 300);
@@ -935,7 +881,6 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     /** Gone without its death scene (fell into a pit, a new game): never leave the way barred. */
     @Override
     public void onRemoved() {
-        clearZones();
         if (!dying) BossArena.end();
         if (current == entity) current = null;
     }
