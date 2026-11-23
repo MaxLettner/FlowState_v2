@@ -23,6 +23,7 @@ public final class Particles {
     public static final Color[] BLOOD = {Color.web("#e63946"), Color.web("#b51f2e")};
     /** Void silk and the Void Matriarch's light. */
     public static final Color[] VOID = {Color.web("#f0e8ff"), Color.web("#c9a8ff"), Color.web("#8c4dff")};
+    public static final Color[] ACID = {Color.web("#fdf0ff"), Color.web("#f6a8ff"), Color.web("#d85cff"), Color.web("#9e26e6")};
 
     private Particles() {}
 

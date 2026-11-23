@@ -138,6 +138,8 @@ public final class MatriarchArena {
             bridges[i] = null;
         }
         getGameWorld().getEntitiesByComponent(SilkHazardComponent.class).forEach(Entity::removeFromWorld);
+        getGameWorld().getEntitiesByComponent(AcidGlobComponent.class).forEach(Entity::removeFromWorld);
+        getGameWorld().getEntitiesByComponent(AcidPoolComponent.class).forEach(Entity::removeFromWorld);
         if (open) {
             open = false;
             double x = lockX + CHASM_FROM, w = CHASM_TO - CHASM_FROM;
@@ -181,6 +183,25 @@ public final class MatriarchArena {
             out.add(new double[]{e.getX(), e.getRightX(), e.getY()});
         }
         return out;
+    }
+
+    /** The surface at x whose top is at or below y (the first one something dropping from y would meet), or null. */
+    static double[] surfaceUnder(double x, double y) {
+        double[] best = null;
+        for (double[] s : surfaces()) {
+            if (x < s[0] || x > s[1] || s[2] < y) continue;
+            if (best == null || s[2] < best[2]) best = s;
+        }
+        return best;
+    }
+
+    /** The solid bridge whose top is at {@code top} under x, or null (a ledge). */
+    static Entity bridgeAt(double x, double top) {
+        for (ThreadBridgeComponent b : solidBridges()) {
+            Entity e = b.getEntity();
+            if (x >= e.getX() && x <= e.getRightX() && Math.abs(e.getY() - top) < 1) return e;
+        }
+        return null;
     }
 
     /**

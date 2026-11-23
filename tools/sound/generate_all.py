@@ -795,6 +795,24 @@ def lights_out():
 
 
 @sound
+def acid_spit():
+    """The Matriarch spitting acid: a wet, throaty hock and a hissing spray."""
+    hock = squelch(0.22, 520, 170, 3.0, seed=330)
+    gurgle = env(tremolo(lowpass(noise(0.25, 'brown', seed=331), 700), 28, 0.7), 0.01, 0.22)
+    spray = env(bandpass(noise(0.45, seed=332), sweep(2400, 5200, 0.45), 2.0), 0.01, 0.35)
+    return mix((gurgle, 0.7), (hock, 1.0, 0.08), (spray, 0.55, 0.16))
+
+
+@sound
+def acid_sizzle():
+    """Acid eating into stone: a fizzing hiss with little popping bubbles."""
+    dur = 0.9
+    hiss = env(highpass(noise(dur, seed=333), 3200), 0.015, dur * 0.8)
+    pops = lowpass(clicks(dur, 40, 0.004, (800, 3000), seed=334), 5000)
+    return mix((tremolo(hiss, 17, 0.4), 0.6), (amp(pops, lambda t: math.exp(-t / 0.5)), 0.5))
+
+
+@sound
 def amb_abyss():
     dur, xf = 17.0, 1.0
     wind = lowpass(noise(dur, 'pink', seed=120), lambda t: 260 + 160 * math.sin(TAU * t / 8.0) + 80 * math.sin(TAU * t / 3.1))

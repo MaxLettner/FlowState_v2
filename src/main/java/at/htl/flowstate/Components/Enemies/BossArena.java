@@ -284,7 +284,9 @@ public final class BossArena {
                         || e.hasComponent(PortalComponent.class)
                         || e.hasComponent(FissureComponent.class)
                         || e.hasComponent(MeteorComponent.class)
-                        || e.hasComponent(SilkHazardComponent.class))));
+                        || e.hasComponent(SilkHazardComponent.class)
+                        || e.hasComponent(AcidGlobComponent.class)
+                        || e.hasComponent(AcidPoolComponent.class))));
         // no AI, timers or animation, and out of the physics simulation (no falling, no drifting)
         for (Entity e : frozen) setFrozen(e, true);
     }
