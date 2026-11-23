@@ -162,6 +162,13 @@ public class EnemyStatsComponent extends Component {
         entity.removeFromWorld();
     }
 
+    /** Caught by a boss's blow or shockwave (the Pit Lord doesn't spare its own imps): damage and a shove. */
+    public void struckByDemon(double amount, int direction, double knockback) {
+        if (dead) return;
+        damage(amount, DamageKind.OTHER);
+        if (!dead) applyKnockback(knockback, direction, false);
+    }
+
     public boolean isDead() {
         return dead;
     }
