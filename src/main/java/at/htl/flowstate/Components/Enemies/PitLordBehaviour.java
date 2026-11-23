@@ -15,7 +15,9 @@ import javafx.scene.image.ImageView;
 import javafx.util.Duration;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 import static com.almasb.fxgl.dsl.FXGL.runOnce;
@@ -51,6 +53,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private static final double RAGE = 1.4;
     private static final double CONTACT_DAMAGE = 12;
     private static final double SLAM_DAMAGE = 28;
+    private static final double DEMON_KNOCKBACK = 520;  // how far his blows fling a demon caught in them
     private static final double SLAM_RANGE = 330;
     private static final double SLAM_REACH = 260;      // where the blade bites into the ground (past the hitbox)
     private static final double SLAM_LOW = 120;        // jumping higher than this clears the direct hit
@@ -111,6 +114,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     private double timer;
     private double cooldown = 1.5;
     private double summonCooldown = 4;
+    private final Set<Entity> struck = new HashSet<>();   // demons the charge already ran over
     private boolean fired;
     private int phase = 1;
     private boolean falling;
@@ -342,6 +346,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         timer = 0;
         fired = false;
         hitDone = false;
+        struck.clear();
         airborne = false;
         cue = false;
         hits = 0;
@@ -389,6 +394,22 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
             Particles.burst(player.getCenter(), Particles.SPARK, 12, -90, 180, 150, 420, 0.4, 5, 300);
         }
         return hit;
+    }
+
+    /**
+     * His blows don't care who stands in them: every other demon whose box reaches into the strip
+     * [x0, x1] below {@code topY} is struck too (his own imps included). {@code dir} 0 = away from him.
+     */
+    private void strikeDemons(double x0, double x1, double topY, double damage, int dir) {
+        double lo = Math.min(x0, x1), hi = Math.max(x0, x1);
+        for (Entity e : Combat.enemies()) {
+            if (e == entity || !e.isActive() || e.getRightX() < lo || e.getX() > hi || e.getBottomY() < topY) continue;
+            strikeDemon(e, damage, dir != 0 ? dir : (e.getCenter().getX() < entity.getCenter().getX() ? -1 : 1));
+        }
+    }
+
+    private void strikeDemon(Entity e, double damage, int dir) {
+        e.getComponentOptional(EnemyStatsComponent.class).ifPresent(s -> s.struckByDemon(damage, dir, DEMON_KNOCKBACK));
     }
 
     //-----charge-----
@@ -441,6 +462,11 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         }
         if (!hitDone && entity.isColliding(player) && player.getBottomY() > entity.getBottomY() - CHARGE_LOW) {
             hitDone = crush(CHARGE_DAMAGE);
+        }
+        for (Entity e : Combat.enemies()) {   // anything else in the lane gets run over
+            if (e == entity || struck.contains(e) || !entity.isColliding(e) || e.getBottomY() < entity.getBottomY() - CHARGE_LOW) continue;
+            struck.add(e);
+            strikeDemon(e, CHARGE_DAMAGE, chargeDir);
         }
         // look one frame ahead: a long frame at this speed would otherwise carry the horns into the gate
         boolean wall = BossArena.wallGap(front, chargeDir) - speed * tpf < CRASH_GAP;
@@ -552,14 +578,15 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         boolean low = player.getBottomY() > groundY - LEAP_LOW;
         if (Math.abs(dxToPlayer()) < entity.getWidth() / 2 + LEAP_REACH && low) crush(LEAP_DAMAGE);
         double half = entity.getWidth() / 2;
-        ShockwaveComponent.spawn(cx + half, groundY, 1, entity);
-        ShockwaveComponent.spawn(cx - half, groundY, -1, entity);
+        strikeDemons(cx - half - LEAP_REACH, cx + half + LEAP_REACH, groundY - LEAP_LOW, LEAP_DAMAGE, 0);
+        ShockwaveComponent.spawn(cx + half, groundY, 1, entity, true);
+        ShockwaveComponent.spawn(cx - half, groundY, -1, entity, true);
         if (phase == 3) {
             Entity self = entity;
             runOnce(() -> {
                 if (!self.isActive()) return;
-                ShockwaveComponent.spawn(cx + half, groundY, 1, self);
-                ShockwaveComponent.spawn(cx - half, groundY, -1, self);
+                ShockwaveComponent.spawn(cx + half, groundY, 1, self, true);
+                ShockwaveComponent.spawn(cx - half, groundY, -1, self, true);
             }, Duration.seconds(0.4));
         }
         state = State.LAND;
@@ -666,6 +693,8 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
             boolean inFront = px > -entity.getWidth() / 2 && px < entity.getWidth() / 2 + SWING_REACH;
             boolean low = player.getBottomY() > entity.getBottomY() - SWING_HIGH;
             if (inFront && low) crush(SWING_DAMAGE);
+            double cx = entity.getCenter().getX(), w2 = entity.getWidth() / 2;
+            strikeDemons(cx - facing * w2, cx + facing * (w2 + SWING_REACH), entity.getBottomY() - SWING_HIGH, SWING_DAMAGE, facing);
             Impact.quake(10);
             // the wind of it: dust ripped off the ground all along the arc
             for (int i = 0; i < 5; i++) {
@@ -710,6 +739,7 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
         double px = dxToPlayer() * facing;
         boolean low = player.getBottomY() > groundY - SLAM_LOW;
         if (px > -entity.getWidth() / 2 && px < entity.getWidth() / 2 + SLAM_REACH && low) crush(SLAM_DAMAGE);
+        strikeDemons(entity.getCenter().getX() - facing * entity.getWidth() / 2, tipX, groundY - SLAM_LOW, SLAM_DAMAGE, facing);
         waves(tipX, groundY);
         if (phase == 3) {
             Entity self = entity;
@@ -718,8 +748,8 @@ public class PitLordBehaviour extends GroundDemonBehaviour {
     }
 
     private void waves(double tipX, double groundY) {
-        ShockwaveComponent.spawn(tipX, groundY, facing, entity);
-        ShockwaveComponent.spawn(entity.getCenter().getX() - facing * entity.getWidth() / 2, groundY, -facing, entity);
+        ShockwaveComponent.spawn(tipX, groundY, facing, entity, true);
+        ShockwaveComponent.spawn(entity.getCenter().getX() - facing * entity.getWidth() / 2, groundY, -facing, entity, true);
     }
 
     private void volley(double t) {

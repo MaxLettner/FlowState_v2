@@ -13,35 +13,47 @@ import com.almasb.fxgl.physics.BoundingShape;
 import com.almasb.fxgl.physics.HitBox;
 import javafx.geometry.Point2D;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static com.almasb.fxgl.dsl.FXGL.entityBuilder;
 
 /**
  * Pit Brute slam: a crest of rock rolling along the floor. Follows slopes, breaks against walls and
- * at pits; hits the player once unless they jump over it.
+ * at pits; hits the player once unless they jump over it. The Pit Lord's waves also hit other demons.
  */
 public class ShockwaveComponent extends Component {
     private static final double SPEED = 520;
     private static final double RANGE = 650;
     private static final double DAMAGE = 16;
+    private static final double DEMON_KNOCKBACK = 380;
     private static final double W = 100, H = 60;
     private static final double MAX_CLIMB = 24;   // a step higher than this is a wall
     private static final int SCALE = 2;
 
     private final int dir;
     private final Entity owner;
+    private final boolean hurtsDemons;
+    private final Set<Entity> struck = new HashSet<>();
     private final Entity player = Game.getPlayer();
     private double travelled;
     private double groundY;
     private boolean hit;
     private double dustTimer;
 
-    private ShockwaveComponent(int dir, double groundY, Entity owner) {
+    private ShockwaveComponent(int dir, double groundY, Entity owner, boolean hurtsDemons) {
         this.dir = dir;
         this.owner = owner;
+        this.hurtsDemons = hurtsDemons;
         this.groundY = groundY;
     }
 
     public static void spawn(double x, double groundY, int dir, Entity owner) {
+        spawn(x, groundY, dir, owner, false);
+    }
+
+    /** {@code hurtsDemons}: every demon but the owner caught in the wave is struck once as well. */
+    public static void spawn(double x, double groundY, int dir, Entity owner, boolean hurtsDemons) {
         Frames frames = Assets.frames("BruteShockwave.png", 4, SCALE);
         FrameSprite view = new FrameSprite(frames).loop(frames, 14);
         view.setTranslateX(W / 2 - frames.width() / 2);
@@ -51,7 +63,7 @@ public class ShockwaveComponent extends Component {
                 .at(x - W / 2, groundY - H)
                 .view(view)
                 .bbox(new HitBox(BoundingShape.box(W, H)))
-                .with(new ShockwaveComponent(dir, groundY, owner))
+                .with(new ShockwaveComponent(dir, groundY, owner, hurtsDemons))
                 .zIndex(11)
                 .buildAndAttach();
     }
@@ -73,6 +85,13 @@ public class ShockwaveComponent extends Component {
         if (!hit && entity.isColliding(player)) {
             hit = player.getComponent(PlayerStatsComponent.class).takeDamage(DAMAGE, entity, false);
             if (hit) EliteComponent.onHit(owner);
+        }
+        if (hurtsDemons) {
+            for (Entity e : Combat.enemies()) {
+                if (e == owner || struck.contains(e) || !entity.isColliding(e)) continue;
+                struck.add(e);
+                e.getComponentOptional(EnemyStatsComponent.class).ifPresent(s -> s.struckByDemon(DAMAGE, dir, DEMON_KNOCKBACK));
+            }
         }
         dustTimer -= tpf;
         if (dustTimer <= 0) {
