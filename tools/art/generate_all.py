@@ -13,7 +13,7 @@ import demons
 import demons2
 import demons3
 import lord2d
-import matriarch3d
+import matriarch2d
 import player_slime
 import weapons
 import ranged
@@ -41,7 +41,7 @@ def main():
     demons2.generate(OUT)                  # wave 2 demons and their effects (portal, hex bolt, boss gate)
     lord2d.generate(OUT)                   # the Pit Lord boss: the goat-skull executioner (2D, lord3d.py stays for the Matriarch)
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
-    matriarch3d.generate(OUT)              # the Void Matriarch boss (3D), her mites, egg sacs, strands and web gates
+    matriarch2d.generate(OUT)              # the Void Matriarch boss (2D), her mites, egg sacs, strands, web gates, acid
     weapons.generate(OUT)
     ranged.generate(OUT)
     projectiles.generate(OUT)

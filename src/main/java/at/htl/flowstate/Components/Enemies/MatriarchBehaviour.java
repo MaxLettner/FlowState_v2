@@ -33,12 +33,13 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * seconds and taking half again as much; then she leaps up out of sight and comes down on fresh strands somewhere
  * else. Her bite (Rappel Strike) is the other time she is in reach: she hangs at the bottom of her line for a moment.
  * <p>
- * Phase 1: Rappel Strike, Weave (re-spins a cut bridge, lays tripwires), Brood Drop (egg sacs that hatch mites).
+ * Phase 1: Rappel Strike, Weave (re-spins every cut bridge), Acid Spit (globs of purple acid that leave burning
+ * pools on the ledges and bridges for a few seconds), Brood Drop (egg sacs that hatch mites).
  * Phase 2 (2/3 HP): also Sever (snaps the bridge the player stands on), Reel In (hooks the player and drags them
  * under her, then bites; a dodge or a hit on her breaks it) and Thread Curtain (strands whip down everywhere but a
  * gap). Phase 3 (1/3 HP): lights out (Darkness), faster, and she moves to a new spot every two attacks.
  * <p>
- * Seen from the front, so the sprite never flips. She is kinematic: everything here moves her by hand.
+ * Seen from the front, so the sprite never flips (2D art: tools/art/matriarch2d.py). She is kinematic: everything here moves her by hand.
  */
 public class MatriarchBehaviour extends DemonBehaviour {
     // where she hangs: arena x of her centre, and how high above the floor
@@ -61,12 +62,15 @@ public class MatriarchBehaviour extends DemonBehaviour {
     private static final double DOWNED = 4.0, DOWNED_DARK = 3.2;
     private static final double REEL_SHOT = 0.3, REEL_PULL = 1.6, REEL_SPEED = 150, REEL_BREAK_DAMAGE = 30;
     private static final double SCREECH = 1.3;
-    private static final double TRIP_W = 120, TRIP_H = 30;
+    private static final double SPIT_AT = 0.5, SPIT_END = 1.0, SPIT_SPEED = 650, SPIT_SPREAD = 190, SPIT_MOUTH = 80;
+    private static final double POOL_LIFE = 4.5, POOL_LIFE_DARK = 5.5;
+    private static final double BROOD_AT = 0.42, BROOD_FROM = 160;
     private static final double CURTAIN_STEP = 210, CURTAIN_GAP = 270;
     private static final int REWARD_SP = 3;
 
     private static final double HANG_FPS = 12, CAST_FPS = 12, DIVE_FPS = 16, BITE_FPS = 16, CLIMB_FPS = 14,
-            FALL_FPS = 14, DOWNED_FPS = 10, RISE_FPS = 12, SCREECH_FPS = 14;
+            FALL_FPS = 14, DOWNED_FPS = 10, RISE_FPS = 12, SCREECH_FPS = 14, DESCEND_FPS = 10, CROUCH_FPS = 10,
+            DANGLE_FPS = 10, SPIT_FPS = 14, BROOD_FPS = 14, REEL_FPS = 12, JOLT_FPS = 14, LAND_FPS = 12;
     private static final Color TELL = Color.rgb(185, 140, 255, 0.95);
     private static final Color LINE_GLOW = Color.rgb(140, 77, 255, 0.45), LINE_CORE = Color.rgb(226, 210, 255);
     private static final Color EYE_LIGHT = Color.rgb(170, 120, 255);
@@ -77,7 +81,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
 
     private enum State { INTRO, HANG, CAST, RAPPEL_TELL, DROP, BITE, HOLD, CLIMB_BACK, REEL, FALL, DOWNED, RISE, LEAVE, ARRIVE, SCREECH }
 
-    private enum Attack { RAPPEL, WEAVE, BROOD, SEVER, REEL, CURTAIN }
+    private enum Attack { RAPPEL, WEAVE, SPIT, BROOD, SEVER, REEL, CURTAIN }
 
     private State state = State.INTRO;
     private Attack casting, lastAttack;
@@ -112,6 +116,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
     @Override
     protected void onReady() {
         current = entity;
+        entity.setZIndex(2);                                  // in front of her strands: the middle one is her drag line
         hx = MatriarchArena.lockX() + INTRO_SPOT;
         hy = MatriarchArena.groundY() - HANG_ABOVE;
         place(new Point2D(hx, entity.getCenter().getY()));
@@ -146,7 +151,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
             case DROP -> drop(tpf);
             case BITE -> bite(t);
             case HOLD -> {
-                sprite.loop("idle", HANG_FPS);
+                sprite.loop("dangle", DANGLE_FPS);
                 drawSilk(dragAnchor(), top());
                 if ((timer -= t) <= 0) state = State.CLIMB_BACK;
             }
@@ -154,7 +159,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
             case REEL -> reel(tpf, t);
             case FALL -> fall(tpf);
             case DOWNED -> {
-                sprite.loop("downed", DOWNED_FPS);
+                if (!sprite.isOneShotPlaying()) sprite.loop("downed", DOWNED_FPS);     // after the landing
                 if ((timer -= t) <= 0) {
                     state = State.RISE;
                     timer = 0;
@@ -201,7 +206,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
 
     //-----entrance-----
     private void intro(double tpf) {
-        sprite.loop("idle", HANG_FPS);
+        sprite.loop("descend", DESCEND_FPS);
         Point2D at = entity.getCenter();
         if (moveTo(new Point2D(hx, hy), INTRO_SPEED, tpf)) {
             introDone = true;
@@ -213,7 +218,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
 
     //-----hanging and choosing-----
     private void hang(double t) {
-        sprite.loop("idle", HANG_FPS);
+        if (!sprite.isOneShotPlaying()) sprite.loop("idle", HANG_FPS);           // a jolt or a cast plays out first
         hideSilk();
         if (anchors.isEmpty()) {
             startFall();
@@ -240,14 +245,14 @@ public class MatriarchBehaviour extends DemonBehaviour {
         }
     }
 
+
     private Attack choose() {
         boolean onBridge = MatriarchArena.bridgeUnder(player) != null;
         double[] w = new double[Attack.values().length];
         w[Attack.RAPPEL.ordinal()] = dark() ? 4.5 : 3;
         if (mites() + getGameWorld().getEntitiesByComponent(EggBehaviour.class).size() < 4) w[Attack.BROOD.ordinal()] = 1.5;
-        if (MatriarchArena.missingBridges() > 0 || getGameWorld().getEntitiesByComponent(SilkHazardComponent.class).size() < 2) {
-            w[Attack.WEAVE.ordinal()] = MatriarchArena.missingBridges() > 1 ? 3 : 1.5;
-        }
+        if (MatriarchArena.missingBridges() > 0) w[Attack.WEAVE.ordinal()] = MatriarchArena.missingBridges() > 1 ? 3 : 1.5;
+        w[Attack.SPIT.ordinal()] = phase == 1 ? 2.2 : 1.8;
         if (phase >= 2) {
             if (onBridge && MatriarchArena.solidBridges().size() > 1) w[Attack.SEVER.ordinal()] = 1.6;
             w[Attack.REEL.ordinal()] = 1.4;
@@ -276,12 +281,12 @@ public class MatriarchBehaviour extends DemonBehaviour {
         Point2D feet = new Point2D(player.getCenter().getX(), player.getBottomY());
         double x = Math.max(MatriarchArena.lockX() + 120, Math.min(MatriarchArena.lockX() + BossArena.WIDTH - 120, feet.getX()));
         target = new Point2D(x, Math.min(feet.getY(), MatriarchArena.groundY()) - HALF_H);
+        sprite.once("crouch", CROUCH_FPS, null);
         sprite.setTelegraph(TELL);
         Sfx.THREAD_TWANG.at(entity.getCenter(), 0.9, 0.6);
     }
 
     private void rappelTell(double t) {
-        sprite.loop("idle", HANG_FPS);
         double k = 0.35 + 0.35 * Math.sin(timer * 40);
         drawSilk(top(), target, k);
         if ((timer -= t) <= 0) {
@@ -337,7 +342,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
         return entity.getCenter().subtract(0, SPINNERET);
     }
 
-    //-----weave, brood, sever, curtain: she plucks her web-----
+    //-----weave, spit, brood, sever, curtain-----
     private void startCast(Attack a) {
         if (a == Attack.SEVER && MatriarchArena.bridgeUnder(player) == null) {
             startRappel(RAPPEL_TELL_DARK);
@@ -347,18 +352,36 @@ public class MatriarchBehaviour extends DemonBehaviour {
         casting = a;
         timer = 0;
         castDone = false;
-        sprite.once("weave", CAST_FPS, null);
+        switch (a) {
+            case SPIT -> {
+                sprite.once("spit", SPIT_FPS, null);
+                Sfx.MATRIARCH_SCREECH.at(entity.getCenter(), 0.35, 1.7);
+            }
+            case BROOD -> {
+                sprite.once("brood", BROOD_FPS, null);
+                Sfx.SILK_SPIN.at(entity.getCenter(), 0.9, 0.7);
+            }
+            case SEVER, CURTAIN -> {
+                sprite.once("pluck", CAST_FPS, null);
+                Sfx.THREAD_TWANG.at(entity.getCenter(), 0.8, 1.2);
+            }
+            default -> {
+                sprite.once("weave", CAST_FPS, null);
+                Sfx.SILK_SPIN.at(entity.getCenter(), 0.9, 1.0);
+            }
+        }
         sprite.setTelegraph(TELL);
-        Sfx.SILK_SPIN.at(entity.getCenter(), 0.9, a == Attack.BROOD ? 0.7 : 1.0);
     }
 
     private void cast(double t) {
         timer += t;
-        if (!castDone && timer >= CAST_AT) {
+        double at = casting == Attack.SPIT ? SPIT_AT : casting == Attack.BROOD ? BROOD_AT : CAST_AT;
+        if (!castDone && timer >= at) {
             castDone = true;
             sprite.setTelegraph(null);
             switch (casting) {
-                case WEAVE -> weave();
+                case WEAVE -> MatriarchArena.weaveBridges(0.8);
+                case SPIT -> spit();
                 case BROOD -> brood();
                 case SEVER -> {
                     ThreadBridgeComponent b = MatriarchArena.bridgeUnder(player);
@@ -368,31 +391,34 @@ public class MatriarchBehaviour extends DemonBehaviour {
                 default -> { }
             }
         }
-        if (timer >= CAST_END) rest();
+        if (timer >= (casting == Attack.SPIT ? SPIT_END : CAST_END)) rest();
     }
 
-    private void weave() {
-        MatriarchArena.weaveOne(player.getCenter().getX(), 0.8);
-        // a tripwire on the player's own footing, a little way off, and one somewhere else
-        List<double[]> surfaces = MatriarchArena.surfaces();
-        double[] mine = null;
-        for (double[] s : surfaces) {
-            if (player.getRightX() > s[0] && player.getX() < s[1] && Math.abs(player.getBottomY() - s[2]) < 30) mine = s;
+    /**
+     * Globs of acid, lobbed from her mouth: the first at the player, the rest fanned out to both sides. Each lands on
+     * the first ledge or bridge it comes down on and leaves a pool there (AcidGlobComponent, AcidPoolComponent).
+     */
+    private void spit() {
+        int n = phase == 1 ? 3 : phase == 2 ? 4 : 5;
+        Point2D mouth = entity.getCenter().add(0, SPIT_MOUTH);
+        double lo = MatriarchArena.lockX() + 110, hi = MatriarchArena.lockX() + BossArena.WIDTH - 110;
+        double px = player.getCenter().getX();
+        double pool = dark() ? POOL_LIFE_DARK : POOL_LIFE;
+        for (int i = 0; i < n; i++) {
+            double off = i == 0 ? 0 : (i % 2 == 1 ? 1 : -1) * ((i + 1) / 2) * SPIT_SPREAD * FXGLMath.random(0.8, 1.2);
+            double x = Math.max(lo, Math.min(hi, px + off));
+            double[] s = MatriarchArena.surfaceUnder(x, i == 0 ? player.getBottomY() - 10 : player.getBottomY() - 180);
+            double y = s != null ? s[2] : MatriarchArena.groundY() + 120;
+            AcidGlobComponent.lob(mouth, new Point2D(x, y), SPIT_SPEED + FXGLMath.random(-60, 60), pool);
         }
-        if (mine != null) tripwireOn(mine, player.getCenter().getX() + (Math.random() < 0.5 ? -1 : 1) * FXGLMath.random(120, 220));
-        double[] other = surfaces.get(FXGLMath.random(0, surfaces.size() - 1));
-        if (other != mine) tripwireOn(other, FXGLMath.random(other[0], other[1]));
-    }
-
-    private void tripwireOn(double[] s, double x) {
-        if (s[1] - s[0] < TRIP_W + 20) return;
-        double x1 = Math.max(s[0] + 10, Math.min(s[1] - 10 - TRIP_W, x - TRIP_W / 2));
-        SilkHazardComponent.tripwire(x1, x1 + TRIP_W, s[2], TRIP_H, 0.7);
+        Sfx.ACID_SPIT.at(mouth);
+        Impact.shake(6);
+        Particles.burst(mouth, Particles.ACID, 14, 90, 50, 80, 260, 0.5, 5, 500);
     }
 
     private void brood() {
         int n = dark() ? 3 : 2;
-        Point2D from = entity.getCenter().subtract(0, 30);
+        Point2D from = entity.getCenter().subtract(0, BROOD_FROM);      // flung out of her spinnerets
         for (int i = 0; i < n; i++) {
             DemonType egg = DemonType.EGG;
             Entity e = spawn(egg.spawnName(), new SpawnData(from.getX() - egg.width / 2, from.getY()));
@@ -429,7 +455,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
         state = State.REEL;
         timer = 0;
         reelStartHp = entity.getComponent(HealthDoubleComponent.class).getValue();
-        sprite.once("weave", CAST_FPS, null);
+        sprite.once("pluck", CAST_FPS * 1.5, null);
         Sfx.SILK_SPIN.at(entity.getCenter(), 1, 1.3);
     }
 
@@ -442,6 +468,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
             return;
         }
         drawSilk(from, to);
+        sprite.loop("reel", REEL_FPS);
         PlayerMovementComponent movement = player.getComponent(PlayerMovementComponent.class);
         double hp = entity.getComponent(HealthDoubleComponent.class).getValue();
         if (movement.isDodging() || reelStartHp - hp >= REEL_BREAK_DAMAGE) {     // broken free
@@ -477,6 +504,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
         anchors.remove(strand);
         if (dying) return;
         Sfx.THREAD_TWANG.at(entity.getCenter(), 0.8, 0.5);
+        if (!anchors.isEmpty() && state == State.HANG) sprite.once("jolt", JOLT_FPS, null);
         if (anchors.isEmpty() && (state == State.HANG || state == State.CAST || state == State.RAPPEL_TELL
                 || state == State.REEL || state == State.SCREECH)) {
             startFall();
@@ -503,6 +531,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
             place(new Point2D(x, landing[1] - HALF_H));
             state = State.DOWNED;
             timer = dark() ? DOWNED_DARK : DOWNED;
+            sprite.once("land", LAND_FPS, null);
             Impact.shake(22);
             Sfx.BRUTE_SLAM.at(entity.getCenter(), 1, 0.7);
             Point2D feet = new Point2D(x, landing[1]);
@@ -547,7 +576,7 @@ public class MatriarchBehaviour extends DemonBehaviour {
     }
 
     private void arrive(double tpf) {
-        sprite.loop("idle", HANG_FPS);
+        sprite.loop("descend", DESCEND_FPS);
         if (moveTo(new Point2D(hx, hy), ARRIVE_SPEED, tpf)) {
             rest();
             cooldown = 0.9;
