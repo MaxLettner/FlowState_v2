@@ -42,7 +42,7 @@ public class HammerAbility extends MeleeAbility {
             // heavy weapon: long anticipation, a short brutal strike
             Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), false);
             slash.params().windup(0.32).strike(0.2);
-            launch(SPEC, slash, 1, 1.3);
+            launch(SPEC, slash);
             cooldown(SPEC.interval());
         });
     }

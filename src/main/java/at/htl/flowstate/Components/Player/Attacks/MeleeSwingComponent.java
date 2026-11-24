@@ -46,6 +46,7 @@ public class MeleeSwingComponent extends Component {
         double windup = 0.22;
         double strike = 0.28;
         boolean down;
+        double pogoHeight = 1;
         Color color = Color.WHITE;
         double pivotDx = 0, pivotDy = 0;
         Listener listener;
@@ -69,6 +70,8 @@ public class MeleeSwingComponent extends Component {
         public Params held() { this.held = true; return this; }
         /** Down-slash: pivots lower and bounces the player off whatever it hits. */
         public Params down() { this.down = true; return this; }
+        /** How high a down-slash pogo bounces, in normal pogo heights (Spring Hammer: 3). */
+        public Params pogo(double heightMult) { this.pogoHeight = heightMult; return this; }
         public Params color(Color c) { this.color = c; return this; }
         public Params pivotOffset(double dx, double dy) { this.pivotDx = dx; this.pivotDy = dy; return this; }
         public Params listener(Listener l) { this.listener = l; return this; }
@@ -205,22 +208,32 @@ public class MeleeSwingComponent extends Component {
     }
 
     private void hitEnemy(Entity e, double atAngle) {
-        Combat.Result r = Combat.hit(e, p.hit);
-        if (!r.landed()) return;
-        // streak across the target along the direction of the swing
-        Particles.slashMark(e.getCenter(), atAngle + 90 * sign, e.getHeight() * 1.1, p.color);
-        if (p.down) player.getComponent(PlayerMovementComponent.class).pogo();
-        connect(true);
+        if (strike(p, e, atAngle + 90 * sign)) connect(true);
     }
 
     private void deflect(Entity proj) {
+        deflectProjectile(proj);
+        connect(false);
+    }
+
+    /** Lands a swing's hit on an enemy: slash mark along {@code markAngle}, pogo for down-slashes. Returns whether it landed. */
+    static boolean strike(Params p, Entity e, double markAngle) {
+        Combat.Result r = Combat.hit(e, p.hit);
+        if (!r.landed()) return false;
+        // streak across the target along the direction of the swing
+        Particles.slashMark(e.getCenter(), markAngle, e.getHeight() * 1.1, p.color);
+        if (p.down) Game.getPlayer().getComponent(PlayerMovementComponent.class).pogo(p.pogoHeight);
+        return true;
+    }
+
+    /** Knocks an enemy projectile out of the air. */
+    static void deflectProjectile(Entity proj) {
         Point2D at = proj.getCenter();
         proj.removeFromWorld();
         Sfx.DEFLECT.play();
         Particles.glint(at, Particles.SPARK, 10);
         Impact.hitStop(DEFLECT_HITSTOP);
         Impact.shake(DEFLECT_SHAKE);
-        connect(false);
     }
 
     private void connect(boolean enemy) {

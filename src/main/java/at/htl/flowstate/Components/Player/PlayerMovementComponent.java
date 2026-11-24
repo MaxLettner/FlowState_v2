@@ -19,7 +19,8 @@ public class PlayerMovementComponent extends Component {
     private static final double LEVITATION_SPEED = 300.0;
     private static final double SLOW_FALL_SPEED = 120.0;
     private static final double DASH_SPEED = 750.0;   // 150 px in 0.2 s
-    private static final double DASH_TIME = 0.2;
+    public static final double DASH_TIME = 0.2;
+    private static final double DASH_COOLDOWN = 0.6;      // Ctrl dash
     private static final double SLAM_SPEED = 900.0;
     private static final double POGO_FORCE = 560.0;
     private static final double RUN_FRAMES = 50;          // running frames before the walk turns into a run
@@ -47,7 +48,7 @@ public class PlayerMovementComponent extends Component {
 
     private double dashLeft = 0;
     private int dashDirection = 1;
-    private double dashSpeed = DASH_SPEED;
+    private double dashCooldown = 0;
     private boolean dodging = false;
     private double facingLock = 0;
     private boolean diving = false;                        // hammer slam fall
@@ -66,10 +67,11 @@ public class PlayerMovementComponent extends Component {
 
         wasGrounded = isGrounded;
         if (facingLock > 0) facingLock -= tpf;
+        if (dashCooldown > 0) dashCooldown -= tpf;
 
         if (dashLeft > 0) {
             dashLeft -= tpf;
-            physics.setVelocityX(dashDirection * dashSpeed);
+            physics.setVelocityX(dashDirection * DASH_SPEED);
             if (dashLeft <= 0) {
                 dodging = false;
                 if (lastMoveDirection == 0) physics.setVelocityX(0);
@@ -278,12 +280,19 @@ public class PlayerMovementComponent extends Component {
         isLevitatingDown = false;
     }
 
-    /** Leather Gloves dodge: short dash in the movement (or facing) direction. */
-    public void startDash() {
+    /** Ctrl: the everyday dash, usable with any weapon. Returns false while it recharges. */
+    public boolean dash() {
+        if (dead || dashCooldown > 0 || dashLeft > 0) return false;
+        startDash(DASH_TIME);
+        dashCooldown = DASH_COOLDOWN;
+        return true;
+    }
+
+    /** Dashes in the movement (or facing) direction for {@code seconds} (Leather Gloves dodge: twice as long). */
+    public void startDash(double seconds) {
         if (dead) return;
         dashDirection = lastMoveDirection != 0 ? lastMoveDirection : currentWatchDirection;
-        dashLeft = DASH_TIME;
-        dashSpeed = DASH_SPEED;
+        dashLeft = seconds;
         dodging = true;
         Sfx.DASH.play();
     }
@@ -295,17 +304,15 @@ public class PlayerMovementComponent extends Component {
         facingLock = Math.max(facingLock, seconds);
     }
 
-    /** Small step forward that sells the weight of a melee swing. Only on the ground, never over a dodge. */
-    public void lunge(int direction, double speed, double seconds) {
-        if (dodging || !isGrounded || isLevitationActive) return;
-        dashDirection = direction;
-        dashSpeed = speed;
-        dashLeft = seconds;
-    }
-
     /** Bounce up after a downward strike connects (pogo). */
     public void pogo() {
-        physics.setVelocityY(-POGO_FORCE);
+        pogo(1);
+    }
+
+    /** Pogo reaching {@code heightMult} times the normal height (Spring Hammer: 3). */
+    public void pogo(double heightMult) {
+        // height grows with the square of the launch speed
+        physics.setVelocityY(-POGO_FORCE * Math.sqrt(heightMult));
         Sfx.JUMP.play(1, 1.25);
         diving = false;
         entity.getComponent(SpriteComponent.class).playTakeoff();
@@ -337,7 +344,7 @@ public class PlayerMovementComponent extends Component {
 
     public boolean isGrounded() { return isGrounded; }
 
-    /** In the middle of a Leather Gloves dodge. */
+    /** In the middle of a dash. */
     public boolean isDodging() { return dodging; }
 
     /** Puts the player down somewhere else, standing still (caught falling into the Void Matriarch's chasm). */

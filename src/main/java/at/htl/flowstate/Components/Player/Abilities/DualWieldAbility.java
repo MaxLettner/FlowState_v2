@@ -18,7 +18,7 @@ public class DualWieldAbility extends MeleeAbility {
         press(() -> {
             Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), rightBlade);
             slash.params().pivotOffset(0, rightBlade ? HAND_OFFSET : -HAND_OFFSET).windup(0.15).strike(0.3);
-            launch(SPEC, slash, 1, 0.6);
+            launch(SPEC, slash);
             rightBlade = !rightBlade;
             cooldown(SPEC.interval());
         });

@@ -18,7 +18,7 @@ import javafx.scene.paint.Color;
  *   <li>Flow: attacking on the beat (buffered, or within a short grace after ready) right after a hit that
  *       connected raises the flow chain, up to {@link #FLOW_MAX}. Each level adds damage and impact.
  *       Mashing too early or attacking late drops it. A glint at the hand marks the moment the window opens.</li>
- *   <li>Commitment: short lunge on grounded horizontal attacks, slightly slower movement mid-swing.</li>
+ *   <li>Commitment: the player stays put (no lunge) and moves slightly slower mid-swing.</li>
  * </ul>
  * Weapon stats (damage, interval, reach, swing time) are untouched; flow is a bonus on top.
  */
@@ -28,8 +28,6 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
     protected static final int FLOW_MAX = 5;
     private static final double FLOW_DAMAGE = 0.08;
     private static final double FLOW_IMPACT = 0.12;
-    private static final double LUNGE_SPEED = 280;
-    private static final double LUNGE_TIME = 0.07;
     private static final double SWING_MOVE_MULT = 0.75;
     // screen angles (0 = right, 90 = down) for a right-facing player; mirrored when facing left
     private static final double SLASH_FROM = -130, SLASH_TO = 45;   // overhead, behind -> front-down
@@ -146,20 +144,24 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
         return new Slash(params, duration, down);
     }
 
-    /** Spawns the slash: keeps the player facing it and lunges a little on grounded forward slashes. */
-    protected Entity launch(MeleeSpec spec, Slash slash, double size, double lungeMult) {
+    /** Spawns the slash and keeps the player facing it. The player stays where they are. */
+    protected Entity launch(MeleeSpec spec, Slash slash, double size) {
         movement().faceAttack(facing(), slash.duration() * 0.8);
-        if (!slash.down() && lungeMult > 0) movement().lunge(facing(), LUNGE_SPEED * lungeMult, LUNGE_TIME);
         swingLeft = slash.duration() * 0.5;
         sprite().playAttack();
         // big blades whoosh low and slow; a bigger swing (charge, finisher) is deeper still
         boolean heavy = spec.width() >= 20 || size > 1.1;
         slash.params().sound(heavy ? Sfx.SWING_HEAVY : Sfx.SWING_LIGHT, (spec.width() >= 20 ? 1 : 1.1) / size);
-        return spec.swing(slash.params(), size);
+        return spawnSwing(spec, slash.params(), size);
     }
 
     protected Entity launch(MeleeSpec spec, Slash slash) {
-        return launch(spec, slash, 1, 1);
+        return launch(spec, slash, 1);
+    }
+
+    /** The swing entity itself: a rigid blade by default (the Morningstar swings a chain instead). */
+    protected Entity spawnSwing(MeleeSpec spec, MeleeSwingComponent.Params params, double size) {
+        return spec.swing(params, size);
     }
 
     /** Applies the flow bonus to a hit. */

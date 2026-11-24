@@ -33,7 +33,7 @@ public enum SkillType {
     FISTICUFFS("Fisticuffs", "Hand Wraps", SUBTREE, MELEE, null, ATTACK,
             "Grants Hand Wraps. Passive Combo Meter: chained glove hits raise crit chance (+2% each, max +20%). Glove crits deal x2 and stun."),
     LEATHER_GLOVES("Leather Gloves", "Leather Gloves", SKILL, MELEE, FISTICUFFS, ATTACK,
-            "Very fast jabs. RMB: dodge dash with brief invulnerability."),
+            "Very fast jabs. RMB: long dodge dash with brief invulnerability."),
     METAL_GLOVES("Metal Gloves", "Metal Gloves", SKILL, MELEE, FISTICUFFS, ATTACK,
             "Balanced punches. Hold RMB: block (-60% front melee damage, destroys projectiles)."),
     SPIKE_GLOVES("Spike Gloves", "Spike Gloves", SKILL, MELEE, FISTICUFFS, ATTACK,
@@ -44,9 +44,9 @@ public enum SkillType {
     HAMMER("Hammer", "Hammer", SKILL, MELEE, BLUNT, ATTACK,
             "Swing that stuns. Attack in mid-air: ground slam shockwave."),
     MORNINGSTAR("Morningstar", "Morningstar", SKILL, MELEE, BLUNT, ATTACK,
-            "Tap: long swing. Hold: flail spin that hits everything around you."),
+            "Tap: whip the chained flail. Hold: spin it around you, faster the longer you hold (longer with Strength)."),
     SPRING_HAMMER("Spring Hammer", "Spring Hammer", SKILL, MELEE, BLUNT, ATTACK,
-            "Fast, huge knockback. Launched enemies damage what they crash into."),
+            "Fast, huge knockback. Launched enemies damage what they crash into. Pogos three times as high."),
 
     // ----- Ranged -----
     BOW("Bow", "Basic Bow", SUBTREE, RANGED, null, ATTACK,

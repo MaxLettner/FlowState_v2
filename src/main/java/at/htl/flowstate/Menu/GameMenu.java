@@ -47,8 +47,8 @@ public class GameMenu extends FXGLMenu {
     private static final double CENTER_X = 960, CENTER_Y = 584;
     private static final double RING_RADIUS = 91 * SCALE;
     private static final double MAIN_X = 752, MAIN_Y = 404, MAIN_STEP = 76;
-    private static final double TABLET_X = 520, TABLET_Y = 160;
-    private static final double BACK_X = 856, BACK_Y = 916;
+    private static final double TABLET_X = 520, TABLET_Y = 136;
+    private static final double BACK_X = 856, BACK_Y = 940;
     private static final double PROMPT_Y = 464;
     private static final double CONFIRM_Y = 592, CONFIRM_LEFT_X = 736, CONFIRM_RIGHT_X = 976;
     private static final double[][] FLAMES = {{224, 440}, {1648, 440}};   // top-left of the flame frames
