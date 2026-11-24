@@ -72,6 +72,11 @@ public class FrameSprite extends ImageView implements View {
         this.paused = paused;
     }
 
+    /** The strip frame showing right now. */
+    public int getFrameIndex() {
+        return sequence[Math.min(index, sequence.length - 1)];
+    }
+
     public Frames getFrames() {
         return frames;
     }

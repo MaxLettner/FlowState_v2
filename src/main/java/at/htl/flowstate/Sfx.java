@@ -56,12 +56,14 @@ public enum Sfx {
     MATRIARCH_SCREECH(0.8, 0.03), THREAD_TWANG(0.5), THREAD_SNAP(0.55), EGG_HATCH(0.5), SILK_SPIN(0.35), LIGHTS_OUT(0.65, 0),
     ACID_SPIT(0.5), ACID_SIZZLE(0.3),
     HYDRA_ROAR(0.85, 0.03), TAR_SPIT(0.55), TAR_SPLASH(0.5), TAR_WAVE(0.65),
+    HOLLOW_RISE(0.8, 0), HOLLOW_ROAR(0.85, 0.03), HOLLOW_STEAL(0.6), HOLLOW_SHARD_PICKUP(0.5), HOLLOW_FLARE(0.7),
+    HOLLOW_ECHO(0.5), HOLLOW_SWAP(0.5), HOLLOW_DEATH(0.8, 0),
     HEARTBEAT(0.5, 0.02),
     // UI
     UI_HOVER(0.3, 0.03), UI_CLICK(0.55, 0.03), UI_DENY(0.3, 0), UI_START(0.6, 0), UI_OPEN(0.5, 0.03),
     UI_CLOSE(0.45, 0.03), SKILL_LEARN(0.6, 0), UI_SLOT(0.5, 0.03),
     // ambience (loops)
-    AMB_ABYSS(0.4, 0), AMB_MENU(0.35, 0), AMB_LORD(0.35, 0), AMB_MATRIARCH(0.4, 0), AMB_HYDRA(0.35, 0);
+    AMB_ABYSS(0.4, 0), AMB_MENU(0.35, 0), AMB_LORD(0.35, 0), AMB_MATRIARCH(0.4, 0), AMB_HYDRA(0.35, 0), AMB_HOLLOW(0.4, 0);
 
     private static final double MASTER = 0.8;
     private static final double DEFAULT_VARIANCE = 0.06;   // +- pitch
@@ -71,7 +73,7 @@ public enum Sfx {
     private static final int MAX_VARIANTS = 8;
     /** Heavy sounds: the background loop ducks under them (how far down, for how long). */
     private static final Set<Sfx> DUCKS = EnumSet.of(SLAM_IMPACT, EXPLOSION, BRUTE_SLAM, GATE_SLAM, BOSS_ROAR,
-            HYDRA_ROAR, MATRIARCH_SCREECH, TAR_WAVE, LIGHTS_OUT, PLAYER_HURT, PLAYER_DEATH, UI_START, PERFECT, FLOW_MAX);
+            HYDRA_ROAR, HOLLOW_ROAR, HOLLOW_DEATH, HOLLOW_FLARE, MATRIARCH_SCREECH, TAR_WAVE, LIGHTS_OUT, PLAYER_HURT, PLAYER_DEATH, UI_START, PERFECT, FLOW_MAX);
     private static final double DUCK_DEPTH = 0.55, DUCK_HOLD = 0.35;
 
     private static boolean muted = false;

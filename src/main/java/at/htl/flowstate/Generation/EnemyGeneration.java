@@ -97,9 +97,10 @@ public class EnemyGeneration {
             // the Mimic normally hides among the chests; tests can have it on the ground
             if (names.contains(DemonType.MIMIC.name())) groups.add(new Group("mimic", 2.5, 0, 1, new Pack(DemonType.MIMIC, 1, 1)));
             boolean lord = names.contains(DemonType.LORD.name()) || names.contains(DemonType.MATRIARCH.name())
-                    || names.contains(DemonType.HYDRA.name());
+                    || names.contains(DemonType.HYDRA.name()) || names.contains(DemonType.HOLLOW.name());
             testBoss = names.contains(DemonType.MATRIARCH.name()) ? BossArena.Boss.MATRIARCH
-                    : names.contains(DemonType.HYDRA.name()) ? BossArena.Boss.HYDRA : BossArena.Boss.PIT_LORD;
+                    : names.contains(DemonType.HYDRA.name()) ? BossArena.Boss.HYDRA
+                    : names.contains(DemonType.HOLLOW.name()) ? BossArena.Boss.HOLLOW : BossArena.Boss.PIT_LORD;
             nextBossX = lord ? START_X * 0.6 + 300 : Double.MAX_VALUE;
             if (groups.isEmpty() && !lord) throw new IllegalArgumentException("FLOWSTATE_DEMONS: no demon named in " + only);
             budget = MAX_BUDGET;    // something to look at right away
@@ -113,13 +114,14 @@ public class EnemyGeneration {
         return x >= nextBossX && !BossArena.isActive();
     }
 
-    /** Which boss the next arena is for: the Pit Lord, the Void Matriarch, the Tar Hydra, round and round. */
+    /** Which boss the next arena is for: the Pit Lord, the Void Matriarch, the Tar Hydra, the Hollow Ember, round and round. */
     public BossArena.Boss nextBoss() {
         if (testBoss != null) return testBoss;
-        return switch (bossesPlaced % 3) {
+        return switch (bossesPlaced % 4) {
             case 0 -> BossArena.Boss.PIT_LORD;
             case 1 -> BossArena.Boss.MATRIARCH;
-            default -> BossArena.Boss.HYDRA;
+            case 2 -> BossArena.Boss.HYDRA;
+            default -> BossArena.Boss.HOLLOW;
         };
     }
 

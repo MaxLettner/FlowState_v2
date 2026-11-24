@@ -5,6 +5,47 @@ from pixel import *
 SIZE = 64
 CX = 32
 BASE_Y = 62   # bottom of the slime (anchor used by SpriteComponent)
+SCALE = 1.0   # draw_slime renders at SIZE * SCALE native pixels; all geometry stays in 64 px units (1.5 for the Hollow Ember)
+
+
+class ScaledPx:
+    """Pixel access in 64 px units on a SCALE times bigger image: a write fills the block it covers,
+    so the drawing helpers (put, ellipse, ...) work unchanged."""
+
+    def __init__(self, px, size, k):
+        self.px, self.size, self.k = px, size, k
+
+    def __getitem__(self, p):
+        x = min(self.size - 1, int((p[0] + 0.5) * self.k))
+        y = min(self.size - 1, int((p[1] + 0.5) * self.k))
+        return self.px[x, y]
+
+    def __setitem__(self, p, c):
+        for y in range(int(p[1] * self.k), max(int(p[1] * self.k) + 1, int((p[1] + 1) * self.k))):
+            for x in range(int(p[0] * self.k), max(int(p[0] * self.k) + 1, int((p[0] + 1) * self.k))):
+                if 0 <= x < self.size and 0 <= y < self.size:
+                    self.px[x, y] = c
+
+
+class ScaledImage:
+    """An image seen in 64 px units: load() gives a ScaledPx (for the glow / spark effects that only use load())."""
+
+    def __init__(self, img, k):
+        self.img, self.k = img, k
+
+    def load(self):
+        return ScaledPx(self.img.load(), self.img.width, self.k)
+
+    def getpixel(self, p):
+        return self.load()[p]
+
+
+def native_size():
+    return int(SIZE * SCALE + 0.5)
+
+
+def scaled_view(img):
+    return img if SCALE == 1.0 else ScaledImage(img, SCALE)
 
 LAVA_RIM = hexc('#ff8a3d')
 
@@ -93,27 +134,30 @@ def body_mask(w, h, lift, lean, round=0.0, form=None):
     mask = {}
     bottom = BASE_Y - lift
     warped = form.get('cup') or form.get('tilt')
-    for y in range(SIZE):
+    k = SCALE
+    for y in range(native_size()):
+        yc = (y + 0.5) / k                            # pixel centre in 64 px units
         if warped:                                    # the height depends on the column: test every pixel
-            for x in range(SIZE):
-                v = (bottom - (y + 0.5 + warp_dy(x + 0.5, w, **form))) / h
+            for x in range(native_size()):
+                xc = (x + 0.5) / k
+                v = (bottom - (yc + warp_dy(xc, w, **form))) / h
                 hw = half_width(v, w, **form)
                 if hw <= 0:
                     continue
                 back, front = side_scale(v, **form)
-                d = x + 0.5 - row_cx(v, lean, **form)
+                d = xc - row_cx(v, lean, **form)
                 lim = hw * (front if d >= 0 else back)
                 if abs(d) <= lim:
                     mask[(x, y)] = (d / max(lim, 1e-3), v)
             continue
-        v = (bottom - (y + 0.5)) / h
+        v = (bottom - yc) / h
         hw = half_width(v, w, **form)
         if hw <= 0:
             continue
         cx = row_cx(v, lean, **form)
         back, front = side_scale(v, **form)
-        for x in range(SIZE):
-            d = (x + 0.5 - cx)
+        for x in range(native_size()):
+            d = (x + 0.5) / k - cx
             lim = hw * (front if d >= 0 else back)
             if abs(d) <= lim:
                 mask[(x, y)] = (d / max(lim, 1e-3), v)
@@ -124,7 +168,7 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
     """round (0..1) rounds off the flat bottom for airborne frames (see half_width).
     form: airflow shape {tip_top, tip_bot (0..1 drop tail), sweep_top, sweep_bot (px the tail bends sideways)}."""
     form = dict(form or {}, round=round)
-    img = new(SIZE, SIZE)
+    img = new(native_size(), native_size())
     px = img.load()
     mask = body_mask(w, h, lift, lean, form=form)
     bottom = BASE_Y - lift
@@ -149,6 +193,7 @@ def draw_slime(look, w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, moo
             if edge:
                 px[x, y] = mix(px[x, y], LAVA_RIM, look.rim)
 
+    px = scaled_view(img).load() if SCALE != 1.0 else px   # from here on in 64 px units
     # inner bubbles
     if look.bubbles:
         for i, (bx, bv, r) in enumerate([(-0.35, 0.25, 1.6), (0.25, 0.18, 1.1), (0.05, 0.4, 0.9)]):
@@ -519,12 +564,14 @@ def anim_walk(look, n=8):
     return frames
 
 
+# rising fast (stretched teardrop), rising, apex (rounded out into a ball), falling (stretched again);
+# off the ground the bottom is round, it only flattens when it touches down
+AIR_PARAMS = [(33, 47, 1.5, 0.9), (36, 43, 1, 1.0), (42, 39, 0, 1.0), (35, 45, -1.5, 1.0)]
+
+
 def anim_air(look):
-    # rising fast (stretched teardrop), rising, apex (rounded out into a ball), falling (stretched again);
-    # off the ground the bottom is round, it only flattens when it touches down
-    params = [(33, 47, 1.5, 0.9), (36, 43, 1, 1.0), (42, 39, 0, 1.0), (35, 45, -1.5, 1.0)]
     return [draw_slime(look, w, h, lean=l, eye_dy=-1 if i < 2 else 1, phase=i / 4, round=r)
-            for i, (w, h, l, r) in enumerate(params)]
+            for i, (w, h, l, r) in enumerate(AIR_PARAMS)]
 
 
 def anim_land(look):

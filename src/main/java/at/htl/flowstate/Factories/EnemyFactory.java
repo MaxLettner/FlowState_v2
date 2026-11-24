@@ -159,6 +159,12 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.HYDRA_LURE_STUMP, new HydraStumpBehaviour(HydraHeadBehaviour.Kind.LURE));
     }
 
+    /** The Hollow Ember: the player's void double. */
+    @Spawns("hollow")
+    public Entity hollow(SpawnData data) {
+        return demon(data, DemonType.HOLLOW, new HollowBehaviour());
+    }
+
     /** SpawnData "elite" (an EliteAffix) makes it an elite; "hpScale" (a double) scales its HP (weaker early bosses). */
     private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour) {
         return demon(data, type, behaviour, type.flying);

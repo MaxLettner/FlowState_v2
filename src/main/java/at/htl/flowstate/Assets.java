@@ -1,6 +1,7 @@
 package at.htl.flowstate;
 
 import at.htl.flowstate.Visuals.Frames;
+import at.htl.flowstate.Visuals.VoidTint;
 import com.almasb.fxgl.texture.Texture;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -32,6 +33,8 @@ public final class Assets {
 
     /** The texture at its native size. */
     public static Image raw(String name) {
+        // "void:Name.png" is the texture recoloured to void (the Hollow Ember's copies of the player's weapons)
+        if (name.startsWith("void:")) return cached(name + "@raw", () -> VoidTint.recolor(raw(name.substring(5))));
         return cached(name + "@raw", () -> new Image(url(name), 0, 0, false, false));
     }
 

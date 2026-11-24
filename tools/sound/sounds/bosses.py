@@ -314,3 +314,154 @@ def amb_hydra():
     deep = [a + b for a, b in zip(tone(length, whole(36, length)), tone(length, whole(36, length) + 2 / length))]
     deep = amp(deep, lambda t: 0.6 + 0.4 * math.sin(TAU * t / (length / 2)))
     return mix((bed, 1.0), (bubbles, 0.9), (deep, 0.1))
+
+
+#-----Hollow Ember-----
+def void_voice(dur, f0, f1, seed, vowels=('o', 'u')):
+    """The double's throat: a hollowed, detuned slime growl with a ring of void resonance."""
+    return growl(dur, f0, f1, 0.75, vowels, seed=seed, voices=5, cents=90, rate=15, depth=0.45)
+
+
+@sound
+def hollow_rise():
+    """The reflection climbing out of the black glass: a glassy groan, embers going out one by one, the crown igniting."""
+    dur = 2.5
+    glass = tremolo(bandpass(noise(dur, 'brown', seed=700), lambda t: 140 + 220 * t / dur, 2.0), 9, 0.7)
+    glass = amp(normalize(glass), lambda t: math.sin(math.pi * t / dur) ** 1.5)
+    inward = reverse(cavern(env(void_voice(1.2, 62, 48, 701), 0.01, 0.5), 0.3, 1.6))
+    parts = [(normalize(glass), 0.9), (inward, 0.5, 0.5)]
+    for i in range(5):
+        # an ember going out: a short dull pop and a downward hiss
+        snuff = mix((env(thump(0.3, 150 - 12 * i, 60, 0.12), 0.003, 0.15), 0.6),
+                    (env(lowpass2(noise(0.3, 'pink', seed=710 + i), lambda t: 900 * math.exp(-t / 0.08) + 200), 0.002, 0.18), 0.5))
+        parts.append((snuff, 0.7, 0.2 + 0.28 * i))
+    low = sub(dur, 38, 30, dur * 0.8, 0.9)
+    crown = shaped(lowpass2(growl(1.0, 78, 96, 0.7, ('o', 'a'), seed=720, rate=20), 1800), 0.5, 0.6, 0.3)
+    flame = shaped(lowpass2(noise(1.0, 'pink', seed=721), 1200), 0.45, 0.55, 0.3)
+    parts += [(low, 0.2), (crown, 0.9, 1.5), (flame, 0.5, 1.5)]
+    sig = saturate(mix(*parts), 2.0)
+    return cavern(lowpass2(sig, 2200), 0.45, 3.2)
+
+
+@sound
+def hollow_roar():
+    """The Hollow Ember's cry: a slime squelch hollowed out and stretched into a distorted void bellow."""
+    dur = 1.6
+    voice = void_voice(dur, 85, 58, 730)
+    echo_voice = resample(void_voice(dur * 0.8, 120, 80, 731, ('u', 'o')), 0.7)
+    squelch_ = squelch(0.4, 380, 90, 3.0, seed=732)
+    hollow = bandpass(noise(dur, 'pink', seed=733), lambda t: 330 - 120 * t / dur, 6.0)
+    hollow = tremolo(normalize(hollow), 7, 0.6)
+    low = sub(dur, 54, 34, dur * 0.9, 0.06)
+    sig = saturate(mix((voice, 1.0), (echo_voice, 0.6, 0.12), (squelch_, 0.7), (hollow, 0.55, 0.1), (low, 0.14)), 2.6)
+    sig = shaped(lowpass2(sig, 2300), 0.1, 0.7, 0.35)
+    return cavern(sig, 0.45, 3.4)
+
+
+@sound
+def hollow_steal():
+    """An ember shard torn off the player: a wet rip, a cracking tear and a dull violet hum sucked away."""
+    dur = 0.9
+    rip = whoosh(0.35, 1500, 250, q=1.0, peak=0.4, seed=740, color='pink')
+    tear = env(lowpass2(noise(0.3, seed=741), 2500), 0.002, 0.1)
+    wet = squelch(0.3, 260, 80, 3.0, seed=742)
+    thud = impact(0.5, weight=0.5, body=105, crack=0.15, seed=743, room=0)
+    suck = reverse(env(tone(0.5, sweep(320, 140, 0.5)), 0.01, 0.35))
+    hum = env(lowpass2(tone(dur, sweep(110, 82, dur), 'saw'), 500), 0.05, 0.4)
+    sig = saturate(mix((rip, 0.8), (tear, 0.4), (wet, 0.8, 0.05), (thud, 0.8, 0.08), (suck, 0.5, 0.25), (hum, 0.5, 0.1)), 1.8)
+    return cavern(lowpass2(sig, 3000), 0.3, 2.2)
+
+
+@sound
+def hollow_shard_pickup():
+    """The player takes an ember shard back: a warm low toll, a rising minor-third glow and an ember settling."""
+    dur = 1.4
+    t1 = toll(dur, 196, 2.2)
+    t2 = toll(dur, 233, 1.8)
+    glow = swell(lowpass2(tone(1.0, sweep(180, 235, 1.0), 'saw'), 700), 0.55)
+    warm = formant(stack(1.0, sweep(98, 117, 1.0), 'saw', 4, 20, 750), 'o', 0.9)
+    crackle = lowpass2(amp(clicks(0.8, 18, 0.005, (400, 1100), seed=751), lambda t: math.exp(-t / 0.4)), 1300)
+    thud = thump(0.4, 100, 50, 0.2)
+    sig = saturate(mix((t1, 0.8), (t2, 0.45, 0.09), (glow, 0.4), (normalize(warm), 0.35), (crackle, 0.3, 0.05), (thud, 0.5)), 1.5)
+    return cavern(lowpass2(sig, 2400), 0.35, 2.6)
+
+
+@sound
+def hollow_flare():
+    """The hollow flares open: an inward gasp, then a hollow violet boom with a ringing, wide void pulse."""
+    dur = 1.3
+    gasp = amp(reverse(lowpass2(noise(0.45, 'pink', seed=760), lambda t: 200 + 1100 * t / 0.45)), lambda t: 1.0)
+    boom = impact(1.0, weight=1.0, body=90, crack=0.2, seed=761, room=0)
+    ring = mix((toll(dur, 147, 2.0), 0.6), (toll(dur, 208, 1.6), 0.35))
+    pulse = tremolo(env(lowpass2(tone(dur, sweep(110, 70, dur), 'saw'), 600), 0.02, 0.5), 6, 0.6)
+    sig = saturate(mix((gasp, 0.7), (boom, 1.0, 0.4), (ring, 0.6, 0.4), (pulse, 0.5, 0.4)), 2.0)
+    return cavern(lowpass2(sig, 2400), 0.45, 3.0)
+
+
+@sound
+def hollow_echo():
+    """An echo ghost appears: a hollow whisper pulled in from the void, a soft thud and a faint delayed copy."""
+    dur = 1.2
+    whisper = reverse(bandpass(noise(0.6, 'pink', seed=770), lambda t: 250 + 500 * t / 0.6, 3.0))
+    voice = reverse(env(void_voice(0.7, 90, 66, 771), 0.01, 0.5))
+    pop = impact(0.5, weight=0.4, body=100, crack=0.1, seed=772, room=0)
+    base = mix((amp(whisper, lambda t: 0.8), 0.7), (voice, 0.6), (pop, 0.8, 0.45))
+    ghost = lowpass2(base, 700)
+    sig = saturate(mix((base, 1.0), (ghost, 0.5, 0.28)), 1.6)
+    return cavern(lowpass2(sig, 2200), 0.5, 3.0)
+
+
+@sound
+def hollow_swap():
+    """It changes to another copied skill: a short hollow gulp and a low violet slide between two pitches."""
+    dur = 0.7
+    gulp = squelch(0.25, 300, 100, 3.0, seed=780)
+    slide = env(lowpass2(tone(0.5, sweep(160, 105, 0.5), 'saw'), 800), 0.02, 0.25)
+    ring = toll(dur, 123, 1.0)
+    swish = whoosh(0.35, 400, 1200, q=1.2, peak=0.3, seed=781, color='pink')
+    sig = saturate(mix((gulp, 0.8), (slide, 0.7, 0.05), (ring, 0.4, 0.12), (swish, 0.5, 0.05)), 1.6)
+    return cavern(lowpass2(sig, 2400), 0.3, 2.0)
+
+
+@sound
+def hollow_death():
+    """The double shrinks to a puddle: shards rushing back, a warm ember flaring in the hollow, a slow seep into glass."""
+    dur = 2.5
+    rush = reverse(lowpass2(noise(0.9, 'pink', seed=790), lambda t: 300 + 1500 * t / 0.9))
+    shards = amp(clatter(1.0, 30, (300, 1400), 791, accel=0.8), lambda t: 1 - 0.7 * t)
+    warm = swell(toll(1.2, 98, 1.5), 0.4)
+    ember = shaped(lowpass2(growl(1.0, 70, 48, 0.7, ('o', 'u'), seed=792, rate=14), 1500), 0.1, 0.3, 0.3)
+    shrink = resample(env(void_voice(1.6, 90, 70, 793), 0.01, 0.8), 0.6)
+    seep = amp(lowpass2(noise(1.4, 'brown', seed=794), lambda t: 500 * math.exp(-t / 0.5) + 70), lambda t: math.exp(-t / 0.55))
+    glass = env(thump(0.5, 70, 38, 0.3), 0.003, 0.3)
+    low = sub(dur, 48, 30, dur * 0.7, 0.2)
+    sig = saturate(mix((normalize(rush), 0.6), (shards, 0.6, 0.3), (warm, 0.5, 0.6), (ember, 0.8, 0.6),
+                       (shrink, 0.7, 0.9), (normalize(seep), 0.7, 1.1), (glass, 0.8, 1.8), (low, 0.15, 0.5)), 1.8)
+    return cavern(lowpass2(sig, 2200), 0.5, 3.6)
+
+
+@loop
+def amb_hollow():
+    """The black glass arena: a hollow, glassy drone, faint reflected ember ticks and long cold resonances."""
+    length, xf = 16.0, 1.0
+    dur = length + xf
+    # glass wind: a resonant band drifting slowly, like breath over a mirror
+    wind = bandpass(noise(dur, 'pink', seed=800), lambda t: 200 + 90 * math.sin(TAU * t / 8.0) + 50 * math.sin(TAU * t / 3.2), 4.0)
+    wind = amp(normalize(wind), lambda t: 0.5 + 0.4 * math.sin(TAU * t / 16.0 + 1) + 0.1 * math.sin(TAU * t / 4.0))
+    rumble = lowpass2(noise(dur, 'brown', seed=801), 80)
+    bed = noise_bed(mix((wind, 1.6), (rumble, 0.12)), xf)
+    # hollow drone: a minor second beating slowly, through a dark 'u'
+    voices = [(whole(f, length) + d / length) for f in (82.5, 87.3, 110) for d in (-1, 0, 1)]
+    drone = cyclic(lambda s: formant(s, 'u', 0.85), [sum(x) / len(voices) for x in zip(
+        *[tone(length, f, 'saw') for f in voices])], 1.0)
+    drone = amp(normalize(drone), lambda t: 0.55 + 0.45 * math.sin(TAU * t / (length / 2)))
+    # reflected embers: sparse, dull ticks and cold toll tails at fixed seeded times
+    rng = random.Random(802)
+    ticks = [0.0] * n(length)
+    for _ in range(10):
+        tk = amp(clatter(0.2, 40, (250, 900), rng.randint(0, 9999)), lambda t: math.exp(-t / 0.05))
+        put(ticks, [x * rng.uniform(0.3, 0.8) for x in tk], rng.uniform(0, length))
+    for at, f in ((2.0, 82.5), (7.5, 62), (12.5, 73)):
+        put(ticks, [x * 0.35 for x in toll(3.0, f, 1.4)], at)
+    ticks = cyclic(lambda s: cavern(lowpass2(s, 900), 0.5, 3.0), ticks, 3.0)
+    return mix((bed, 1.0), (drone, 0.5), (ticks, 0.7))
