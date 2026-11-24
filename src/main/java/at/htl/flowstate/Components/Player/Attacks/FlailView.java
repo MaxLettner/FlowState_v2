@@ -6,10 +6,9 @@ import javafx.geometry.Point2D;
 import javafx.scene.Group;
 import javafx.scene.image.ImageView;
 import javafx.scene.transform.Rotate;
-import javafx.scene.transform.Translate;
 
 /**
- * The chained Morningstar in world coordinates (its entity stays at 0, 0): the grip in the hand, a chain of links
+ * The chained Morningstar, drawn relative to the hand (put its entity at the hand): the grip in the hand, a chain of links
  * through the given joints, the spiked ball on the last joint. Links alternate face-on rings and edge-on links.
  */
 public class FlailView extends Group {
@@ -17,7 +16,6 @@ public class FlailView extends Group {
     private static final double GRIP = 6;   // how far the grip sticks out behind the hand
     private static final int SCALE = 2;
 
-    private final Translate handleAt = new Translate();
     private final Rotate handleTurn = new Rotate();
     private final ImageView[] links;
     private final ImageView head;
@@ -25,7 +23,7 @@ public class FlailView extends Group {
     /** @param linkCount number of chain segments (joints - 1) */
     public FlailView(int linkCount) {
         Group handle = new Group(WeaponArt.tipAt(HANDLE, handleLength(), 0, 1));
-        handle.getTransforms().addAll(handleAt, handleTurn);
+        handle.getTransforms().add(handleTurn);
 
         links = new ImageView[linkCount];
         for (int i = 0; i < linkCount; i++) {
@@ -53,19 +51,17 @@ public class FlailView extends Group {
      * @param joints chain joints: [0] at the grip's tip, the last one is the ball's centre
      */
     public void draw(Point2D hand, Point2D[] joints) {
-        handleAt.setX(hand.getX());
-        handleAt.setY(hand.getY());
         handleTurn.setAngle(degrees(hand, joints[0]));
 
         for (int i = 0; i < links.length; i++) {
-            Point2D a = joints[i], b = joints[i + 1];
+            Point2D a = joints[i].subtract(hand), b = joints[i + 1].subtract(hand);
             ImageView link = links[i];
             link.setTranslateX((a.getX() + b.getX()) / 2 - link.getImage().getWidth() / 2);
             link.setTranslateY((a.getY() + b.getY()) / 2 - link.getImage().getHeight() / 2);
             link.setRotate(degrees(a, b));
         }
 
-        Point2D last = joints[joints.length - 1];
+        Point2D last = joints[joints.length - 1].subtract(hand);
         head.setTranslateX(last.getX() - head.getImage().getWidth() / 2);
         head.setTranslateY(last.getY() - head.getImage().getHeight() / 2);
         head.setRotate(degrees(joints[joints.length - 2], last));

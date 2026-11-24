@@ -17,18 +17,22 @@ import java.util.Set;
 /**
  * The Morningstar's tap: the chain is lashed like a whip. The grip swings through the same windup / strike /
  * follow-through as a blade (see MeleeSwingComponent), and every link follows the grip's path a little later
- * than the one before, so the chain curls behind the hand and the ball cracks through last.
+ * than the one before, so the chain loops out from the hand and the ball cracks through last. A forward lash then
+ * stays stretched out for a moment and sags slowly while it fades (a down-lash just fades).
  * The whole chain hits while it moves through its strike; each enemy is hit at most once.
  */
 public class FlailWhipComponent extends Component {
     private static final double PULL_BACK = 28;       // extra degrees of windup
-    private static final double OVERSHOOT = 14;       // degrees past the end during the follow-through
+    private static final double OVERSHOOT = 10;       // degrees past the end during the follow-through
     private static final double LINK_LENGTH = 10;
-    private static final double TIP_LAG = 0.12;       // seconds the ball trails the grip
+    private static final double TIP_LAG = 0.14;       // seconds the ball trails the grip
+    private static final double HOLD = 0.1;           // seconds a forward lash stays stretched out
+    private static final double SAG_TIME = 0.25;      // then it sags and fades over this long
+    private static final double SAG = 60;             // degrees the ball sinks by the end
     private static final double SUB_STEP = 0.005;     // seconds between collision checks
     private static final double LINK_RADIUS = 8;
     private static final double HEAD_RADIUS = 16;
-    private static final double FADE = 0.12;
+    private static final double FADE = 0.12;          // a down-lash just fades
 
     private final Entity player = Game.getPlayer();
     private final MeleeSwingComponent.Params p;
@@ -62,7 +66,7 @@ public class FlailWhipComponent extends Component {
 
     @Override
     public void onAdded() {
-        view.draw(hand(), joints(0));
+        draw();
     }
 
     @Override
@@ -80,10 +84,18 @@ public class FlailWhipComponent extends Component {
         List<Entity> projectiles = new ArrayList<>(FXGL.getGameWorld().getEntitiesByComponent(EnemyProjectileComponent.class));
         for (int i = 1; i <= steps; i++) sweep(before + (elapsed - before) * i / steps, projectiles);
 
-        view.draw(hand(), joints(elapsed));
-        double end = p.duration + TIP_LAG;
-        entity.setOpacity(Math.max(0, Math.min(1, (end - elapsed) / FADE)));
+        draw();
+        double out = p.duration + TIP_LAG;    // the ball has settled
+        double end = p.down ? out : out + HOLD + SAG_TIME;
+        double fade = p.down ? FADE : SAG_TIME;
+        entity.setOpacity(Math.max(0, Math.min(1, (end - elapsed) / fade)));
         if (elapsed >= end) entity.removeFromWorld();
+    }
+
+    private void draw() {
+        Point2D hand = hand();
+        entity.setPosition(hand);
+        view.draw(hand, joints(elapsed));
     }
 
     //-----Motion-----
@@ -109,12 +121,20 @@ public class FlailWhipComponent extends Component {
         return TIP_LAG * joint / linkCount;
     }
 
+    /** Degrees joint i has sunk under its own weight once a forward lash has held for a moment. */
+    private double sag(double time, int joint) {
+        if (p.down) return 0;
+        double k = Math.max(0, Math.min(1, (time - p.duration - TIP_LAG - HOLD) / SAG_TIME));
+        return sign * SAG * k * k * joint / linkCount;
+    }
+
     private Point2D[] joints(double time) {
         Point2D hand = hand();
         Point2D[] joints = new Point2D[linkCount + 1];
         joints[0] = hand.add(direction(gripAngle(time)).multiply(FlailView.handleLength()));
         for (int i = 1; i <= linkCount; i++) {
-            joints[i] = joints[i - 1].add(direction(gripAngle(time - lag(i))).multiply(LINK_LENGTH));
+            double angle = gripAngle(time - lag(i)) + sag(time, i);
+            joints[i] = joints[i - 1].add(direction(angle).multiply(LINK_LENGTH));
         }
         return joints;
     }

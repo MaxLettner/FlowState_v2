@@ -55,6 +55,7 @@ public class FlailSpinComponent extends Component {
 
     private void draw() {
         Point2D hand = player.getCenter();
+        entity.setPosition(hand);
         Point2D[] joints = new Point2D[linkCount + 1];
         joints[0] = hand.add(direction(angle).multiply(FlailView.handleLength()));
         for (int i = 1; i <= linkCount; i++) {

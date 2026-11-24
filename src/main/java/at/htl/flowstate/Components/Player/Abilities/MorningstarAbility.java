@@ -20,6 +20,8 @@ import com.almasb.fxgl.entity.Entity;
 public class MorningstarAbility extends MeleeAbility {
     private static final MeleeSpec SPEC = MeleeSpec.MORNINGSTAR;
     private static final double HOLD_THRESHOLD = 0.25;
+    private static final double WHIP_FROM = -120, WHIP_TO = 8;   // overhead behind -> straight out, just below level
+    private static final double WHIP_REACH = 1.4;                // the lash reaches further than the old staff
     private static final double SPIN_TICK = 0.4;
     private static final double SPIN_MAX = 3.0;
     private static final double SPIN_MAX_PER_STRENGTH = 0.2;   // +20% spin time per Strength rank: x3 at rank 10
@@ -60,7 +62,7 @@ public class MorningstarAbility extends MeleeAbility {
 
     private void tapSwing() {
         // a heavy flail: wide arc, slow pull back, whipping strike
-        Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), false);
+        Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), false, WHIP_FROM, WHIP_TO);
         slash.params().windup(0.3).strike(0.24);
         launch(SPEC, slash);
         cooldown(SPEC.interval());
@@ -69,7 +71,7 @@ public class MorningstarAbility extends MeleeAbility {
     @Override
     protected Entity spawnSwing(MeleeSpec spec, MeleeSwingComponent.Params params, double size) {
         params.sound(Sfx.FLAIL_SWING, 1);
-        return FlailWhipComponent.spawn(params, spec.reach() * size);
+        return FlailWhipComponent.spawn(params, spec.reach() * WHIP_REACH * size);
     }
 
     @Override

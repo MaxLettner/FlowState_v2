@@ -125,9 +125,14 @@ public abstract class MeleeAbility extends Ability implements MeleeSwingComponen
      * S is held in the air. Applies flow. Tune it via {@code params()}, then {@link #launch} it.
      */
     protected Slash slash(Hit hit, double duration, boolean reverse) {
+        return slash(hit, duration, reverse, SLASH_FROM, SLASH_TO);
+    }
+
+    /** Like {@link #slash(Hit, double, boolean)} with its own forward arc (right-facing screen angles). */
+    protected Slash slash(Hit hit, double duration, boolean reverse, double forwardFrom, double forwardTo) {
         boolean down = wantsDownSlash();
-        double from = down ? DOWN_FROM : SLASH_FROM;
-        double to = down ? DOWN_TO : SLASH_TO;
+        double from = down ? DOWN_FROM : forwardFrom;
+        double to = down ? DOWN_TO : forwardTo;
         if (reverse && !down) {
             double t = from;
             from = to;
