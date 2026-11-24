@@ -1,4 +1,4 @@
-"""The Pit Lord, the Void Matriarch, the Tar Hydra and their arenas."""
+"""The Pit Lord, the Void Matriarch, the Tar Hydra and their arenas: enormous, layered, long cavern tails."""
 import math
 import random
 
@@ -6,135 +6,311 @@ from synth import *  # noqa: F401,F403  (the DSP toolbox: tone, noise, reverb, c
 from common import *  # noqa: F401,F403  (sound, loop, whoosh, thump, squelch, chord, shimmer, impact)
 
 
+#-----Helpers-----
+def growl(dur, f0, f1, shift, vowels=('a', 'o'), seed=None, voices=6, cents=60, rate=34, depth=0.5):
+    """A creature's throat: a detuned saw stack, chopped by a growl tremolo, morphing between two vowels."""
+    pitch = sweep(f0, f1, dur)
+    src = stack(dur, lambda t: pitch(t) * (1 + 0.012 * math.sin(TAU * 5.3 * t) + 0.006 * math.sin(TAU * 11.7 * t)),
+                'saw', voices, cents, seed)
+    src = tremolo(src, rate, depth)
+    a = formant(src, vowels[0], shift)
+    b = formant(src, vowels[1], shift)
+    return normalize(mix((amp(a, lambda t: 1 - min(1.0, t / dur)), 1.0), (amp(b, lambda t: min(1.0, t / dur)), 1.0)))
+
+
+def shaped(sig, attack, hold, tau):
+    """Fade in over attack, stay until hold, then fall exponentially with time constant tau."""
+    return amp(sig, lambda t: min(1.0, t / attack) * math.exp(-max(0.0, t - hold) / tau))
+
+
+def clatter(dur, rate, freq, seed, accel=0.0):
+    """Chitin and stone debris: dark, soft-edged ticks."""
+    return lowpass2(clicks(dur, rate, 0.005, freq, seed=seed, accel=accel), 2400)
+
+
+#-----Pit Lord-----
 @sound
 def boss_roar():
-    dur = 1.6
-    voice = mix((tone(dur, sweep(55, 40, dur), 'saw', vibrato=3, vib_rate=5), 0.8),
-                (tone(dur, sweep(82, 61, dur), 'saw', vibrato=4, vib_rate=4), 0.5),
-                (tone(dur, sweep(110, 80, dur), 'square', vibrato=5, vib_rate=6), 0.2))
-    throat = bandpass(noise(dur, 'pink', seed=267), lambda t: 300 + 260 * math.sin(math.pi * min(1.0, t / dur)), 1.2)
-    sig = lowpass(drive(mix((voice, 0.8), (throat, 0.8)), 2.6), 1300)
-    return amp(sig, lambda t: min(1.0, t / 0.2) * math.exp(-max(0.0, t - 0.9) / 0.35))
+    """The Pit Lord's roar: two stacked saw throats (one resampled an octave down) with a hellfire breath and sub."""
+    dur = 1.9
+    throat = growl(dur, 88, 58, 0.8, ('a', 'o'), seed=401)
+    big = resample(growl(dur * 0.62, 118, 82, 0.8, ('o', 'a'), seed=402, rate=40, depth=0.6), 0.62)
+    breath = amp(bandpass(noise(dur, 'pink', seed=403), lambda t: 500 + 700 * math.sin(math.pi * min(1.0, t / dur)), 1.0),
+                 lambda t: min(1.0, t / 0.3))
+    fire = highpass2(lowpass2(noise(dur, 'brown', seed=404), 1000), 110)
+    low = sub(dur, 62, 36, dur * 0.9, 0.08)
+    sig = saturate(mix((throat, 1.0), (big, 0.8), (normalize(breath), 0.45), (fire, 0.5), (low, 0.15)), 2.6)
+    sig = shaped(lowpass2(sig, 3200), 0.1, 1.0, 0.4)
+    return cavern(sig, 0.45, 3.6)
 
 
 @sound
 def gate_slam():
-    roar = env(lowpass(noise(1.2, 'pink', seed=268), 1200), 0.01, 1.1)
-    return mix((thump(0.8, 90, 30), 1.0), (roar, 0.7), (lowpass(clicks(1.0, 25, 0.006, (500, 2500), seed=269), 4000), 0.4))
+    """A colossal iron gate slamming in hellfire: sub boom, iron toll and chains, a rolling furnace roar, debris."""
+    dur = 1.6
+    boom = impact(dur, weight=0.9, body=130, crack=0.9, seed=410, room=0)
+    iron = toll(2.2, 92, 1.1)
+    chains = amp(clatter(1.2, 70, (300, 1400), 411), lambda t: math.exp(-t / 0.35))
+    fire = shaped(lowpass2(noise(1.6, 'pink', seed=412), lambda t: 1800 * math.exp(-t / 0.5) + 350), 0.02, 0.1, 0.5)
+    rubble = amp(clatter(1.4, 30, (200, 900), 413), lambda t: math.exp(-t / 0.5))
+    sig = saturate(mix((boom, 1.0), (iron, 0.5, 0.01), (chains, 0.5, 0.03), (fire, 1.4, 0.02), (rubble, 0.6, 0.2)), 1.8)
+    return cavern(lowpass2(sig, 4000), 0.55, 4.2)
 
 
+#-----Void Matriarch-----
 @sound
 def matriarch_screech():
-    """A huge spider's shriek: a chittering, ringing scream over a low void drone."""
-    dur = 1.4
-    scream = tone(dur, sweep(1300, 700, dur), 'saw', vibrato=60, vib_rate=23)
-    chitter = tremolo(bandpass(noise(dur, seed=320), sweep(3200, 1500, dur), 2.0), 31, 0.85)
-    drone = lowpass(mix((tone(dur, sweep(70, 52, dur), 'saw'), 0.6), (tone(dur, sweep(105, 78, dur), 'sine'), 0.4)), 500)
-    ring = shimmer(dur, 2500, 5200, seed=321)
-    sig = lowpass(drive(mix((scream, 0.55), (chitter, 0.6), (drone, 0.6), (ring, 0.12)), 1.9), 4200)
-    return amp(sig, lambda t: min(1.0, t / 0.08) * math.exp(-max(0.0, t - 0.7) / 0.3))
+    """A chitinous void shriek: a raspy 'e'-'i' throat over a hollow void drone, with a chittering clatter."""
+    dur = 1.5
+    rasp = growl(dur, 520, 330, 0.9, ('e', 'i'), seed=420, voices=5, cents=90, rate=47, depth=0.8)
+    drone = growl(dur, 74, 50, 0.8, ('u', 'o'), seed=421, rate=9, depth=0.4)
+    chitter = tremolo(clatter(dur, 55, (600, 2200), 422), 31, 0.8)
+    air = amp(bandpass(noise(dur, 'pink', seed=423), sweep(900, 400, dur), 1.5), lambda t: min(1.0, t / 0.2))
+    low = sub(dur, 55, 34, dur * 0.8)
+    sig = saturate(mix((rasp, 0.7), (drone, 0.7), (chitter, 0.5), (normalize(air), 0.25), (low, 0.25)), 2.2)
+    sig = shaped(lowpass2(sig, 3800), 0.08, 0.7, 0.35)
+    return cavern(sig, 0.4, 3.2)
 
 
-@sound
-def thread_twang():
-    """A taut strand plucked: a low, bent twang."""
-    dur = 0.6
-    pl = pluck(dur, 98, 0.995, 0.6, seed=328)
-    bend = env(tone(dur, sweep(196, 150, dur), 'sine'), 0.002, 0.4)
-    return lowpass(mix((pl, 0.8), (bend, 0.35)), 2500)
+@sound(variants=3)
+def thread_twang(v):
+    """A taut strand plucked: a low Karplus-Strong string with a bent sine under it and a short hollow tail."""
+    dur = 0.8
+    f = 92 * (1.0, 1.06, 0.94)[v]
+    string = pluck(dur, f, 0.997, 0.45, seed=430 + v)
+    bend = env(tone(dur, sweep(f * 2.2, f * 1.5, dur)), 0.002, 0.5)
+    body = sub(0.5, f * 0.8, f * 0.5, 0.4)
+    sig = saturate(mix((string, 0.9), (bend, 0.3), (body, 0.35)), 1.6)
+    return cavern(lowpass2(sig, 2400), 0.2, 2.2)
 
 
-@sound
-def thread_snap():
-    """A strand snapping: a sharp crack and a whipping release."""
-    crack = env(highpass(noise(0.06, seed=322), 1500), 0.001, 0.05)
-    whip = whoosh(0.3, 600, 3500, q=2.5, peak=0.3, seed=323)
-    pl = env(tone(0.35, sweep(260, 70, 0.35), 'saw'), 0.001, 0.25)
-    return mix((crack, 1.0), (lowpass(pl, 1800), 0.5, 0.01), (whip, 0.6, 0.02))
+@sound(variants=3)
+def thread_snap(v):
+    """A strand snapping: a dark crack, a whipping release and a falling saw, with a dull body thud."""
+    crack = env(highpass2(noise(0.07, seed=440 + v), 1200), 0.0008, 0.05)
+    whip = whoosh(0.35, 400, 2600, q=2.0, peak=0.3, seed=441 + v)
+    fall = env(lowpass2(tone(0.45, sweep(300, 62, 0.45), 'saw'), 1400), 0.001, 0.3)
+    body = impact(0.4, weight=0.6, body=105 - 6 * v, crack=0.2, seed=442 + v, room=0)
+    sig = mix((crack, 0.9), (whip, 0.5, 0.01), (fall, 0.6, 0.01), (body, 0.7))
+    return cavern(sig, 0.25, 2.4)
 
 
-@sound
-def egg_hatch():
-    """A silk sac tearing open: a wet rip and skittering legs."""
-    rip = squelch(0.25, 2400, 700, 2.5, seed=324)
-    skitter = lowpass(clicks(0.5, 60, 0.002, (2500, 6000), seed=325), 7000)
-    return mix((rip, 1.0), (amp(skitter, lambda t: math.exp(-t / 0.3)), 0.6, 0.12))
+@sound(variants=3)
+def egg_hatch(v):
+    """A silk sac tearing open: a wet rip, a cracking shell, a hollow thud and skittering legs."""
+    rip = squelch(0.3, 1500, 350, 2.5, seed=450 + v)
+    shell = amp(clatter(0.35, 90, (500, 1800), 451 + v), lambda t: math.exp(-t / 0.12))
+    thud = impact(0.4, weight=0.5, body=95, crack=0.1, seed=452 + v, room=0)
+    skitter = amp(clatter(0.7, 55, (400, 1500), 453 + v), lambda t: math.exp(-t / 0.35))
+    sig = mix((rip, 1.0), (shell, 0.7), (thud, 0.8, 0.02), (skitter, 0.5, 0.15))
+    return cavern(lowpass2(sig, 3200), 0.3, 2.5)
 
 
 @sound
 def silk_spin():
-    """Silk paying out fast: a hissing, rising whirr."""
-    dur = 0.7
-    hiss = bandpass(noise(dur, seed=326), sweep(1800, 4200, dur), 3.0)
-    whirr = tremolo(tone(dur, sweep(320, 520, dur), 'square'), 45, 0.8)
-    return env(mix((hiss, 0.7), (lowpass(whirr, 1500), 0.3)), 0.05, dur)
+    """Silk paying out fast: a rising friction hiss over a low creaking whirr, dark and hollow."""
+    dur = 0.75
+    hiss = lowpass2(bandpass(noise(dur, seed=460), sweep(900, 2600, dur), 2.5), 3000)
+    whirr = tremolo(lowpass2(tone(dur, sweep(90, 160, dur), 'saw'), 700), 38, 0.85)
+    hollow = amp(bandpass(noise(dur, 'pink', seed=461), sweep(260, 420, dur), 4.0), lambda t: min(1.0, t / 0.2))
+    sig = env(mix((normalize(hiss), 0.5), (whirr, 0.5), (normalize(hollow), 0.5)), 0.08, dur)
+    return cavern(sig, 0.2, 2.2)
 
 
 @sound
 def lights_out():
-    """The arena going dark: a long falling swell that swallows the room."""
-    dur = 2.2
-    fall = mix((tone(dur, sweep(220, 40, dur), 'saw'), 0.4), (tone(dur, sweep(330, 60, dur), 'sine'), 0.4))
-    air = lowpass(noise(dur, 'pink', seed=327), sweep(3000, 200, dur))
-    return amp(lowpass(mix((fall, 0.7), (air, 0.6)), 1600), lambda t: min(1.0, t / 0.4) * math.exp(-max(0.0, t - 1.4) / 0.4))
+    """The arena going dark: an inward choir swell and swallowed air, then a sub boom and a long falling drone."""
+    dur = 2.8
+    choir = amp(formant(stack(dur, sweep(58, 52, dur), 'saw', 6, 50, seed=470), 'o', 0.85),
+                lambda t: min(1.0, (t / 1.3) ** 2))
+    air = lowpass2(noise(dur, 'pink', seed=471), sweep(2800, 140, dur))
+    boom = mix((sub(1.6, 70, 28, 1.4), 1.0), (lowpass2(noise(1.2, 'brown', seed=472), 140), 0.8), (impact(1.0, 0.8, 100, 0.1, 473, 0), 0.5))
+    fall = lowpass2(tone(dur, sweep(240, 40, dur), 'saw'), 700)
+    sig = saturate(mix((normalize(choir), 1.0), (normalize(air), 0.5), (boom, 0.55, 1.2), (fall, 0.7)), 1.8)
+    sig = shaped(sig, 0.5, 1.7, 0.45)
+    return cavern(sig, 0.55, 4.5)
 
 
 @sound
 def acid_spit():
-    """The Matriarch spitting acid: a wet, throaty hock and a hissing spray."""
-    hock = squelch(0.22, 520, 170, 3.0, seed=330)
-    gurgle = env(tremolo(lowpass(noise(0.25, 'brown', seed=331), 700), 28, 0.7), 0.01, 0.22)
-    spray = env(bandpass(noise(0.45, seed=332), sweep(2400, 5200, 0.45), 2.0), 0.01, 0.35)
-    return mix((gurgle, 0.7), (hock, 1.0, 0.08), (spray, 0.55, 0.16))
+    """The Matriarch spitting acid: a throaty hock and gurgle, a hollow slap and a hissing spray."""
+    hock = squelch(0.25, 480, 150, 3.0, seed=480)
+    gurgle = env(tremolo(lowpass2(noise(0.3, 'brown', seed=481), 650), 26, 0.7), 0.01, 0.26)
+    throat = env(formant(stack(0.25, sweep(120, 70, 0.25), 'saw', 4, 80, seed=482), 'o', 0.8), 0.01, 0.2)
+    thud = sub(0.3, 110, 50, 0.2)
+    spray = env(lowpass2(bandpass(noise(0.5, seed=483), sweep(2200, 4200, 0.5), 2.0), 5000), 0.01, 0.38)
+    sig = mix((gurgle, 0.7), (hock, 1.0, 0.06), (normalize(throat), 0.5), (thud, 0.25, 0.05), (spray, 0.5, 0.14))
+    return cavern(sig, 0.3, 2.4)
 
 
-@sound
-def acid_sizzle():
-    """Acid eating into stone: a fizzing hiss with little popping bubbles."""
-    dur = 0.9
-    hiss = env(highpass(noise(dur, seed=333), 3200), 0.015, dur * 0.8)
-    pops = lowpass(clicks(dur, 40, 0.004, (800, 3000), seed=334), 5000)
-    return mix((tremolo(hiss, 17, 0.4), 0.6), (amp(pops, lambda t: math.exp(-t / 0.5)), 0.5))
+@sound(variants=3)
+def acid_sizzle(v):
+    """Acid eating into stone: a fizzing hiss with thick low bubbling pops."""
+    dur = 1.0
+    hiss = env(highpass2(noise(dur, seed=490 + v), 2800), 0.015, dur * 0.85)
+    fizz = tremolo(hiss, 17 + 3 * v, 0.4)
+    bubbles = amp(clatter(dur, 34, (150, 700), 491 + v), lambda t: math.exp(-t / 0.55))
+    wet = env(lowpass2(noise(dur, 'pink', seed=492 + v), 900), 0.02, dur * 0.8)
+    sig = mix((fizz, 0.45), (bubbles, 0.9), (wet, 0.4))
+    return cavern(sig, 0.2, 2.0)
 
 
+#-----Tar Hydra-----
 @sound
 def hydra_roar():
-    """A Tar Hydra head roaring: a low, wet bellow with tar bubbling in the throat."""
-    dur = 1.3
-    voice = mix((tone(dur, sweep(62, 48, dur), 'saw', vibrato=4, vib_rate=5), 0.7),
-                (tone(dur, sweep(93, 70, dur), 'saw', vibrato=5, vib_rate=4), 0.45),
-                (tone(dur, sweep(140, 104, dur), 'square', vibrato=6, vib_rate=7), 0.15))
-    throat = bandpass(noise(dur, 'pink', seed=340), lambda t: 300 + 260 * math.sin(math.pi * min(1.0, t / dur)), 1.2)
-    gurgle = tremolo(lowpass(noise(dur, 'brown', seed=341), 600), 19, 0.8)
-    sig = lowpass(drive(mix((voice, 0.8), (throat, 0.6), (gurgle, 0.5)), 2.4), 1600)
-    return amp(sig, lambda t: min(1.0, t / 0.15) * math.exp(-max(0.0, t - 0.75) / 0.25))
+    """A Tar Hydra head roaring: a deep 'u'-'o' bellow with a tar gurgle in the throat and a molten breath."""
+    dur = 1.5
+    voice = growl(dur, 72, 50, 0.7, ('u', 'o'), seed=500, voices=6, cents=70, rate=22, depth=0.55)
+    big = resample(growl(dur * 0.65, 105, 78, 0.75, ('o', 'u'), seed=501, rate=18, depth=0.6), 0.65)
+    gurgle = tremolo(bandpass(noise(dur, 'brown', seed=502), lambda t: 280 + 200 * math.sin(TAU * 3 * t), 2.5), 19, 0.85)
+    breath = lowpass2(noise(dur, 'pink', seed=503), 1100)
+    low = sub(dur, 56, 34, dur * 0.9, 0.08)
+    sig = saturate(mix((voice, 1.0), (big, 0.8), (normalize(gurgle), 0.8), (highpass2(breath, 100), 0.6), (low, 0.15)), 2.6)
+    sig = shaped(lowpass2(sig, 2400), 0.15, 0.8, 0.35)
+    return cavern(sig, 0.45, 3.4)
 
 
 @sound
 def tar_spit():
-    """The spitter hocking a glob of burning tar: a thick gulp, then a fiery whoosh."""
-    gulp = squelch(0.2, 320, 110, 3.5, seed=342)
-    whoosh_ = whoosh(0.5, 300, 1800, q=1.2, peak=0.3, seed=343)
-    roar = env(lowpass(noise(0.45, 'brown', seed=344), 900), 0.02, 0.4)
-    return mix((gulp, 1.0), (whoosh_, 0.6, 0.06), (roar, 0.5, 0.05))
+    """The spitter hocking a glob of burning tar: a thick gulp, a molten whoosh and a low furnace flare."""
+    gulp = squelch(0.25, 300, 90, 3.5, seed=510)
+    body = thump(0.3, 110, 48, 0.25)
+    flare = whoosh(0.55, 200, 1300, q=1.1, peak=0.35, seed=511)
+    roar = env(lowpass2(noise(0.5, 'brown', seed=512), 800), 0.03, 0.45)
+    pops = amp(clatter(0.5, 40, (200, 900), 513), lambda t: math.exp(-t / 0.3))
+    sig = saturate(mix((gulp, 1.0), (body, 0.6, 0.02), (flare, 0.6, 0.06), (roar, 0.6, 0.05), (pops, 0.4, 0.1)), 1.6)
+    return cavern(sig, 0.25, 2.4)
 
 
-@sound
-def tar_splash():
-    """A glob of tar landing: a heavy wet slap, sizzling flames."""
-    slap = squelch(0.3, 420, 90, 2.2, seed=345)
-    thud = thump(0.35, 90, 40)
-    hiss = env(highpass(noise(0.7, seed=346), 2800), 0.01, 0.6)
-    pops = lowpass(clicks(0.6, 25, 0.006, (500, 2000), seed=347), 3500)
-    return mix((slap, 1.0), (thud, 0.6), (hiss, 0.35, 0.05), (amp(pops, lambda t: math.exp(-t / 0.3)), 0.4, 0.05))
+@sound(variants=3)
+def tar_splash(v):
+    """A glob of tar landing: a heavy wet slap, a sub thump, a thick churn and a sizzle of burning bubbles."""
+    dur = 1.0
+    slap = squelch(0.35, 480 - 40 * v, 80, 2.0, seed=520 + v)
+    thud = impact(0.7, weight=0.5, body=110 + 8 * v, crack=0.1, seed=521 + v, room=0)
+    churn = env(lowpass2(noise(dur, 'pink', seed=522 + v), lambda t: 1100 * math.exp(-t / 0.4) + 300), 0.01, 0.8)
+    hiss = env(highpass2(noise(0.8, seed=523 + v), 2600), 0.01, 0.6)
+    pops = amp(clatter(0.8, 25, (180, 900), 524 + v), lambda t: math.exp(-t / 0.4))
+    sig = mix((slap, 0.9), (thud, 0.8), (churn, 1.0), (hiss, 0.15, 0.04), (pops, 0.5, 0.08))
+    return cavern(sig, 0.3, 2.6)
 
 
 @sound
 def tar_wave():
-    """A wave of tar rolling over the lake: a long churning wash with a low rumble under it."""
-    dur = 1.8
-    wash = bandpass(noise(dur, 'pink', seed=348), lambda t: 500 + 700 * math.sin(math.pi * min(1.0, t / dur)), 0.9)
-    rumble = lowpass(noise(dur, 'brown', seed=349), 220)
-    glug = tremolo(lowpass(noise(dur, 'brown', seed=350), 700), 9, 0.7)
-    sig = mix((wash, 0.6), (rumble, 0.9), (glug, 0.4))
-    return amp(sig, lambda t: min(1.0, t / 0.35) * math.exp(-max(0.0, t - 1.1) / 0.3))
+    """A wave of tar rolling over the lake: a long churning wash, thick glugs and a deep surge under it."""
+    dur = 2.0
+    wash = bandpass(noise(dur, 'pink', seed=530), lambda t: 300 + 900 * math.sin(math.pi * min(1.0, t / dur)), 0.9)
+    churn = tremolo(highpass2(lowpass2(noise(dur, 'brown', seed=531), 800), 90), 7, 0.7)
+    surge = highpass2(lowpass2(noise(dur, 'brown', seed=532), 300), 70)
+    glugs = amp(clatter(dur, 14, (150, 600), 533, accel=0.5), lambda t: math.sin(math.pi * t / dur))
+    low = sub(dur, 70, 34, dur * 0.9, 0.3)
+    sig = saturate(mix((normalize(wash), 1.2), (churn, 0.8), (surge, 0.6), (glugs, 0.7), (low, 0.12)), 1.7)
+    sig = shaped(sig, 0.4, 1.2, 0.4)
+    return cavern(lowpass2(sig, 2200), 0.4, 3.4)
+
+
+#-----Arena loops-----
+# the periodic layers (drums, drones, events) are built circularly, so they wrap exactly; only the noise layers
+# go through seamless(), and the two are added after the crossfade so no layer ever doubles up in it.
+def whole(freq, length):
+    """The nearest frequency that fits a whole number of cycles into the loop."""
+    return round(freq * length) / length
+
+
+def put(buf, sig, at):
+    """Adds sig to a circular buffer at time at, wrapping past the end."""
+    size = len(buf)
+    start = int(at * SR)
+    for i, x in enumerate(sig):
+        buf[(start + i) % size] += x
+
+
+def cyclic(fn, buf, lead=2.0):
+    """Runs a filter or reverb over a circular buffer without a seam: it sees the end of the loop first."""
+    k = n(lead)
+    return fn(buf[-k:] + buf)[k:k + len(buf)]
+
+
+def noise_bed(sig, xf):
+    return seamless(highpass2(sig, 25), xf)
+
+
+@loop
+def amb_lord():
+    """The Pit Lord's arena: a distant war-drum heartbeat, a hellfire roar, a minor choir drone under a long hall."""
+    length, xf = 15.0, 1.0
+    dur = length + xf
+    # war drum: a double beat every 2.5 s, soft-edged and far away
+    drums = [0.0] * n(length)
+    for k in range(6):
+        for at, weight, f in ((0.0, 1.0, 82), (0.46, 0.65, 70)):
+            hit = mix((sub(1.4, f * 0.8, 40, 0.8, 0.012), 0.6), (env(tone(0.6, sweep(f * 1.9, f * 1.2, 0.2)), 0.012, 0.35), 0.9),
+                      (lowpass2(env(noise(0.4, 'brown', seed=600 + k), 0.015, 0.3), 200), 0.5))
+            put(drums, [x * weight for x in saturate(hit, 1.8)], k * 2.5 + at)
+    drums = cyclic(lambda s: cavern(lowpass2(s, 400), 0.6, 3.5), drums, 4.0)
+    # choir: stacked saws on a minor chord, detuned by whole beats per loop, through a dark 'o'
+    voices = [(whole(f, length) + d / length) for f in (55, 65.4, 82.5, 110) for d in (-1, 0, 1)]
+    choir = cyclic(lambda s: formant(s, 'o', 0.85), [sum(x) / len(voices) for x in zip(
+        *[tone(length, f, 'saw') for f in voices])], 1.0)
+    choir = amp(normalize(choir), lambda t: 0.6 + 0.4 * math.sin(TAU * t / (length / 3)))
+    # hellfire: a broad furnace roar breathing slowly, with a few low embers
+    fire = lowpass2(noise(dur, 'pink', seed=610), lambda t: 520 + 220 * math.sin(TAU * t / 5.0) + 90 * math.sin(TAU * t / 3.0))
+    fire = amp(fire, lambda t: 0.6 + 0.3 * math.sin(TAU * t / 7.5 + 1) + 0.1 * math.sin(TAU * t / 3.0))
+    embers = lowpass2(clicks(dur, 7, 0.006, (400, 1200), seed=611), 1200)
+    rumble = lowpass2(noise(dur, 'brown', seed=612), 90)
+    fire = highpass2(fire, 80)
+    bed = noise_bed(mix((fire, 1.2), (embers, 0.12), (rumble, 0.25)), xf)
+    return mix((drums, 0.8), (choir, 0.9), (bed, 0.9))
+
+
+@loop
+def amb_matriarch():
+    """The Matriarch's chasm: hollow wind from below, faint skittering, a dissonant drone and creaking silk."""
+    length, xf = 14.0, 1.0
+    dur = length + xf
+    # hollow wind: a resonant band sweeping slowly, like a breath across a huge opening
+    wind = bandpass(noise(dur, 'pink', seed=620), lambda t: 230 + 110 * math.sin(TAU * t / 7.0) + 60 * math.sin(TAU * t / 3.5), 3.0)
+    wind = amp(normalize(wind), lambda t: 0.55 + 0.35 * math.sin(TAU * t / 14.0 + 0.5) + 0.1 * math.sin(TAU * t / 2.8))
+    air = lowpass2(noise(dur, 'pink', seed=621), 500)
+    skitter = lowpass2(clicks(dur, 9, 0.004, (500, 1700), jitter=0.8, seed=622, accel=0.4), 1800)
+    skitter = amp(skitter, lambda t: max(0.0, math.sin(TAU * t / 3.5)) ** 3)
+    bed = noise_bed(mix((wind, 0.9), (air, 0.4), (skitter, 0.12)), xf)
+    # dissonant drone: a minor second and a tritone, each pair beating slowly
+    notes = [whole(f, length) + d / length for f, d in ((46, 0), (46, 1), (48.8, 0), (65.2, 0), (65.2, -1), (97.5, 0))]
+    drone = [sum(x) / len(notes) for x in zip(*[tone(length, f, 'saw') for f in notes])]
+    drone = cyclic(lambda s: lowpass2(s, 380), drone, 1.0)
+    drone = amp(normalize(drone), lambda t: 0.65 + 0.35 * math.sin(TAU * t / (length / 2)))
+    # creaking silk: slow strained glides with a ratcheting tremolo
+    creaks = [0.0] * n(length)
+    for at, f0, f1, dur_ in ((1.5, 150, 205, 1.3), (6.0, 240, 170, 1.7), (10.2, 120, 180, 1.1)):
+        c = tremolo(lowpass2(tone(dur_, sweep(f0, f1, dur_), 'saw'), 600), 14, 0.9)
+        put(creaks, [x * math.sin(math.pi * i / len(c)) ** 2 for i, x in enumerate(c)], at)
+    creaks = cyclic(lambda s: cavern(s, 0.5, 3.0), creaks, 3.0)
+    return mix((bed, 1.0), (drone, 0.55), (creaks, 0.45))
+
+
+@loop
+def amb_hydra():
+    """The tar lake: slow churning tar, glooping bubbles, a deep rumble and distant crackling fire."""
+    length, xf = 16.0, 1.0
+    dur = length + xf
+    # churning tar: brown noise whose weight rolls in slow waves
+    churn = lowpass2(noise(dur, 'brown', seed=630), lambda t: 420 + 200 * math.sin(TAU * t / 8.0))
+    churn = amp(churn, lambda t: 0.6 + 0.3 * math.sin(TAU * t / 5.333) + 0.1 * math.sin(TAU * t / 3.2))
+    rumble = lowpass2(noise(dur, 'brown', seed=631), 70)
+    fire = lowpass2(clicks(dur, 16, 0.005, (500, 1400), seed=632), 1500)
+    fire = amp(fire, lambda t: 0.5 + 0.5 * math.sin(TAU * t / 4.0) ** 2)
+    bed = noise_bed(mix((highpass2(churn, 60), 1.3), (rumble, 0.3), (fire, 0.1)), xf)
+    # bubbles: soft low gloops rising slightly, at fixed seeded times around the loop
+    rng = random.Random(633)
+    bubbles = [0.0] * n(length)
+    for _ in range(15):
+        f = rng.uniform(70, 190)
+        dur_ = rng.uniform(0.22, 0.5)
+        gloop = env(tone(dur_, sweep(f, f * rng.uniform(1.3, 1.9), dur_ * 0.7)), 0.015, dur_)
+        put(bubbles, [x * rng.uniform(0.3, 0.9) for x in gloop], rng.uniform(0, length))
+    bubbles = cyclic(lambda s: cavern(lowpass2(s, 600), 0.35, 2.5), bubbles, 3.0)
+    # deep rumble tones: two sines a beat apart
+    deep = [a + b for a, b in zip(tone(length, whole(36, length)), tone(length, whole(36, length) + 2 / length))]
+    deep = amp(deep, lambda t: 0.6 + 0.4 * math.sin(TAU * t / (length / 2)))
+    return mix((bed, 1.0), (bubbles, 0.9), (deep, 0.1))

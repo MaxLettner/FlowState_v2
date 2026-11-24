@@ -48,6 +48,12 @@ public class PlayerStatsComponent extends Component {
     private static final Color[] CURSE_MOTES = {Color.web("#f6d8ff"), Color.web("#d08cff"), Color.web("#a050f0")};
     private double burnLeft, chillLeft, curseLeft, debuffFx;
 
+    // low health: a heartbeat that speeds up, and the background gets muffled
+    private static final double LOW_HEALTH = 0.35;                   // of max health
+    private static final double BEAT_SLOW = 1.15, BEAT_FAST = 0.55;  // s between beats at LOW_HEALTH and near 0
+    private static final double MAX_MUFFLE = 0.8;
+    private double beatLeft;
+
     private final List<Runnable> skillPointListeners = new ArrayList<>();
 
     @Override
@@ -65,10 +71,28 @@ public class PlayerStatsComponent extends Component {
 
         if (health < maxHealth) health = Math.min(maxHealth, health + maxHealth * HEAL_RATE * tpf);
         if (invincibleLeft > 0) invincibleLeft -= tpf;
+        tickLowHealth(tpf);
 
         SpriteComponent sprite = entity.getComponent(SpriteComponent.class);
         sprite.setBlinking(invincibleLeft > 0);
         sprite.setShield(loadout.isShieldActive());
+    }
+
+    private void tickLowHealth(double tpf) {
+        if (isDead()) {
+            Sfx.muffle(1);
+            return;
+        }
+        double danger = Math.max(0, 1 - health / (maxHealth * LOW_HEALTH));     // 0 fine .. 1 nearly dead
+        Sfx.muffle(danger * MAX_MUFFLE);
+        if (danger <= 0) {
+            beatLeft = 0;
+            return;
+        }
+        beatLeft -= tpf;
+        if (beatLeft > 0) return;
+        beatLeft = BEAT_SLOW + (BEAT_FAST - BEAT_SLOW) * danger;
+        Sfx.HEARTBEAT.play(0.5 + 0.5 * danger, 1 + 0.15 * danger);
     }
 
     private int rank(Branch branch) {
