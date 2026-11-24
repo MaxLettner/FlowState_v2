@@ -14,6 +14,7 @@ import demons2
 import demons3
 import lord2d
 import matriarch2d
+import hydra
 import player_slime
 import weapons
 import ranged
@@ -42,6 +43,7 @@ def main():
     lord2d.generate(OUT)                   # the Pit Lord boss: the goat-skull executioner (2D, lord3d.py stays for the Matriarch)
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
     matriarch2d.generate(OUT)              # the Void Matriarch boss (2D), her mites, egg sacs, strands, web gates, acid
+    hydra.generate(OUT)                    # the Tar Hydra boss: heads, stumps, neck pieces, tar glob/pool/wave/lake, basalt pillars
     weapons.generate(OUT)
     ranged.generate(OUT)
     projectiles.generate(OUT)

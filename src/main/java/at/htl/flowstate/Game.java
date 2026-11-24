@@ -2,6 +2,7 @@ package at.htl.flowstate;
 
 import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Enemies.BossArena;
+import at.htl.flowstate.Components.Enemies.HydraArena;
 import at.htl.flowstate.Components.Enemies.MatriarchArena;
 import at.htl.flowstate.Components.Enemies.ThreadBridgeComponent;
 import at.htl.flowstate.Visuals.Darkness;
@@ -332,6 +333,7 @@ public class Game extends GameApplication {
     protected void onUpdate(double tpf) {
         FrameRateLog.gameUpdate(tpf);
         MatriarchArena.catchFall(player);      // her chasm hurts, but isn't the bottomless abyss
+        HydraArena.catchFall(player);          // nor is the Tar Hydra's lake
         if (!dying && player.getY() > WINDOW_HEIGHT + 100) {
             // fell into the abyss: nothing left to animate
             dying = true;

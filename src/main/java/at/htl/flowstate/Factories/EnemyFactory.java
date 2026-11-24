@@ -118,6 +118,47 @@ public class EnemyFactory implements EntityFactory {
         return demon(data, DemonType.THREAD, new ThreadBehaviour(), true);
     }
 
+    /** The Tar Hydra's body: sunk in the tar, it spawns its heads and runs the fight. */
+    @Spawns("hydra")
+    public Entity hydra(SpawnData data) {
+        return demon(data, DemonType.HYDRA, new HydraBehaviour());
+    }
+
+    @Spawns("hydra_spitter")
+    public Entity hydraSpitter(SpawnData data) {
+        return demon(data, DemonType.HYDRA_SPITTER, new HydraHeadBehaviour(HydraHeadBehaviour.Kind.SPITTER));
+    }
+
+    @Spawns("hydra_biter")
+    public Entity hydraBiter(SpawnData data) {
+        return demon(data, DemonType.HYDRA_BITER, new HydraHeadBehaviour(HydraHeadBehaviour.Kind.BITER));
+    }
+
+    @Spawns("hydra_lure")
+    public Entity hydraLure(SpawnData data) {
+        return demon(data, DemonType.HYDRA_LURE, new HydraHeadBehaviour(HydraHeadBehaviour.Kind.LURE));
+    }
+
+    @Spawns("hydra_crowned")
+    public Entity hydraCrowned(SpawnData data) {
+        return demon(data, DemonType.HYDRA_CROWNED, new HydraHeadBehaviour(HydraHeadBehaviour.Kind.CROWNED));
+    }
+
+    @Spawns("hydra_spitter_stump")
+    public Entity hydraSpitterStump(SpawnData data) {
+        return demon(data, DemonType.HYDRA_SPITTER_STUMP, new HydraStumpBehaviour(HydraHeadBehaviour.Kind.SPITTER));
+    }
+
+    @Spawns("hydra_biter_stump")
+    public Entity hydraBiterStump(SpawnData data) {
+        return demon(data, DemonType.HYDRA_BITER_STUMP, new HydraStumpBehaviour(HydraHeadBehaviour.Kind.BITER));
+    }
+
+    @Spawns("hydra_lure_stump")
+    public Entity hydraLureStump(SpawnData data) {
+        return demon(data, DemonType.HYDRA_LURE_STUMP, new HydraStumpBehaviour(HydraHeadBehaviour.Kind.LURE));
+    }
+
     /** SpawnData "elite" (an EliteAffix) makes it an elite; "hpScale" (a double) scales its HP (weaker early bosses). */
     private Entity demon(SpawnData data, DemonType type, DemonBehaviour behaviour) {
         return demon(data, type, behaviour, type.flying);
