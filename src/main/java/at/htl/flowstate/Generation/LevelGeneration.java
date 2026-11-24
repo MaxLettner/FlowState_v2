@@ -18,7 +18,7 @@ public class LevelGeneration {
     //the floor of each ground segment fills from its top surface all the way
     //down to DEEP_FLOOR which is twice the window height well off-screen
     //so the player never sees the bottom edge
-    private static final double DEEP_FLOOR = 1500;
+    public static final double DEEP_FLOOR = 1500;
 
     //surface decorations (GroundSurface.png: 6 frames of 24x24 art, drawn at x2)
     private static final int DECOR_FRAMES = 6;

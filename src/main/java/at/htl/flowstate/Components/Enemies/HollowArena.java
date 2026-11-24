@@ -4,6 +4,7 @@ import at.htl.flowstate.Assets;
 import at.htl.flowstate.Components.SpriteComponents.DemonSpriteComponent;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Game;
+import at.htl.flowstate.Generation.LevelGeneration;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
 import at.htl.flowstate.Visuals.Particles;
@@ -57,9 +58,10 @@ public final class HollowArena {
         double w = BossArena.WIDTH;
         Group view = new Group();
 
-        Rectangle base = new Rectangle(w, DEPTH);
-        base.setFill(new LinearGradient(0, 0, 0, 1, true, CycleMethod.NO_CYCLE,
-                new Stop(0, GLASS.deriveColor(0, 1, 1, 0.8)), new Stop(1, GLASS.deriveColor(0, 1, 1, 0.97))));
+        // the glass goes all the way down like the ground does; below the reflections it is solid black glass
+        Rectangle base = new Rectangle(w, LevelGeneration.DEEP_FLOOR - groundY);
+        base.setFill(new LinearGradient(0, 0, 0, DEPTH, false, CycleMethod.NO_CYCLE,
+                new Stop(0, GLASS.deriveColor(0, 1, 1, 0.8)), new Stop(1, GLASS)));
         Group reflections = new Group();
         Rectangle clip = new Rectangle(w, DEPTH);
         reflections.setClip(clip);
