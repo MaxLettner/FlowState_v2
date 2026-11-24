@@ -180,6 +180,7 @@ public class GameMenu extends FXGLMenu {
         if (inGame) {
             Sfx.UI_OPEN.play();
         } else {
+            Sfx.muffle(0);       // a death left the world muffled
             Sfx.ambient(Sfx.AMB_MENU);
         }
     }

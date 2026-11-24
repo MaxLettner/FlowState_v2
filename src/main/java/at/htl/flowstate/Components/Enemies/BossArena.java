@@ -147,6 +147,7 @@ public final class BossArena {
         if (silk) Sfx.MATRIARCH_SCREECH.at(new Point2D(lockX + WIDTH / 2, 0), 0.3, 0.6);
         else if (boss == Boss.HYDRA) Sfx.TAR_WAVE.at(new Point2D(lockX + WIDTH / 2, groundY), 0.5, 0.6);
         else Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
+        Sfx.ambient(arenaLoop());
         letterbox();
     }
 
@@ -302,8 +303,17 @@ public final class BossArena {
         finishArena();
     }
 
-    /** What is special about the boss's arena goes back to plain ground. */
+    private static Sfx arenaLoop() {
+        return switch (boss) {
+            case PIT_LORD -> Sfx.AMB_LORD;
+            case MATRIARCH -> Sfx.AMB_MATRIARCH;
+            case HYDRA -> Sfx.AMB_HYDRA;
+        };
+    }
+
+    /** What is special about the boss's arena goes back to plain ground, and the abyss's drone comes back. */
     private static void finishArena() {
+        Sfx.ambient(Sfx.AMB_ABYSS);
         if (boss == Boss.MATRIARCH) MatriarchArena.finish();
         if (boss == Boss.HYDRA) HydraArena.finish();
     }

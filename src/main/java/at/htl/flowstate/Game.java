@@ -252,6 +252,7 @@ public class Game extends GameApplication {
         hud = new Hud();
         setupBg();
         Sfx.stopStarted();
+        Sfx.muffle(0);
         Sfx.ambient(Sfx.AMB_ABYSS);
     }
 
