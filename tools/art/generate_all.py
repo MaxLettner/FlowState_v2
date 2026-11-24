@@ -15,6 +15,7 @@ import demons3
 import lord2d
 import matriarch2d
 import hydra
+import hollow
 import player_slime
 import weapons
 import ranged
@@ -44,6 +45,7 @@ def main():
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
     matriarch2d.generate(OUT)              # the Void Matriarch boss (2D), her mites, egg sacs, strands, web gates, acid
     hydra.generate(OUT)                    # the Tar Hydra boss: heads, stumps, neck pieces, tar glob/pool/wave/lake, basalt pillars
+    hollow.generate(OUT)                   # the Hollow Ember boss: void recolour of the player at 1.5x, shards, glass gate and floor
     weapons.generate(OUT)
     ranged.generate(OUT)
     projectiles.generate(OUT)

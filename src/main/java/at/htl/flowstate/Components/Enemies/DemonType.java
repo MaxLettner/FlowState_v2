@@ -63,6 +63,9 @@ public enum DemonType {
             "#46404f", "#17131a", "#ffd25a"),
     HYDRA_CROWNED("HydraCrowned", 900, 112, 78, 150, 120, 75, 70, true, DemonNature.FLESH, 0, 0.0, 0.25, 0.55,
             "#46404f", "#17131a", "#ece2c6"),
+    // the Hollow Ember (fourth boss, tools/art/hollow.py): the player's void double, 1.5x the player (96 px frames)
+    HOLLOW("Hollow", 1400, 60, 120, 96, 96, 48, 94, false, DemonNature.VOID, 260, 1.0, 0.5, 0.7,
+            "#d8b4ff", "#4c3c6a", "#a86cff"),
     /** A cut neck, smoking until it is sealed or grows its head back: the hitbox is the cut face. */
     HYDRA_SPITTER_STUMP("HydraSpitterStump", 1e6, 56, 26, 60, 70, 30, 47, true, DemonNature.FLESH, 0, 0.0, 0.0, 1.0,
             "#b0404c", "#46404f"),

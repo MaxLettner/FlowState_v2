@@ -41,8 +41,9 @@ def frame(w, h, lift=0, lean=0, eye_dy=0, blink=False, phase=0.0, round=0.0, for
     pre = [fn(img, px, info)] drawn before the outline (tar bits), post = [fn(img)] drawn after (glow, sparks)."""
     img = draw_slime(PLAYER, w, h, lift=lift, lean=lean, eye_dy=eye_dy, blink=blink, phase=phase, mood=mood,
                      round=round, form=form)
+    view = slimes.scaled_view(img)
     for fx in mood.get('post', []):
-        fx(img)
+        fx(view)
     return img
 
 

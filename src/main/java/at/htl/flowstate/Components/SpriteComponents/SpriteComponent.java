@@ -510,6 +510,12 @@ public class SpriteComponent extends Component {
 
     public boolean isDead() { return dead; }
 
+    /** The frame sprite (the Hollow Ember's echoes copy what it shows). */
+    public FrameSprite getSprite() { return sprite; }
+
+    /** The facing the sprite is turning to: 1 or -1. */
+    public int getFacing() { return facing; }
+
     //-----feedback & overlays-----
     public void flash() {
         flashLeft = FLASH_TIME;

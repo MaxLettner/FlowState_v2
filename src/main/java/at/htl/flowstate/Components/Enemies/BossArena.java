@@ -32,7 +32,7 @@ import static com.almasb.fxgl.dsl.FXGL.*;
  */
 public final class BossArena {
     /** Which boss the arena is for. */
-    public enum Boss { PIT_LORD, MATRIARCH, HYDRA }
+    public enum Boss { PIT_LORD, MATRIARCH, HYDRA, HOLLOW }
 
     /** The arena is exactly one screen wide. */
     public static final double WIDTH = 1920;
@@ -48,6 +48,8 @@ public final class BossArena {
     private static final double CRUMBLE_AT = 1.0, WEAVE_AT = 1.25, BRIDGE_WEAVE = 1.0, MATRIARCH_AT = 1.4;
     // the Tar Hydra's: the floor sinks into a tar lake, the pillars push up, then its body comes and the heads rise
     private static final double TAR_AT = 0.9, HYDRA_AT = 1.5;
+    // the Hollow Ember's: the floor turns to black glass, the player's reflection lags, stops, and it climbs out of it
+    private static final double GLASS_AT = 0.9, HOLLOW_AT = 2.3;
 
     private enum Phase { NONE, PENDING, CUTSCENE, FIGHT, DEATH }
     // death scene, after the burst (s)
@@ -72,6 +74,7 @@ public final class BossArena {
         phase = Phase.NONE;
         MatriarchArena.reset();
         HydraArena.reset();
+        HollowArena.reset();
         leftGate = rightGate = null;
         barTop = barBottom = flash = null;    // the UI was cleared with the old game
         frozen.clear();               // ... and the world
@@ -142,10 +145,11 @@ public final class BossArena {
         freezeOthers(null);
         crumbled = woven = false;
         boolean silk = boss == Boss.MATRIARCH;
-        rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY, silk);
+        rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY, silk, boss == Boss.HOLLOW);
         Impact.shake(16);
         if (silk) Sfx.MATRIARCH_SCREECH.at(new Point2D(lockX + WIDTH / 2, 0), 0.3, 0.6);
         else if (boss == Boss.HYDRA) Sfx.TAR_WAVE.at(new Point2D(lockX + WIDTH / 2, groundY), 0.5, 0.6);
+        else if (boss == Boss.HOLLOW) Sfx.GATE_SLAM.at(new Point2D(lockX + WIDTH / 2, groundY), 0.3, 0.5);
         else Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
         Sfx.ambient(arenaLoop());
         letterbox();
@@ -173,13 +177,15 @@ public final class BossArena {
         time += tpf;
         if (!leftClosed && time >= LEFT_GATE_AT) {
             leftClosed = true;
-            leftGate = BossGateComponent.spawn(lockX, groundY, boss == Boss.MATRIARCH);
+            leftGate = BossGateComponent.spawn(lockX, groundY, boss == Boss.MATRIARCH, boss == Boss.HOLLOW);
             Impact.shake(16);
         }
         if (boss == Boss.MATRIARCH) {
             matriarchIntro();
         } else if (boss == Boss.HYDRA) {
             hydraIntro();
+        } else if (boss == Boss.HOLLOW) {
+            hollowIntro();
         } else if (!lordSpawned && time >= DROP_AT) {
             lordSpawned = true;
             DemonType lord = DemonType.LORD;
@@ -223,6 +229,26 @@ public final class BossArena {
                     groundY + HydraBehaviour.BODY_BELOW - h.height / 2).put("hpScale", hpScale));
             movement().faceAttack(-1, 3);
         }
+    }
+
+    private static void hollowIntro() {
+        double riseX = lockX + HollowBehaviour.RISE_X;
+        if (!crumbled && time >= GLASS_AT) {
+            crumbled = true;
+            HollowArena.open(lockX, groundY, riseX);
+        }
+        if (!lordSpawned && time >= HOLLOW_AT) {
+            lordSpawned = true;
+            DemonType h = DemonType.HOLLOW;
+            spawn(h.spawnName(), new SpawnData(riseX - h.width / 2, groundY - h.height - 2).put("hpScale", hpScale));
+            HollowArena.reflectionLeft();
+            movement().faceAttack(-1, 3);
+        }
+    }
+
+    /** Seconds since the camera locked (the cutscene clock). */
+    static double time() {
+        return time;
     }
 
     /** The Pit Lord hit the ground. */
@@ -278,7 +304,7 @@ public final class BossArena {
         for (Entity e : frozen) {
             if (!e.isActive()) continue;
             if (e.hasComponent(EnemyIdentifierComponent.class)) {
-                Particles.burst(e.getCenter(), boss == Boss.MATRIARCH ? Particles.VOID : Particles.EMBER, 14, -90, 80, 60, 260, 0.8, 5, -100);
+                Particles.burst(e.getCenter(), boss == Boss.MATRIARCH || boss == Boss.HOLLOW ? Particles.VOID : Particles.EMBER, 14, -90, 80, 60, 260, 0.8, 5, -100);
             }
             e.removeFromWorld();
         }
@@ -308,6 +334,7 @@ public final class BossArena {
             case PIT_LORD -> Sfx.AMB_LORD;
             case MATRIARCH -> Sfx.AMB_MATRIARCH;
             case HYDRA -> Sfx.AMB_HYDRA;
+            case HOLLOW -> Sfx.AMB_HOLLOW;
         };
     }
 
@@ -316,6 +343,7 @@ public final class BossArena {
         Sfx.ambient(Sfx.AMB_ABYSS);
         if (boss == Boss.MATRIARCH) MatriarchArena.finish();
         if (boss == Boss.HYDRA) HydraArena.finish();
+        if (boss == Boss.HOLLOW) HollowArena.finish();
     }
 
     private static void restoreInput() {
@@ -370,7 +398,7 @@ public final class BossArena {
     //-----flash (the Lord bursting)-----
     private static void screenFlash() {
         if (flash == null) {
-            flash = new Rectangle(getAppWidth(), getAppHeight(), boss == Boss.MATRIARCH ? Color.rgb(225, 205, 255)
+            flash = new Rectangle(getAppWidth(), getAppHeight(), boss == Boss.MATRIARCH || boss == Boss.HOLLOW ? Color.rgb(225, 205, 255)
                     : boss == Boss.HYDRA ? Color.rgb(255, 205, 150) : Color.rgb(255, 230, 170));
             flash.setMouseTransparent(true);
             addUINode(flash);

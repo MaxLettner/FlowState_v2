@@ -42,11 +42,12 @@ public class PlayerStatsComponent extends Component {
 
     // debuffs from demons: elite Infernal burn, elite Frostbound chill, Hex Priest curse
     private static final double BURN_DPS = 4;
+    private static final double POISON_DPS = 3;
     private static final double CHILL_MOVE = 0.6;
     private static final double CURSE_JUMP = 0.72;
     private static final double DEBUFF_FX_INTERVAL = 0.1;
     private static final Color[] CURSE_MOTES = {Color.web("#f6d8ff"), Color.web("#d08cff"), Color.web("#a050f0")};
-    private double burnLeft, chillLeft, curseLeft, debuffFx;
+    private double burnLeft, chillLeft, curseLeft, poisonLeft, debuffFx;
 
     // low health: a heartbeat that speeds up, and the background gets muffled
     private static final double LOW_HEALTH = 0.35;                   // of max health
@@ -150,6 +151,8 @@ public class PlayerStatsComponent extends Component {
 
     //-----Debuffs-----
     public void burn(double seconds) { burnLeft = Math.max(burnLeft, seconds); }
+    /** Poison (the Hollow Ember's copies of the poison skills): a slower, longer burn. */
+    public void poison(double seconds) { poisonLeft = Math.max(poisonLeft, seconds); }
     public void chill(double seconds) { chillLeft = Math.max(chillLeft, seconds); }
     /** Hex Priest: jumps are lower and mana doesn't regenerate. */
     public void curse(double seconds) {
@@ -165,6 +168,10 @@ public class PlayerStatsComponent extends Component {
             burnLeft -= tpf;
             health -= BURN_DPS * tpf;           // burning ignores i-frames, like the enemies' Burn
         }
+        if (poisonLeft > 0) {
+            poisonLeft -= tpf;
+            health -= POISON_DPS * tpf;
+        }
         chillLeft = Math.max(0, chillLeft - tpf);
         curseLeft = Math.max(0, curseLeft - tpf);
         debuffFx -= tpf;
@@ -172,6 +179,7 @@ public class PlayerStatsComponent extends Component {
         debuffFx = DEBUFF_FX_INTERVAL;
         Point2D c = entity.getCenter();
         if (burnLeft > 0) Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(-4, 30)), Particles.EMBER, 1, -90, 15, 40, 90, 0.6, 4, -80);
+        if (poisonLeft > 0) Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(0, 30)), Particles.POISON, 1, -90, 10, 20, 50, 0.7, 4, -40);
         if (chillLeft > 0) Particles.burst(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-20, 30)), Particles.ICE, 1, 90, 30, 10, 40, 0.6, 4, 60);
         if (curseLeft > 0) Particles.burst(c.add(FXGLMath.random(-18, 18), FXGLMath.random(-30, 20)), CURSE_MOTES, 1, -90, 40, 20, 50, 0.7, 4, -30);
     }
