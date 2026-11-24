@@ -1,6 +1,7 @@
 package at.htl.flowstate.Generation;
 
 import at.htl.flowstate.Components.Enemies.BossArena;
+import at.htl.flowstate.Components.Enemies.HydraArena;
 import at.htl.flowstate.Components.Enemies.MatriarchArena;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.core.math.FXGLMath;
@@ -98,18 +99,21 @@ public class LevelGeneration {
     /**
      *a boss arena: flat ground at the current height with no structures and no demons on it;
      *BossArena closes it once the camera reaches lockX. The Void Matriarch's has a chasm in it: until the fight
-     *the chasm is covered by one plain floor slab (no decorations) that crumbles in her intro
+     *the chasm is covered by one plain floor slab (no decorations) that crumbles in her intro; the Tar Hydra's
+     *has its tar lake under such a slab (it sinks in the Hydra's intro)
      */
     private void spawnArena() {
         BossArena.Boss boss = enemyGeneration.nextBoss();
         double start = lastGeneratedX;
         double lockX = start + ARENA_RUNWAY;
         double end = lockX + BossArena.WIDTH + ARENA_MARGIN;
-        double chasmFrom = lockX + MatriarchArena.CHASM_FROM, chasmTo = lockX + MatriarchArena.CHASM_TO;
+        boolean hydra = boss == BossArena.Boss.HYDRA;
+        double chasmFrom = lockX + (hydra ? HydraArena.LAKE_FROM : MatriarchArena.CHASM_FROM);
+        double chasmTo = lockX + (hydra ? HydraArena.LAKE_TO : MatriarchArena.CHASM_TO);
         Entity chasmFloor = null;
         for (double x = start; x < end; ) {
             double w = Math.min(ARENA_SEGMENT, end - x);
-            if (boss == BossArena.Boss.MATRIARCH) {
+            if (boss == BossArena.Boss.MATRIARCH || hydra) {
                 if (x < chasmFrom && x + w > chasmFrom) w = chasmFrom - x;
                 if (Math.abs(x - chasmFrom) < 0.5) {
                     chasmFloor = spawn("platform", new SpawnData(x, currentY)
@@ -127,6 +131,7 @@ public class LevelGeneration {
         terrainDrift = 0;
         slopeSegmentsLeft = 0;
         if (boss == BossArena.Boss.MATRIARCH) MatriarchArena.plan(lockX, currentY, chasmFloor);
+        if (hydra) HydraArena.plan(lockX, currentY, chasmFloor);
         BossArena.plan(lockX, currentY, boss, enemyGeneration.nextBossHpScale());
         enemyGeneration.bossPlaced(end);
     }

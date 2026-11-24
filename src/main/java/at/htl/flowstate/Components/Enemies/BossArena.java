@@ -32,7 +32,7 @@ import static com.almasb.fxgl.dsl.FXGL.*;
  */
 public final class BossArena {
     /** Which boss the arena is for. */
-    public enum Boss { PIT_LORD, MATRIARCH }
+    public enum Boss { PIT_LORD, MATRIARCH, HYDRA }
 
     /** The arena is exactly one screen wide. */
     public static final double WIDTH = 1920;
@@ -46,6 +46,8 @@ public final class BossArena {
     private static final double BAR_H = 90, BAR_SPEED = 260;   // letterbox
     // the Void Matriarch's intro: the floor over the chasm crumbles, she spins her bridges and lowers herself in
     private static final double CRUMBLE_AT = 1.0, WEAVE_AT = 1.25, BRIDGE_WEAVE = 1.0, MATRIARCH_AT = 1.4;
+    // the Tar Hydra's: the floor sinks into a tar lake, the pillars push up, then its body comes and the heads rise
+    private static final double TAR_AT = 0.9, HYDRA_AT = 1.5;
 
     private enum Phase { NONE, PENDING, CUTSCENE, FIGHT, DEATH }
     // death scene, after the burst (s)
@@ -69,6 +71,7 @@ public final class BossArena {
     public static void reset() {
         phase = Phase.NONE;
         MatriarchArena.reset();
+        HydraArena.reset();
         leftGate = rightGate = null;
         barTop = barBottom = flash = null;    // the UI was cleared with the old game
         frozen.clear();               // ... and the world
@@ -142,6 +145,7 @@ public final class BossArena {
         rightGate = BossGateComponent.spawn(lockX + WIDTH - BossGateComponent.WIDTH, groundY, silk);
         Impact.shake(16);
         if (silk) Sfx.MATRIARCH_SCREECH.at(new Point2D(lockX + WIDTH / 2, 0), 0.3, 0.6);
+        else if (boss == Boss.HYDRA) Sfx.TAR_WAVE.at(new Point2D(lockX + WIDTH / 2, groundY), 0.5, 0.6);
         else Sfx.BOSS_ROAR.at(new Point2D(lockX + WIDTH, groundY), 0.35, 0.6);   // something stirs
         letterbox();
     }
@@ -173,6 +177,8 @@ public final class BossArena {
         }
         if (boss == Boss.MATRIARCH) {
             matriarchIntro();
+        } else if (boss == Boss.HYDRA) {
+            hydraIntro();
         } else if (!lordSpawned && time >= DROP_AT) {
             lordSpawned = true;
             DemonType lord = DemonType.LORD;
@@ -204,12 +210,41 @@ public final class BossArena {
         }
     }
 
+    private static void hydraIntro() {
+        if (!crumbled && time >= TAR_AT) {
+            crumbled = true;
+            HydraArena.open();
+        }
+        if (!lordSpawned && time >= HYDRA_AT) {
+            lordSpawned = true;
+            DemonType h = DemonType.HYDRA;
+            spawn(h.spawnName(), new SpawnData(lockX + HydraBehaviour.CENTRE_X - h.width / 2,
+                    groundY + HydraBehaviour.BODY_BELOW - h.height / 2).put("hpScale", hpScale));
+            movement().faceAttack(-1, 3);
+        }
+    }
+
     /** The Pit Lord hit the ground. */
     static void landed(Entity lord) {
         if (phase != Phase.CUTSCENE) return;
         landedAt = time;
         int dir = lord.getCenter().getX() < Game.getPlayer().getCenter().getX() ? -1 : 1;
         movement().faceAttack(dir, CONTROL_AFTER_LANDING);
+    }
+
+    /**
+     * A short cutscene in the middle of the fight (the Tar Hydra's last head coming up): control goes, the letterbox
+     * comes back and everything but the boss freezes, until the boss calls {@link #landed} again.
+     */
+    static void midFightCutscene(Entity boss) {
+        if (phase != Phase.FIGHT) return;
+        phase = Phase.CUTSCENE;
+        time = 0;
+        landedAt = -1;
+        getInput().clearAll();
+        getInput().setProcessInput(false);
+        freezeOthers(boss);
+        letterbox();
     }
 
     private static void startFight() {
@@ -236,7 +271,7 @@ public final class BossArena {
     static void bossExploded() {
         if (phase != Phase.DEATH) {                 // died outside a closed arena (tests): just clear the way
             end();
-            if (boss == Boss.MATRIARCH) MatriarchArena.finish();
+            finishArena();
             return;
         }
         for (Entity e : frozen) {
@@ -249,7 +284,7 @@ public final class BossArena {
         frozen.clear();
         exploded = true;
         deathTime = 0;
-        if (boss == Boss.MATRIARCH) MatriarchArena.finish();
+        finishArena();
         screenFlash();
     }
 
@@ -264,7 +299,13 @@ public final class BossArena {
         BossGateComponent.open(leftGate);
         BossGateComponent.open(rightGate);
         leftGate = rightGate = null;
+        finishArena();
+    }
+
+    /** What is special about the boss's arena goes back to plain ground. */
+    private static void finishArena() {
         if (boss == Boss.MATRIARCH) MatriarchArena.finish();
+        if (boss == Boss.HYDRA) HydraArena.finish();
     }
 
     private static void restoreInput() {
@@ -275,7 +316,7 @@ public final class BossArena {
     /** Every demon (the Pit Lord isn't there yet) and every projectile, hazard and portal they made. */
     private static void freezeOthers(Entity except) {
         frozen.clear();
-        frozen.addAll(getGameWorld().getEntitiesFiltered(e -> e != except && (
+        frozen.addAll(getGameWorld().getEntitiesFiltered(e -> e != except && !isHydraPart(e) && (
                 e.hasComponent(EnemyIdentifierComponent.class)
                         || e.hasComponent(EnemyProjectileComponent.class)
                         || e.hasComponent(ShockwaveComponent.class)
@@ -286,9 +327,17 @@ public final class BossArena {
                         || e.hasComponent(MeteorComponent.class)
                         || e.hasComponent(SilkHazardComponent.class)
                         || e.hasComponent(AcidGlobComponent.class)
-                        || e.hasComponent(AcidPoolComponent.class))));
+                        || e.hasComponent(AcidPoolComponent.class)
+                        || e.hasComponent(TarGlobComponent.class)
+                        || e.hasComponent(TarPoolComponent.class)
+                        || e.hasComponent(TarWaveComponent.class))));
         // no AI, timers or animation, and out of the physics simulation (no falling, no drifting)
         for (Entity e : frozen) setFrozen(e, true);
+    }
+
+    /** The Tar Hydra's heads and stumps play out its death scene themselves. */
+    private static boolean isHydraPart(Entity e) {
+        return e.getComponentOptional(EnemyStatsComponent.class).map(s -> s.getType().isHydraPart()).orElse(false);
     }
 
     private static void thaw() {
@@ -311,8 +360,8 @@ public final class BossArena {
     //-----flash (the Lord bursting)-----
     private static void screenFlash() {
         if (flash == null) {
-            flash = new Rectangle(getAppWidth(), getAppHeight(),
-                    boss == Boss.MATRIARCH ? Color.rgb(225, 205, 255) : Color.rgb(255, 230, 170));
+            flash = new Rectangle(getAppWidth(), getAppHeight(), boss == Boss.MATRIARCH ? Color.rgb(225, 205, 255)
+                    : boss == Boss.HYDRA ? Color.rgb(255, 205, 150) : Color.rgb(255, 230, 170));
             flash.setMouseTransparent(true);
             addUINode(flash);
         }

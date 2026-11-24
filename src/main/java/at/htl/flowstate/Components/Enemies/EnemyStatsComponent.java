@@ -273,6 +273,15 @@ public class EnemyStatsComponent extends Component {
     }
     public int getPoisonStacks() { return poisonStacks; }
 
+    /** Damage per second its burn, poison and bleed deal right now (the Tar Hydra's heads share it). */
+    public double getDotPerSecond() {
+        double dps = 0;
+        if (burnLeft > 0) dps += BURN_DPS * type.nature.multiplier(Element.FIRE);
+        if (poisonStacks > 0) dps += POISON_DPS_PER_STACK * poisonStacks;
+        if (bleedStacks > 0) dps += BLEED_DPS_PER_STACK * bleedStacks;
+        return dps;
+    }
+
     //-----Knockback-----
     public boolean isKnockedBack() {
         return knockbackVelocity != 0;

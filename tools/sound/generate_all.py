@@ -813,6 +813,49 @@ def acid_sizzle():
 
 
 @sound
+def hydra_roar():
+    """A Tar Hydra head roaring: a low, wet bellow with tar bubbling in the throat."""
+    dur = 1.3
+    voice = mix((tone(dur, sweep(62, 48, dur), 'saw', vibrato=4, vib_rate=5), 0.7),
+                (tone(dur, sweep(93, 70, dur), 'saw', vibrato=5, vib_rate=4), 0.45),
+                (tone(dur, sweep(140, 104, dur), 'square', vibrato=6, vib_rate=7), 0.15))
+    throat = bandpass(noise(dur, 'pink', seed=340), lambda t: 300 + 260 * math.sin(math.pi * min(1.0, t / dur)), 1.2)
+    gurgle = tremolo(lowpass(noise(dur, 'brown', seed=341), 600), 19, 0.8)
+    sig = lowpass(drive(mix((voice, 0.8), (throat, 0.6), (gurgle, 0.5)), 2.4), 1600)
+    return amp(sig, lambda t: min(1.0, t / 0.15) * math.exp(-max(0.0, t - 0.75) / 0.25))
+
+
+@sound
+def tar_spit():
+    """The spitter hocking a glob of burning tar: a thick gulp, then a fiery whoosh."""
+    gulp = squelch(0.2, 320, 110, 3.5, seed=342)
+    whoosh_ = whoosh(0.5, 300, 1800, q=1.2, peak=0.3, seed=343)
+    roar = env(lowpass(noise(0.45, 'brown', seed=344), 900), 0.02, 0.4)
+    return mix((gulp, 1.0), (whoosh_, 0.6, 0.06), (roar, 0.5, 0.05))
+
+
+@sound
+def tar_splash():
+    """A glob of tar landing: a heavy wet slap, sizzling flames."""
+    slap = squelch(0.3, 420, 90, 2.2, seed=345)
+    thud = thump(0.35, 90, 40)
+    hiss = env(highpass(noise(0.7, seed=346), 2800), 0.01, 0.6)
+    pops = lowpass(clicks(0.6, 25, 0.006, (500, 2000), seed=347), 3500)
+    return mix((slap, 1.0), (thud, 0.6), (hiss, 0.35, 0.05), (amp(pops, lambda t: math.exp(-t / 0.3)), 0.4, 0.05))
+
+
+@sound
+def tar_wave():
+    """A wave of tar rolling over the lake: a long churning wash with a low rumble under it."""
+    dur = 1.8
+    wash = bandpass(noise(dur, 'pink', seed=348), lambda t: 500 + 700 * math.sin(math.pi * min(1.0, t / dur)), 0.9)
+    rumble = lowpass(noise(dur, 'brown', seed=349), 220)
+    glug = tremolo(lowpass(noise(dur, 'brown', seed=350), 700), 9, 0.7)
+    sig = mix((wash, 0.6), (rumble, 0.9), (glug, 0.4))
+    return amp(sig, lambda t: min(1.0, t / 0.35) * math.exp(-max(0.0, t - 1.1) / 0.3))
+
+
+@sound
 def amb_abyss():
     dur, xf = 17.0, 1.0
     wind = lowpass(noise(dur, 'pink', seed=120), lambda t: 260 + 160 * math.sin(TAU * t / 8.0) + 80 * math.sin(TAU * t / 3.1))

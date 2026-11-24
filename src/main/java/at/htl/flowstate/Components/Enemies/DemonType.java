@@ -50,7 +50,26 @@ public enum DemonType {
             "#d8ccef", "#a898c4", "#8c4dff"),
     /** One of the strands she hangs from: a tall, thin target (the strand is drawn by ThreadBehaviour). */
     THREAD("DemonThread", 80, 28, 600, 10, 10, 5, 9, false, DemonNature.VOID, 0, 0.0, 0.0, 1.8,
-            "#d8ccef", "#b98cff");
+            "#d8ccef", "#b98cff"),
+    // the Tar Hydra (third boss, tools/art/hydra.py). The body sits sunk deep under the tar with a tiny hitbox, out of
+    // reach of every attack, and carries the boss bar; the heads and stumps are its parts.
+    HYDRA("HydraBody", 2250, 2, 2, 280, 75, 140, 208, true, DemonNature.FLESH, 30, 0.0, 0.0, 0.5,
+            "#46404f", "#17131a", "#ff8a2a"),
+    HYDRA_SPITTER("HydraSpitter", 450, 70, 52, 150, 120, 75, 70, true, DemonNature.FLESH, 0, 0.0, 0.4, 0.8,
+            "#46404f", "#17131a", "#ff8a2a"),
+    HYDRA_BITER("HydraBiter", 450, 88, 62, 150, 120, 75, 70, true, DemonNature.FLESH, 0, 0.0, 0.4, 0.7,
+            "#46404f", "#17131a", "#ece2c6"),
+    HYDRA_LURE("HydraLure", 450, 64, 46, 150, 120, 75, 70, true, DemonNature.FLESH, 0, 0.0, 0.4, 0.9,
+            "#46404f", "#17131a", "#ffd25a"),
+    HYDRA_CROWNED("HydraCrowned", 900, 112, 78, 150, 120, 75, 70, true, DemonNature.FLESH, 0, 0.0, 0.25, 0.55,
+            "#46404f", "#17131a", "#ece2c6"),
+    /** A cut neck, smoking until it is sealed or grows its head back: the hitbox is the cut face. */
+    HYDRA_SPITTER_STUMP("HydraSpitterStump", 1e6, 56, 26, 60, 70, 30, 47, true, DemonNature.FLESH, 0, 0.0, 0.0, 1.0,
+            "#b0404c", "#46404f"),
+    HYDRA_BITER_STUMP("HydraBiterStump", 1e6, 68, 30, 60, 70, 30, 45, true, DemonNature.FLESH, 0, 0.0, 0.0, 1.0,
+            "#b0404c", "#46404f"),
+    HYDRA_LURE_STUMP("HydraLureStump", 1e6, 52, 24, 60, 70, 30, 48, true, DemonNature.FLESH, 0, 0.0, 0.0, 1.0,
+            "#b0404c", "#46404f");
 
     public final String prefix;
     public final double hp;
@@ -90,7 +109,13 @@ public enum DemonType {
 
     /** Part of a boss fight rather than a demon (a strand, an egg sac): no experience, no on-kill effects. */
     public boolean isPart() {
-        return this == THREAD || this == EGG;
+        return this == THREAD || this == EGG || isHydraPart();
+    }
+
+    /** A head or stump of the Tar Hydra (not its body). */
+    public boolean isHydraPart() {
+        return this == HYDRA_SPITTER || this == HYDRA_BITER || this == HYDRA_LURE || this == HYDRA_CROWNED
+                || this == HYDRA_SPITTER_STUMP || this == HYDRA_BITER_STUMP || this == HYDRA_LURE_STUMP;
     }
 
     /** Spawn name in {@link at.htl.flowstate.Factories.EnemyFactory}. */

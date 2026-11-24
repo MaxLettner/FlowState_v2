@@ -25,7 +25,7 @@ import static com.almasb.fxgl.dsl.FXGL.spawn;
  * comes up (LevelGeneration asks {@link #bossDue}); nothing else spawns from then until the Lord is dead.
  * <p>
  * Testing: {@code FLOWSTATE_DEMONS=imp,bat} spawns only those demons (all distances, one kind per group;
- * {@code lord} brings the boss arena right away ({@code matriarch}: the Void Matriarch's), {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
+ * {@code lord} brings the boss arena right away ({@code matriarch}: the Void Matriarch's, {@code hydra}: the Tar Hydra's), {@code mimic} puts mimics on the ground), {@code FLOWSTATE_ELITES=1} makes
  * every single demon an elite; {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic (StructureGeneration).
  */
 public class EnemyGeneration {
@@ -96,8 +96,10 @@ public class EnemyGeneration {
             }
             // the Mimic normally hides among the chests; tests can have it on the ground
             if (names.contains(DemonType.MIMIC.name())) groups.add(new Group("mimic", 2.5, 0, 1, new Pack(DemonType.MIMIC, 1, 1)));
-            boolean lord = names.contains(DemonType.LORD.name()) || names.contains(DemonType.MATRIARCH.name());
-            testBoss = names.contains(DemonType.MATRIARCH.name()) ? BossArena.Boss.MATRIARCH : BossArena.Boss.PIT_LORD;
+            boolean lord = names.contains(DemonType.LORD.name()) || names.contains(DemonType.MATRIARCH.name())
+                    || names.contains(DemonType.HYDRA.name());
+            testBoss = names.contains(DemonType.MATRIARCH.name()) ? BossArena.Boss.MATRIARCH
+                    : names.contains(DemonType.HYDRA.name()) ? BossArena.Boss.HYDRA : BossArena.Boss.PIT_LORD;
             nextBossX = lord ? START_X * 0.6 + 300 : Double.MAX_VALUE;
             if (groups.isEmpty() && !lord) throw new IllegalArgumentException("FLOWSTATE_DEMONS: no demon named in " + only);
             budget = MAX_BUDGET;    // something to look at right away
@@ -111,15 +113,19 @@ public class EnemyGeneration {
         return x >= nextBossX && !BossArena.isActive();
     }
 
-    /** Which boss the next arena is for: the Pit Lord first, then the Void Matriarch, taking turns. */
+    /** Which boss the next arena is for: the Pit Lord, the Void Matriarch, the Tar Hydra, round and round. */
     public BossArena.Boss nextBoss() {
         if (testBoss != null) return testBoss;
-        return bossesPlaced % 2 == 0 ? BossArena.Boss.PIT_LORD : BossArena.Boss.MATRIARCH;
+        return switch (bossesPlaced % 3) {
+            case 0 -> BossArena.Boss.PIT_LORD;
+            case 1 -> BossArena.Boss.MATRIARCH;
+            default -> BossArena.Boss.HYDRA;
+        };
     }
 
     /** The next boss's share of its full HP: the first has a third, the second two thirds, every later one all of it. */
     public double nextBossHpScale() {
-        if (testing) return 1;    // FLOWSTATE_DEMONS=lord/matriarch tests the full fight
+        if (testing) return 1;    // FLOWSTATE_DEMONS=lord/matriarch/hydra tests the full fight
         return switch (bossesPlaced) {
             case 0 -> 1 / 3.0;
             case 1 -> 2 / 3.0;

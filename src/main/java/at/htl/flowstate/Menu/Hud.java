@@ -2,6 +2,7 @@ package at.htl.flowstate.Menu;
 
 import javafx.scene.image.ImageView;
 import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
+import at.htl.flowstate.Components.Enemies.HydraBehaviour;
 import at.htl.flowstate.Components.Enemies.MatriarchBehaviour;
 import at.htl.flowstate.Components.Enemies.PitLordBehaviour;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
@@ -37,6 +38,8 @@ public class Hud {
     private final ImageView bossName = PixelText.view("PIT LORD", PixelText.MOLTEN, 3);
     private final ImageView matriarchName = PixelText.view("VOID MATRIARCH",
             PixelText.inlaid(Color.web("#eadcff"), Color.web("#a77bff")), 3);
+    private final ImageView hydraName = PixelText.view("TAR HYDRA",
+            PixelText.inlaid(Color.web("#ffd25a"), Color.web("#c2300f")), 3);
 
     private final Hotbar hotbar = new Hotbar();
 
@@ -73,21 +76,27 @@ public class Hud {
         bossName.setLayoutY(BOSS_TOP);
         matriarchName.setLayoutX(Math.round((width - matriarchName.getImage().getWidth()) / 2));
         matriarchName.setLayoutY(BOSS_TOP + bossName.getImage().getHeight() - matriarchName.getImage().getHeight());
+        hydraName.setLayoutX(Math.round((width - hydraName.getImage().getWidth()) / 2));
+        hydraName.setLayoutY(BOSS_TOP + bossName.getImage().getHeight() - hydraName.getImage().getHeight());
         bossBar.setVisible(false);
         bossName.setVisible(false);
         matriarchName.setVisible(false);
+        hydraName.setVisible(false);
         addUINode(bossBar);
         addUINode(bossName);
         addUINode(matriarchName);
+        addUINode(hydraName);
     }
 
     private void updateBoss() {
         Entity lord = PitLordBehaviour.current();
-        Entity boss = lord != null ? lord : MatriarchBehaviour.current();
+        Entity matriarch = MatriarchBehaviour.current();
+        Entity boss = lord != null ? lord : matriarch != null ? matriarch : HydraBehaviour.current();
         boolean show = boss != null && Math.abs(boss.getCenter().getX() - player.getCenter().getX()) < BOSS_RANGE;
         bossBar.setVisible(show);
         bossName.setVisible(show && boss == lord);
-        matriarchName.setVisible(show && boss != lord);
+        matriarchName.setVisible(show && boss == matriarch);
+        hydraName.setVisible(show && boss != lord && boss != matriarch);
         if (!show) return;
         HealthDoubleComponent hp = boss.getComponent(HealthDoubleComponent.class);
         bossBar.update(hp.getValue(), hp.getMaxValue(), tpf());
