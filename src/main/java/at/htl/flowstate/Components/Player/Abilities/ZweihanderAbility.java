@@ -49,7 +49,7 @@ public class ZweihanderAbility extends MeleeAbility {
     private void tapSwing() {
         Slash slash = slash(SPEC.hit(facing()), SPEC.swingTime(), false);
         slash.params().windup(0.3).strike(0.22);
-        launch(SPEC, slash, 1, 1.2);
+        launch(SPEC, slash);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class ZweihanderAbility extends MeleeAbility {
             // already wound up while charging: almost no windup, a fast heavy strike
             Slash slash = slash(hit, 0.6, false);
             slash.params().windup(0.06).strike(0.26);
-            launch(SPEC, slash, size, 2.2);
+            launch(SPEC, slash, size);
         }
         cooldown(SPEC.interval());
     }

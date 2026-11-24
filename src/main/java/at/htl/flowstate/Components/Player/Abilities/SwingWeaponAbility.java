@@ -6,6 +6,7 @@ import com.almasb.fxgl.entity.Entity;
 /** A plain swing weapon: Rusty Sword, Iron Sword, Club, Spring Hammer. Alternates overhead and rising slashes. */
 public class SwingWeaponAbility extends MeleeAbility {
     private static final double ALTERNATE_WINDOW = 0.5;   // seconds after ready in which the next swing comes back up
+    private static final double SPRING_POGO_HEIGHT = 3;   // the Spring Hammer's pogo flings you three times as high
 
     private final MeleeSpec spec;
     private boolean backswing = false;
@@ -26,7 +27,9 @@ public class SwingWeaponAbility extends MeleeAbility {
     public void primaryPress() {
         press(() -> {
             backswing = sinceSwing <= spec.interval() + ALTERNATE_WINDOW && !backswing;
-            launch(spec, slash(spec.hit(facing()), spec.swingTime(), backswing));
+            Slash slash = slash(spec.hit(facing()), spec.swingTime(), backswing);
+            if (spec == MeleeSpec.SPRING_HAMMER) slash.params().pogo(SPRING_POGO_HEIGHT);
+            launch(spec, slash);
             cooldown(spec.interval());
             sinceSwing = 0;
         });

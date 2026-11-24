@@ -40,7 +40,7 @@ public class ShortswordAbility extends MeleeAbility {
 
         Slash slash = slash(hit, finisher ? 0.4 : SPEC.swingTime(), comboStep == 1);
         if (finisher) slash.params().windup(0.28).strike(0.22);
-        launch(SPEC, slash, finisher ? 1.15 : 1, finisher ? 1.8 : 1);
+        launch(SPEC, slash, finisher ? 1.15 : 1);
         cooldown(finisher ? FINISHER_INTERVAL : SPEC.interval());
 
         comboStep = (comboStep + 1) % 3;

@@ -53,10 +53,11 @@ PROMPTS = {
     'EXIT': ('EXIT THE GAME?', 'PROGRESS WILL BE LOST'),
 }
 
-TABLET_W, TABLET_H = 220, 212
+TABLET_W, TABLET_H = 220, 224
 CONTROLS = [
     (('A', 'D'), 'MOVE LEFT / RIGHT'),
     (('W',), 'JUMP / FLY UP'),
+    (('CTRL',), 'DASH'),
     (('S',), 'SINK WHILE LEVITATING'),
     (('LMB',), 'ATTACK'),
     (('RMB',), 'WEAPON SPECIAL'),

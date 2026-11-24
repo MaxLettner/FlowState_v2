@@ -27,6 +27,8 @@ import com.almasb.fxgl.app.GameSettings;
 import com.almasb.fxgl.app.scene.MenuType;
 import com.almasb.fxgl.app.scene.SceneFactory;
 import com.almasb.fxgl.entity.Entity;
+import com.almasb.fxgl.input.KeyTrigger;
+import com.almasb.fxgl.input.TriggerListener;
 import com.almasb.fxgl.input.UserAction;
 import com.almasb.fxgl.physics.BoundingShape;
 import com.almasb.fxgl.physics.HitBox;
@@ -201,6 +203,13 @@ public class Game extends GameApplication {
             @Override protected void onActionBegin() { loadout().primaryPress(); }
             @Override protected void onActionEnd() { loadout().primaryRelease(); }
         }, MouseButton.PRIMARY);
+
+        // FXGL refuses to bind modifier keys to actions, so the Ctrl dash listens to the raw key presses instead
+        getInput().addTriggerListener(new TriggerListener() {
+            @Override protected void onKeyBegin(KeyTrigger trigger) {
+                if (trigger.getKey() == KeyCode.CONTROL) movement().dash();
+            }
+        });
 
         getInput().addAction(new UserAction("Secondary") {
             @Override protected void onActionBegin() { loadout().secondaryPress(); }

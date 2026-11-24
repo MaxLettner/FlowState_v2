@@ -277,21 +277,82 @@ def big_hammer():
     ])
 
 
+def chain(u0, u1, sag, mat, step=2.6):
+    """Hanging chain along the axis from u0 to u1, sagging by `sag` towards -d: rings alternating with links seen edge-on."""
+    links = []
+    n = max(2, int((u1 - u0) / step))
+    for i in range(n + 1):
+        t = i / n
+        links.append((u0 + (u1 - u0) * t, -sag * math.sin(math.pi * t), i % 2 == 0))
+
+    def f(u, d, L):
+        for lu, ld, ring in links:
+            du, dd = u - lu, d - ld
+            if ring:
+                r = math.hypot(du, dd)
+                if 0.7 <= r <= 1.9:
+                    return mat[1] if dd > 0 else mat[3]
+            elif abs(du) <= 1.4 and abs(dd) <= 0.6:
+                return mat[2]
+        return None
+    return f
+
+
+def spiked_ball(head, r, parts):
+    for k in range(8):
+        a = k * 45 + 22.5
+        parts.append(spike(head + math.cos(math.radians(a)) * (r - 1), math.sin(math.radians(a)) * (r - 1), a, 4.5, STEEL))
+    parts.append(ball(head, 0, r, DARK_STEEL))
+    return parts
+
+
 def morningstar():
+    """The whole flail (icon, and what the Hollow Ember swings): grip, sagging chain, spiked ball."""
     S = canvas_for_length(162)
     L = axis_len(S)
     head = L * 0.86
     r = min(8.0, L * 0.11)
     parts = [
         cyl(1, L * 0.2, 1.9, LEATHER, bands=2),
-        cyl(L * 0.2, head - r + 1, 1.7, DARK_WOOD),
-        cyl(head - r - 2, head - r + 1, 2.8, DARK_STEEL),
+        cyl(L * 0.2, L * 0.3, 1.7, DARK_WOOD),
+        cyl(L * 0.3, L * 0.34, 2.6, DARK_STEEL),
+        chain(L * 0.35, head - r, L * 0.07, DARK_STEEL),
     ]
-    for k in range(8):
-        a = k * 45 + 22.5
-        parts.append(spike(head + math.cos(math.radians(a)) * (r - 1), math.sin(math.radians(a)) * (r - 1), a, 4.5, STEEL))
-    parts.append(ball(head, 0, r, DARK_STEEL))
-    return render(S, parts)
+    return render(S, spiked_ball(head, r, parts))
+
+
+def flail_handle():
+    """The Morningstar's grip in the hand; the chain hangs from the iron cap at its tip."""
+    S = canvas_for_length(44)
+    L = axis_len(S)
+    return render(S, [
+        cyl(1, L * 0.55, 1.9, LEATHER, bands=2),
+        cyl(L * 0.55, L * 0.82, 1.7, DARK_WOOD),
+        cyl(L * 0.82, L, 2.6, DARK_STEEL),
+    ])
+
+
+def flail_head():
+    """The Morningstar's spiked ball on its own, centred (drawn on the diagonal like the weapons)."""
+    S = 29
+    L = axis_len(S)
+    return render(S, spiked_ball(L / 2, 8.0, []))
+
+
+def chain_links():
+    """Two chain links side by side: a ring seen face-on (left 8 px) and one seen edge-on (right 8 px)."""
+    img = new(16, 6)
+    px = img.load()
+    for x in range(2, 6):
+        px[x, 1] = DARK_STEEL[1]
+        px[x, 4] = DARK_STEEL[3]
+    for y in (2, 3):
+        px[1, y] = DARK_STEEL[2]
+        px[6, y] = DARK_STEEL[2]
+    for x in range(9, 15):
+        px[x, 2] = DARK_STEEL[1]
+        px[x, 3] = DARK_STEEL[3]
+    return outline(img)
 
 
 def spring_hammer():
@@ -360,6 +421,9 @@ def generate(out_dir):
         'Knuppel': club(),
         'BigHammer': big_hammer(),
         'BigMace': morningstar(),
+        'FlailHandle': flail_handle(),
+        'FlailHead': flail_head(),
+        'ChainLinks': chain_links(),
         'SpringHammer': spring_hammer(),
         'BasicTrident': trident(WOOD, STEEL),
         'RecallTrident': trident(TEAL, GOLD, gem=TEAL),

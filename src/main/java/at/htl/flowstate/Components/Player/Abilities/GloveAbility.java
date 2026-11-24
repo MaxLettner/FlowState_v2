@@ -8,6 +8,7 @@ import at.htl.flowstate.Combat.Hit;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.Attacks.PunchComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
+import at.htl.flowstate.Components.Player.PlayerMovementComponent;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import com.almasb.fxgl.dsl.FXGL;
@@ -17,7 +18,7 @@ import com.almasb.fxgl.physics.HitBox;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
-/** Fisticuffs: punches, plus dodge (Leather) or block (Metal); Spike Gloves apply Bleed. */
+/** Fisticuffs: punches, plus a long dodge dash (Leather) or block (Metal); Spike Gloves apply Bleed. */
 public class GloveAbility extends MeleeAbility {
     public enum Glove {
         HAND_WRAPS(8, 0.3, 50, 8, "HandWraps.png", false, false, false),
@@ -45,6 +46,7 @@ public class GloveAbility extends MeleeAbility {
     private static final double FIST_SIZE = 16;
     private static final double PUNCH_KNOCKBACK = 80;
     private static final double DODGE_INVULNERABILITY = 0.2;
+    private static final double DODGE_LENGTH = 2;      // times the Ctrl dash
     private static final double DODGE_COOLDOWN = 2.0;
     private static final double HAND_OFFSET = 6;
 
@@ -100,7 +102,7 @@ public class GloveAbility extends MeleeAbility {
     @Override
     public void secondaryPress() {
         if (glove.dodge && dodgeCooldown <= 0) {
-            movement().startDash();
+            movement().startDash(PlayerMovementComponent.DASH_TIME * DODGE_LENGTH);
             stats().grantInvulnerability(DODGE_INVULNERABILITY);
             dodgeCooldown = DODGE_COOLDOWN;
         }
