@@ -90,7 +90,8 @@ public class HomingOrbComponent extends Component {
         trailTimer -= tpf;
         if (trailTimer <= 0) {
             trailTimer = 0.05;
-            Particles.burst(entity.getCenter(), style.trail(), 1, Math.toDegrees(angle) + 180, 25, 20, 60, 0.4, 4, -30);
+            Particles.of(style.trail()).count(1).angle(Math.toDegrees(angle) + 180, 25).speed(20, 60)
+                    .life(0.4).size(4).gravity(-30).at(entity.getCenter());
         }
         double life = style.life();
         if (age > life - 0.4) entity.setOpacity(Math.max(0, (life - age) / 0.4));
@@ -98,6 +99,6 @@ public class HomingOrbComponent extends Component {
     }
 
     private void fizzle(Entity orb) {
-        Particles.burst(orb.getCenter(), style.trail(), 8, -90, 180, 60, 180, 0.4, 4, 0);
+        Particles.of(style.trail()).count(8).angle(-90, 180).speed(60, 180).life(0.4).size(4).gravity(0).at(orb.getCenter());
     }
 }

@@ -164,15 +164,15 @@ public class DrakeBehaviour extends DemonBehaviour {
                 .zIndex(12)
                 .buildAndAttach();
         Sfx.BOMB_DROP.at(from, 0.8, FXGLMath.random(0.95, 1.1));
-        Particles.burst(from, Particles.EMBER, 6, 90, 50, 40, 120, 0.4, 4, 300);
+        Particles.of(Particles.EMBER).count(6).angle(90, 50).speed(40, 120).life(0.4).size(4).gravity(300).at(from);
     }
 
     private static void burst(Entity bomb) {
         Point2D c = bomb.getCenter();
         Sfx.EXPLOSION.at(c, 0.55, 1.25);
         Impact.shake(4);
-        Particles.burst(c, Particles.EMBER, 18, -90, 80, 120, 380, 0.6, 6, 700);
-        Particles.burst(c, Particles.DUST, 8, -90, 70, 60, 180, 0.7, 7, 200);
+        Particles.of(Particles.EMBER).count(18).angle(-90, 80).speed(120, 380).life(0.6).size(6).gravity(700).at(c);
+        Particles.of(Particles.DUST).count(8).angle(-90, 70).speed(60, 180).life(0.7).size(7).gravity(200).at(c);
         MagmaPoolComponent.spawn(c.getX(), c.getY() - 10, POOL_WIDTH, POOL_TIME);
     }
 

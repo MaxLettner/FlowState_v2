@@ -7,7 +7,7 @@ plus their effects. Same Rig as demons.py (wave 1). Faces right, shown at x2. Mu
   DemonWatcher     48x48     (24, 24)*     idle 4, look 8 (pupil at k * 45 deg), charge 2
   DemonGatekeeper  56x72     (28, 71)      idle 4, summon 4
   DemonPriest      48x56     (24, 55)      idle 4, walk 6, cast 4
-  (DemonLord, the Pit Lord boss, is rendered in 3D by lord3d.py since 2026-11-20; its old 2D rig is in git history)
+  (DemonLord, the Pit Lord boss, is drawn by lord2d.py)
 
 Effects: Portal (6f 40x56, bottom-anchored), HexBolt (4f 14x14, flies right), BossGate (4f 24x64 tile, repeats
 upward).
@@ -17,9 +17,9 @@ upward).
 import math
 import random
 import sys
-from pixel import *
+from pixel import OUTLINE, hexc, mix, new, put, ramp, strip
 from materials import BONE, BLACK_IRON, GOLD, DARK_STEEL, RUST, CRIMSON, WOOD, DARK_WOOD
-from demons import (Rig, ell, limb, union, chain, poly, bezier, rot, polar, flame, clamp, dark,
+from demons import (Rig, ell, limb, union, chain, poly, bezier, rot, polar, flame, dark,
                     EMBER, FEL, HORN, SKULL, ROCK, LAVA_RIM)
 
 HEX = ramp('#f6d8ff', '#d08cff', '#a050f0', '#6a28b0', '#3a1266')

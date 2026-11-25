@@ -56,7 +56,7 @@ public class EliteComponent extends Component {
             moteTimer = MOTE_INTERVAL;
             Point2D at = entity.getCenter().add(FXGLMath.random(-entity.getWidth() / 2, entity.getWidth() / 2),
                     FXGLMath.random(-entity.getHeight() / 3, entity.getHeight() / 2));
-            Particles.burst(at, affix.motes, 1, -90, 25, 15, 50, 0.7, 4, -50);
+            Particles.of(affix.motes).count(1).angle(-90, 25).speed(15, 50).life(0.7).size(4).gravity(-50).at(at);
         }
     }
 
@@ -72,7 +72,8 @@ public class EliteComponent extends Component {
             case VAMPIRIC -> {
                 HealthDoubleComponent hp = source.getComponent(HealthDoubleComponent.class);
                 hp.restore(hp.getMaxValue() * VAMPIRE_HEAL);
-                Particles.burst(source.getCenter(), elite.affix.motes, 10, -90, 180, 40, 140, 0.5, 5, -30);
+                Particles.of(elite.affix.motes).count(10).angle(-90, 180).speed(40, 140)
+                        .life(0.5).size(5).gravity(-30).at(source.getCenter());
             }
             case SWIFT -> { }
         }

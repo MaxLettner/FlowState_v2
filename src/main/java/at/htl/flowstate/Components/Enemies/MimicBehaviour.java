@@ -129,7 +129,7 @@ public class MimicBehaviour extends GroundDemonBehaviour {
         face(dirToPlayer());
         Sfx.CHEST_OPEN.at(entity.getCenter(), 0.8, 0.6);
         Sfx.MIMIC_CHOMP.at(entity.getCenter(), 0.9, 0.8);
-        Particles.burst(entity.getCenter(), Particles.DUST, 10, -90, 80, 60, 200, 0.6, 5, 500);
+        Particles.of(Particles.DUST).count(10).angle(-90, 80).speed(60, 200).life(0.6).size(5).gravity(500).at(entity.getCenter());
     }
 
     /** A hit wakes it (and lands in full). */
@@ -174,7 +174,7 @@ public class MimicBehaviour extends GroundDemonBehaviour {
     public void onDeath() {
         player.getComponent(PlayerStatsComponent.class).addSkillPoint();
         Sfx.CHEST_OPEN.play();
-        Particles.burst(entity.getCenter(), GOLD, 22, -90, 50, 200, 480, 0.9, 5, 700);
+        Particles.of(GOLD).count(22).angle(-90, 50).speed(200, 480).life(0.9).size(5).gravity(700).at(entity.getCenter());
     }
 
     @Override

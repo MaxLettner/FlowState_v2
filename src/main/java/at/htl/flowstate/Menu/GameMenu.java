@@ -4,6 +4,7 @@ import at.htl.flowstate.Assets;
 import at.htl.flowstate.Sfx;
 import com.almasb.fxgl.app.scene.FXGLMenu;
 import com.almasb.fxgl.app.scene.MenuType;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.dsl.FXGL;
 import javafx.scene.CacheHint;
 import javafx.scene.Group;
@@ -83,7 +84,7 @@ public class GameMenu extends FXGLMenu {
     private int lastMain = 0;           // main button that opened the current dialog
     private double time = 0;
     private double emberTimer = 0;
-    private final Random rng = new Random();
+    private final Random rng = FXGLMath.getRandom();
 
     public GameMenu(MenuType type) {
         super(type);

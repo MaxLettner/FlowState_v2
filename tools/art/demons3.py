@@ -16,9 +16,9 @@ Effects: DrakeBomb (4f 16x16), GravityWell (8f 64x64, centre).
 import math
 import random
 import sys
-from pixel import *
+from pixel import hexc, new, outline, put, ramp, strip
 from materials import BONE, BLACK_IRON, GOLD, DARK_STEEL, WOOD, DARK_WOOD
-from demons import (Rig, ell, limb, union, chain, poly, bezier, rot, polar, flame, clamp, dark,
+from demons import (Rig, ell, limb, union, chain, poly, bezier, rot, polar, flame, dark,
                     EMBER, HORN, ROCK)
 from demons2 import membrane_wing
 import effects

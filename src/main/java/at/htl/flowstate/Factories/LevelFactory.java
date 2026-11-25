@@ -1,10 +1,10 @@
 package at.htl.flowstate.Factories;
 
 import at.htl.flowstate.Assets;
+import com.almasb.fxgl.core.math.FXGLMath;
 import javafx.scene.Group;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-import com.almasb.fxgl.core.math.FXGLMath;
 import javafx.scene.paint.ImagePattern;
 import at.htl.flowstate.Components.Chests.ChestComponent;
 import at.htl.flowstate.Components.Identifier.PlatformIdentifierComponent;
@@ -93,14 +93,14 @@ public class LevelFactory implements EntityFactory {
         Image probe = Assets.frameImage("GroundEmbed.png", EMBED_FRAMES, TILE_SCALE, 0);
         double fw = probe.getWidth();
         if (w < fw) return;
-        int count = (int) (w / 260) + (Math.random() < 0.6 ? 1 : 0);
+        int count = (int) (w / 260) + (FXGLMath.randomDouble() < 0.6 ? 1 : 0);
         for (int i = 0; i < count; i++) {
             ImageView v = new ImageView(Assets.frameImage("GroundEmbed.png", EMBED_FRAMES, TILE_SCALE,
                     FXGLMath.random(0, EMBED_FRAMES - 1)));
             v.setSmooth(false);
-            v.setTranslateX(Math.random() * (w - fw));
-            v.setTranslateY(28 + Math.random() * 110);
-            v.setScaleX(Math.random() < 0.5 ? -1 : 1);
+            v.setTranslateX(FXGLMath.randomDouble() * (w - fw));
+            v.setTranslateY(28 + FXGLMath.randomDouble() * 110);
+            v.setScaleX(FXGLMath.randomDouble() < 0.5 ? -1 : 1);
             view.getChildren().add(v);
         }
     }
@@ -111,7 +111,7 @@ public class LevelFactory implements EntityFactory {
         int frame = data.get("frame");
         ImageView v = new ImageView(Assets.frameImage("GroundSurface.png", SURFACE_FRAMES, TILE_SCALE, frame));
         v.setSmooth(false);
-        v.setScaleX(Math.random() < 0.5 ? -1 : 1);
+        v.setScaleX(FXGLMath.randomDouble() < 0.5 ? -1 : 1);
         return FXGL.entityBuilder(data)
                 .view(v)
                 .zIndex(-2)

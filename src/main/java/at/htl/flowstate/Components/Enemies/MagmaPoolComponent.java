@@ -6,6 +6,7 @@ import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Particles;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
 import com.almasb.fxgl.physics.BoundingShape;
@@ -60,9 +61,9 @@ public class MagmaPoolComponent extends Component {
         animTime += tpf;
         Rectangle r = (Rectangle) entity.getViewComponent().getChildren().get(0);
         r.setFill(patterns[(int) (animTime * FPS) % FRAMES]);
-        if (Math.random() < tpf * 5) {
-            Particles.burst(new Point2D(entity.getX() + Math.random() * r.getWidth(), entity.getY() + 4),
-                    Particles.EMBER, 1, -90, 25, 30, 90, 0.6, 4, -40);
+        if (FXGLMath.randomDouble() < tpf * 5) {
+            Particles.of(Particles.EMBER).count(1).angle(-90, 25).speed(30, 90)
+                    .life(0.6).size(4).gravity(-40).at(new Point2D(entity.getX() + FXGLMath.randomDouble() * r.getWidth(), entity.getY() + 4));
         }
         if (entity.isColliding(player)) player.getComponent(PlayerStatsComponent.class).takeDamage(DAMAGE, entity, false);
         crackleTimer -= tpf;

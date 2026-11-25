@@ -41,7 +41,7 @@ def main():
     player_slime.generate(OUT)             # the player's extra animations (run, dash, hurt, death, ...)
     demons.generate(OUT)                   # the enemies: demons, their projectiles and effects
     demons2.generate(OUT)                  # wave 2 demons and their effects (portal, hex bolt, boss gate)
-    lord2d.generate(OUT)                   # the Pit Lord boss: the goat-skull executioner (2D, lord3d.py stays for the Matriarch)
+    lord2d.generate(OUT)                   # the Pit Lord boss: the goat-skull executioner
     demons3.generate(OUT)                  # wave 3: Ash Drake, Void Caller, Mimic and their effects
     matriarch2d.generate(OUT)              # the Void Matriarch boss (2D), her mites, egg sacs, strands, web gates, acid
     hydra.generate(OUT)                    # the Tar Hydra boss: heads, stumps, neck pieces, tar glob/pool/wave/lake, basalt pillars

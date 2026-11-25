@@ -30,6 +30,16 @@ module at.htl.flowstate {
     opens at.htl.flowstate.Components.Chests to com.almasb.fxgl.core;
     exports at.htl.flowstate.Components.Enemies;
     opens at.htl.flowstate.Components.Enemies to com.almasb.fxgl.core;
+    exports at.htl.flowstate.Components.Enemies.Bosses;
+    opens at.htl.flowstate.Components.Enemies.Bosses to com.almasb.fxgl.core;
+    exports at.htl.flowstate.Components.Enemies.Bosses.PitLord;
+    opens at.htl.flowstate.Components.Enemies.Bosses.PitLord to com.almasb.fxgl.core;
+    exports at.htl.flowstate.Components.Enemies.Bosses.Matriarch;
+    opens at.htl.flowstate.Components.Enemies.Bosses.Matriarch to com.almasb.fxgl.core;
+    exports at.htl.flowstate.Components.Enemies.Bosses.Hydra;
+    opens at.htl.flowstate.Components.Enemies.Bosses.Hydra to com.almasb.fxgl.core;
+    exports at.htl.flowstate.Components.Enemies.Bosses.Hollow;
+    opens at.htl.flowstate.Components.Enemies.Bosses.Hollow to com.almasb.fxgl.core;
     exports at.htl.flowstate.Components.Identifier;
     opens at.htl.flowstate.Components.Identifier to com.almasb.fxgl.core;
     exports at.htl.flowstate.Components.SpriteComponents;

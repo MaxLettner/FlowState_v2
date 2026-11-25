@@ -1,11 +1,11 @@
 package at.htl.flowstate.Components.Player.Abilities;
 
+import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
-import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Components.Player.Attacks.HeldWeaponComponent;
 import at.htl.flowstate.Components.Player.Attacks.PlayerProjectileComponent;
 import at.htl.flowstate.Components.Player.LoadoutComponent;

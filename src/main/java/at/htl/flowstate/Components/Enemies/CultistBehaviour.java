@@ -86,9 +86,9 @@ public class CultistBehaviour extends GroundDemonBehaviour {
         stop();
         timer += t;
         sprite.show("cast", timer < T1 ? 0 : timer < T2 ? 1 : timer < T_RELEASE ? 2 : timer < T4 ? 3 : 4);
-        if (timer < T_RELEASE && Math.random() < 0.5) {
+        if (timer < T_RELEASE && FXGLMath.randomDouble() < 0.5) {
             Point2D hands = entity.getCenter().add(facing * 6, -30);
-            Particles.burst(hands, FEL, 1, -90, 120, 20, 70, 0.4, 4, -60);
+            Particles.of(FEL).count(1).angle(-90, 120).speed(20, 70).life(0.4).size(4).gravity(-60).at(hands);
         }
         if (!released && timer >= T_RELEASE) {
             released = true;
@@ -133,7 +133,7 @@ public class CultistBehaviour extends GroundDemonBehaviour {
     }
 
     private void burst() {
-        Particles.burst(entity.getCenter(), FEL, 22, -90, 180, 60, 260, 0.6, 5, -80);
+        Particles.of(FEL).count(22).angle(-90, 180).speed(60, 260).life(0.6).size(5).gravity(-80).at(entity.getCenter());
     }
 
     @Override

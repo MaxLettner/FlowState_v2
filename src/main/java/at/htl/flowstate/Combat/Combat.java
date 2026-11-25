@@ -11,6 +11,7 @@ import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Skills.SkillType;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.Entity;
 import javafx.geometry.Point2D;
 
@@ -152,7 +153,7 @@ public final class Combat {
         if (blunt && stats.isStunned()) damage *= CONCUSSION_DAMAGE_MULT;
 
         double critChance = h.critChance + (fist ? loadout.getComboBonus() : 0);
-        boolean crit = critChance > 0 && Math.random() < critChance;
+        boolean crit = critChance > 0 && FXGLMath.randomDouble() < critChance;
         if (crit) damage *= CRIT_MULT;
 
         // elemental matchups: fire demons hate ice, void demons hate fire
@@ -171,7 +172,8 @@ public final class Combat {
         if (h.kind != DamageKind.DOT) {
             int sparkDir = enemy.getCenter().getX() >= player.getCenter().getX() ? 1 : -1;
             Particles.hit(enemy.getCenter().subtract(sparkDir * 12, 0), sparkDir);
-            if (crit) Particles.burst(enemy.getCenter(), Particles.SPARK, 8, -90, 180, 200, 420, 0.3, 6, 200);
+            if (crit) Particles.of(Particles.SPARK).count(8).angle(-90, 180).speed(200, 420)
+                    .life(0.3).size(6).gravity(200).at(enemy.getCenter());
         }
         if (h.kind != DamageKind.DOT) hitSound(enemy, h, damage, crit, shatteredSlow);
         if (weak > 1 && h.kind != DamageKind.DOT) weakness(enemy, element);
@@ -226,7 +228,8 @@ public final class Combat {
     /** A hit on a weakness: a burst in the element's colour and a bright ring, so the matchup is learnt. */
     private static void weakness(Entity enemy, Element element) {
         Point2D c = enemy.getCenter();
-        Particles.burst(c, element == Element.ICE ? Particles.ICE : Particles.EMBER, 14, -90, 180, 160, 380, 0.45, 5, 250);
+        Particles.of(element == Element.ICE ? Particles.ICE : Particles.EMBER).count(14).angle(-90, 180).speed(160, 380)
+                .life(0.45).size(5).gravity(250).at(c);
         Sfx.CRIT.at(c, 0.8, element == Element.ICE ? 1.35 : 0.85);
     }
 
@@ -234,7 +237,7 @@ public final class Combat {
     private static void blocked(Entity enemy, Entity player) {
         int dir = enemy.getCenter().getX() >= player.getCenter().getX() ? 1 : -1;
         Point2D at = enemy.getCenter().subtract(dir * enemy.getWidth() * 0.4, 0);
-        Particles.burst(at, Particles.SPARK, 6, dir >= 0 ? 180 : 0, 50, 120, 300, 0.2, 3, 400);
+        Particles.of(Particles.SPARK).count(6).angle(dir >= 0 ? 180 : 0, 50).speed(120, 300).life(0.2).size(3).gravity(400).at(at);
         Sfx.BLOCK_HIT.at(at, 0.8, 1.15);
         Impact.hitStop(0.03);
     }

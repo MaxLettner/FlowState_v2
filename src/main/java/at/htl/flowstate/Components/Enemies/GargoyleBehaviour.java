@@ -102,7 +102,8 @@ public class GargoyleBehaviour extends DemonBehaviour {
                     timer = REST_TIME;
                     stone(true);
                     Sfx.STONE_CRACK.at(entity.getCenter(), 0.8, 0.8);
-                    Particles.burst(new Point2D(entity.getCenter().getX(), entity.getBottomY()), Particles.DUST, 10, -90, 70, 60, 200, 0.5, 5, 700);
+                    Particles.of(Particles.DUST).count(10).angle(-90, 70).speed(60, 200)
+                            .life(0.5).size(5).gravity(700).at(new Point2D(entity.getCenter().getX(), entity.getBottomY()));
                 }
             }
             case REST -> {
@@ -122,7 +123,7 @@ public class GargoyleBehaviour extends DemonBehaviour {
         face(dxToPlayer());
         sprite.setTelegraph(TELL_MELEE);
         Sfx.STONE_CRACK.at(entity.getCenter());
-        Particles.burst(entity.getCenter(), GRIT, 12, -90, 120, 60, 220, 0.6, 5, 600);
+        Particles.of(GRIT).count(12).angle(-90, 120).speed(60, 220).life(0.6).size(5).gravity(600).at(entity.getCenter());
     }
 
     private void fly(double tpf, double t) {

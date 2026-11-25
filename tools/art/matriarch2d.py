@@ -25,8 +25,8 @@ import sys
 
 from PIL import Image
 
-from pixel import ramp, hexc, mix, OUTLINE
-from demons import Rig, ell, limb, chain, poly, clamp
+from pixel import ramp, hexc, mix, clamp, OUTLINE
+from demons import Rig, ell, limb, chain, poly
 from lord2d import ik, R, A, S
 
 W, H = 288, 240

@@ -18,9 +18,9 @@ import math
 import random
 import sys
 from PIL import Image
-from pixel import *
+from pixel import OUTLINE, clamp, mix, ramp
 from materials import BLACK_IRON, DARK_STEEL, BONE, LEATHER
-from demons import Rig, ell, limb, chain, poly, polar, dark, clamp, EMBER
+from demons import Rig, ell, limb, chain, poly, polar, dark, EMBER
 
 W, H = 480, 320
 AX, AY = 240, 309                 # anchor: the ground line under the feet (pixel rows >= AY are underground)

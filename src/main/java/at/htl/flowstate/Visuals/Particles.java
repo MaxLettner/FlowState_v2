@@ -27,19 +27,68 @@ public final class Particles {
 
     private Particles() {}
 
-    /**
-     * Spawns {@code count} particles flying out from {@code at}.
-     * @param angle   main direction in degrees (0 = right, -90 = up)
-     * @param spread  +- degrees around the main direction (180 = all around)
-     */
-    public static void burst(Point2D at, Color[] colors, int count, double angle, double spread,
-                             double speedMin, double speedMax, double life, double size, double gravity) {
-        for (int i = 0; i < count; i++) {
-            double a = Math.toRadians(angle + FXGLMath.random(-spread, spread));
-            double speed = FXGLMath.random(speedMin, speedMax);
-            Point2D v = new Point2D(Math.cos(a) * speed, Math.sin(a) * speed);
-            double s = Math.max(2, Math.round(size * FXGLMath.random(0.7, 1.2) / 2) * 2);
-            spawn(at, v, colors[FXGLMath.random(0, colors.length - 1)], s, life * FXGLMath.random(0.7, 1.2), gravity, 20);
+    /** A burst in these colours, set up by name and spawned with {@link Burst#at}. */
+    public static Burst of(Color[] colors) {
+        return new Burst(colors);
+    }
+
+    /** Particles flying out from one point; size and life vary by -30 % .. +20 % per particle. */
+    public static final class Burst {
+        private final Color[] colors;
+        private int count = 1;
+        private double angle, spread = 180;
+        private double speedMin, speedMax;
+        private double life = 1, size = 4, gravity;
+
+        private Burst(Color[] colors) {
+            this.colors = colors;
+        }
+
+        public Burst count(int count) {
+            this.count = count;
+            return this;
+        }
+
+        /** Main direction in degrees (0 = right, -90 = up) and +- spread around it (180 = all around). */
+        public Burst angle(double degrees, double spread) {
+            this.angle = degrees;
+            this.spread = spread;
+            return this;
+        }
+
+        /** px/s, picked per particle. */
+        public Burst speed(double min, double max) {
+            this.speedMin = min;
+            this.speedMax = max;
+            return this;
+        }
+
+        /** s */
+        public Burst life(double seconds) {
+            this.life = seconds;
+            return this;
+        }
+
+        /** px */
+        public Burst size(double px) {
+            this.size = px;
+            return this;
+        }
+
+        /** px/s², negative floats up */
+        public Burst gravity(double pxPerS2) {
+            this.gravity = pxPerS2;
+            return this;
+        }
+
+        public void at(Point2D at) {
+            for (int i = 0; i < count; i++) {
+                double a = Math.toRadians(angle + FXGLMath.random(-spread, spread));
+                double speed = FXGLMath.random(speedMin, speedMax);
+                Point2D v = new Point2D(Math.cos(a) * speed, Math.sin(a) * speed);
+                double s = Math.max(2, Math.round(size * FXGLMath.random(0.7, 1.2) / 2) * 2);
+                spawn(at, v, colors[FXGLMath.random(0, colors.length - 1)], s, life * FXGLMath.random(0.7, 1.2), gravity, 20);
+            }
         }
     }
 
@@ -57,17 +106,17 @@ public final class Particles {
 
     /** Hit sparks in the direction of the hit. */
     public static void hit(Point2D at, int direction) {
-        burst(at, SPARK, 7, direction >= 0 ? 0 : 180, 55, 150, 380, 0.22, 4, 300);
+        of(SPARK).count(7).angle(direction >= 0 ? 0 : 180, 55).speed(150, 380).life(0.22).size(4).gravity(300).at(at);
     }
 
     /** Slime splat when an enemy dies. */
     public static void splat(Point2D at, Color[] colors) {
-        burst(at, colors, 18, -90, 80, 120, 420, 0.7, 6, 900);
+        of(colors).count(18).angle(-90, 80).speed(120, 420).life(0.7).size(6).gravity(900).at(at);
     }
 
     public static void landingDust(Point2D feet) {
-        burst(feet, DUST, 4, 180, 12, 40, 110, 0.35, 4, -40);
-        burst(feet, DUST, 4, 0, 12, 40, 110, 0.35, 4, -40);
+        of(DUST).count(4).angle(180, 12).speed(40, 110).life(0.35).size(4).gravity(-40).at(feet);
+        of(DUST).count(4).angle(0, 12).speed(40, 110).life(0.35).size(4).gravity(-40).at(feet);
     }
 
     /**
@@ -88,7 +137,7 @@ public final class Particles {
 
     /** Short sparkle ring (timing cues, perfect inputs, deflects). */
     public static void glint(Point2D at, Color[] colors, int count) {
-        burst(at, colors, count, 0, 180, 90, 220, 0.25, 4, 0);
+        of(colors).count(count).angle(0, 180).speed(90, 220).life(0.25).size(4).gravity(0).at(at);
     }
 
     /** Small floating text that rises and fades ("x3", "PERFECT"). */

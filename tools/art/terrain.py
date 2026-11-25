@@ -15,8 +15,8 @@ backgrounds are 480x216 and scale x5 to 2400x1080.
 """
 import math
 import random
-from pixel import *
-from materials import *
+from pixel import dither_index, ellipse, hexc, line, mix, new, put, ramp, strip
+from materials import BLACK_IRON, CRIMSON
 from effects import Noise, WrapNoise
 from projectiles import FIRE
 

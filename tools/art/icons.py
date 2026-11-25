@@ -8,8 +8,8 @@ bows, crossbows and spell projectiles reuse their game sprites; the rest is draw
 import math
 from PIL import Image
 
-from pixel import *
-from materials import *
+from pixel import OUTLINE, dither_index, mix, new, outline, put, ramp
+from materials import BLACK_IRON, CLOTH_WHITE, CRIMSON, DARK_STEEL, GOLD, ICE, PURPLE, STEEL, TEAL, WOOD
 import weapons
 import ranged
 import projectiles

@@ -6,8 +6,8 @@ Chest frames: 0-1 idle (1 = glint), 2-5 opening, 6 open + glow, 7 open and empty
 """
 import math
 import random
-from pixel import *
-from materials import *
+from pixel import new, outline, put, ramp, strip
+from materials import DARK_STEEL, DARK_WOOD, GOLD, ICE, WOOD
 from projectiles import FIRE, MISSILE
 
 SMOKE = ramp('#6e6672', '#524b58', '#3c3743', '#2a2630')

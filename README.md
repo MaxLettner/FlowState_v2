@@ -30,7 +30,7 @@ A 2D platformer / action RPG built with **Java 25**, **FXGL 17.3**, and **Box2D 
 mvn javafx:run
 ```
 
-The Maven wrapper works too: `./mvnw javafx:run`.
+The Maven wrapper works too: `./mvnw javafx:run`. `./mvnw test` runs the unit tests (JUnit 5, in `src/test`).
 
 `FLOWSTATE_FPS=1 ./mvnw javafx:run` prints the frame rate and the game speed (game time vs real time) every 2 seconds.
 
@@ -42,6 +42,7 @@ Testing switches (combine freely):
 |`FLOWSTATE_ELITES=1`|Every single demon is an elite|
 |`FLOWSTATE_MIMICS=1`|Every chest is a Mimic|
 |`FLOWSTATE_AUTOSTART=1`|Skips the main menu|
+|`FLOWSTATE_INFINITE_SP=1`|Unlimited skill points (the HUD shows 999)|
 |`FLOWSTATE_SHOTS=<dir>`|Saves a screenshot every `FLOWSTATE_SHOTS_EVERY` s (default 1), at most `FLOWSTATE_SHOTS_MAX` (default 30)|
 
 ### Standalone jar (Linux + Windows)
@@ -50,13 +51,13 @@ Testing switches (combine freely):
 ./mvnw -Pdist clean package
 ```
 
-This builds `target/FlowState-1.0.jar`, a single jar with JavaFX and its native libraries for Linux and Windows (x64) bundled. Run it on either OS with a Java 25+ runtime installed:
+This builds `target/FlowState-0.7.0.jar`, a single jar with JavaFX and its native libraries for Linux and Windows (x64) bundled. Run it on either OS with a Java 25+ runtime installed:
 
 ```bash
-java -jar FlowState-1.0.jar
+java -jar FlowState-0.7.0.jar
 ```
 
-On Windows, double-clicking the jar also works when Java is associated with `.jar` files. Ignore `target/original-FlowState-1.0.jar`; it is the jar without dependencies.
+On Windows, double-clicking the jar also works when Java is associated with `.jar` files. Ignore `target/original-FlowState-0.7.0.jar`; it is the jar without dependencies.
 
 ---
 
@@ -175,6 +176,12 @@ About one chest in six past x = 6 000 is a **Mimic** (it takes the chest's place
 The **Pit Lord** mini-boss comes at x = 18 000 and every 24 000 px after. A gate of hellfire bars the way on until it dies, nothing else spawns during the fight, and its health bar shows at the top of the screen. Killing it grants 2 skill points.
 
 Entities more than 3500 px behind the viewport are removed each frame to keep Box2D stable.
+
+### Art
+
+Every sprite is drawn by `python tools/art/generate_all.py` into `src/main/resources/assets/textures`. It needs
+[Pillow](https://pypi.org/project/Pillow/) (`pip install pillow`); `tools/art/pixel.py` holds the shared pixel-art
+helpers and `tools/art/materials.py` the colour ramps. Randomness is seeded, so the output is the same every run.
 
 ### Sound
 

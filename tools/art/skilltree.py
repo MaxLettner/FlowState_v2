@@ -16,7 +16,7 @@ import math
 import random
 from PIL import Image, ImageFilter
 
-from pixel import *
+from pixel import OUTLINE, dither_index, hexc, mix, new, outline, put, ramp, strip
 from materials import GOLD
 from effects import Noise
 import icons

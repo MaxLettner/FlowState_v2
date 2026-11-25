@@ -5,8 +5,9 @@ except trailing ones (FireBall, MagicMissile) whose head centre is listed in CEN
 """
 import math
 import random
-from pixel import *
-from materials import *
+from pixel import new, outline, put, ramp, strip
+from materials import (
+    BLACK_IRON, BONE, CLOTH_WHITE, CRIMSON, DARK_STEEL, DARK_WOOD, GOLD, ICE, LEATHER, STEEL, WOOD)
 from ranged import shade, stroke, LIGHT, POISON, STRING
 
 FIRE = ramp('#ffffff', '#fff3a0', '#ffc23d', '#ff7a1f', '#d1361a', '#7a1a12')

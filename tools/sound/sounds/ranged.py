@@ -2,8 +2,10 @@
 import math
 import random
 
-from synth import *  # noqa: F401,F403  (the DSP toolbox: tone, noise, reverb, cavern, lowpass2, sub, toll, ...)
-from common import *  # noqa: F401,F403  (sound, loop, whoosh, thump, squelch, chord, shimmer, impact)
+from synth import (
+    TAU, amp, bandpass, bell, cavern, clicks, env, lowpass2, mix, noise, pluck, saturate, silence, stack,
+    sub, sweep, toll, tone)
+from common import loop, sound, squelch, thump, whoosh
 
 
 def pitch(v):

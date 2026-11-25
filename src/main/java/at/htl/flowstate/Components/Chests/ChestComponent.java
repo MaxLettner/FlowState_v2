@@ -42,7 +42,7 @@ public class ChestComponent extends Component {
             player.getComponent(PlayerStatsComponent.class).addSkillPoint();
             sprite.play(frames, OPEN, 12, false, () -> sprite.show(frames, 7));
             Point2D top = entity.getPosition().add(entity.getWidth() / 2, entity.getHeight() - 30);
-            Particles.burst(top, GOLD, 16, -90, 40, 200, 480, 0.8, 5, 700);
+            Particles.of(GOLD).count(16).angle(-90, 40).speed(200, 480).life(0.8).size(5).gravity(700).at(top);
         }
     }
 }

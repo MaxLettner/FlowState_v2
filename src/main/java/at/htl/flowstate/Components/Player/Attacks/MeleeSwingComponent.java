@@ -8,6 +8,7 @@ import at.htl.flowstate.Game;
 import at.htl.flowstate.Sfx;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.dsl.FXGL;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
@@ -144,7 +145,7 @@ public class MeleeSwingComponent extends Component {
     @Override
     public void onUpdate(double tpf) {
         if (p.held) {
-            angle = strikeStart + (Math.random() * 2 - 1) * HOLD_TREMBLE * tremble;
+            angle = strikeStart + (FXGLMath.randomDouble() * 2 - 1) * HOLD_TREMBLE * tremble;
             place();
             trailEntity.setOpacity(0);
             return;

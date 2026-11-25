@@ -1,11 +1,8 @@
 package at.htl.flowstate.Menu;
 
+import at.htl.flowstate.Components.Enemies.Bosses.BossArena;
 import javafx.scene.image.ImageView;
 import com.almasb.fxgl.dsl.components.HealthDoubleComponent;
-import at.htl.flowstate.Components.Enemies.HollowBehaviour;
-import at.htl.flowstate.Components.Enemies.HydraBehaviour;
-import at.htl.flowstate.Components.Enemies.MatriarchBehaviour;
-import at.htl.flowstate.Components.Enemies.PitLordBehaviour;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Game;
@@ -32,7 +29,7 @@ public class Hud {
     private final HudBar hpBar = new HudBar("HP", 5, true);
     private final HudBar mpBar = new HudBar("MP", 8, true);
     private final HudBar xpBar = new HudBar("XP", 3, false);
-    // the Pit Lord's health, top centre while the fight is on
+    // the boss's health, top centre while the fight is on
     private static final double BOSS_TOP = 34;
     private static final double BOSS_RANGE = 1700;
     private final HudBar bossBar = new HudBar("BOSS", 4, true);
@@ -96,16 +93,15 @@ public class Hud {
     }
 
     private void updateBoss() {
-        Entity lord = PitLordBehaviour.current();
-        Entity matriarch = MatriarchBehaviour.current();
-        Entity hydra = HydraBehaviour.current();
-        Entity boss = lord != null ? lord : matriarch != null ? matriarch : hydra != null ? hydra : HollowBehaviour.current();
+        BossArena arena = BossArena.active();
+        Entity boss = arena == null ? null : arena.fightingBoss();
         boolean show = boss != null && Math.abs(boss.getCenter().getX() - player.getCenter().getX()) < BOSS_RANGE;
+        BossArena.Boss which = show ? arena.boss() : null;
         bossBar.setVisible(show);
-        bossName.setVisible(show && boss == lord);
-        matriarchName.setVisible(show && boss == matriarch);
-        hydraName.setVisible(show && boss == hydra);
-        hollowName.setVisible(show && boss != lord && boss != matriarch && boss != hydra);
+        bossName.setVisible(which == BossArena.Boss.PIT_LORD);
+        matriarchName.setVisible(which == BossArena.Boss.MATRIARCH);
+        hydraName.setVisible(which == BossArena.Boss.HYDRA);
+        hollowName.setVisible(which == BossArena.Boss.HOLLOW);
         if (!show) return;
         HealthDoubleComponent hp = boss.getComponent(HealthDoubleComponent.class);
         bossBar.update(hp.getValue(), hp.getMaxValue(), tpf());

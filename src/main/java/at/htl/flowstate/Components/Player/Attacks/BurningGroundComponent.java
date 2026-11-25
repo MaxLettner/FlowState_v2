@@ -1,7 +1,8 @@
 package at.htl.flowstate.Components.Player.Attacks;
 
-import at.htl.flowstate.Combat.Combat;
 import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
+import at.htl.flowstate.Combat.Combat;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.component.Component;
 import com.almasb.fxgl.physics.BoundingShape;
@@ -66,9 +67,9 @@ public class BurningGroundComponent extends Component {
         animTime += tpf;
         Rectangle r = (Rectangle) entity.getViewComponent().getChildren().get(0);
         r.setFill(patterns[(int) (animTime * FPS) % FRAMES]);
-        if (Math.random() < tpf * 6) {
-            Particles.burst(new Point2D(entity.getX() + Math.random() * r.getWidth(), entity.getY()),
-                    Particles.EMBER, 1, -90, 20, 40, 120, 0.7, 4, -60);
+        if (FXGLMath.randomDouble() < tpf * 6) {
+            Particles.of(Particles.EMBER).count(1).angle(-90, 20).speed(40, 120)
+                    .life(0.7).size(4).gravity(-60).at(new Point2D(entity.getX() + FXGLMath.randomDouble() * r.getWidth(), entity.getY()));
         }
         for (Entity e : Combat.enemies()) {
             if (e.isColliding(entity)) e.getComponent(EnemyStatsComponent.class).burn(BURN_DURATION);

@@ -96,7 +96,8 @@ public class ShockwaveComponent extends Component {
         dustTimer -= tpf;
         if (dustTimer <= 0) {
             dustTimer = 0.05;
-            Particles.burst(new Point2D(entity.getCenter().getX(), groundY - 2), Particles.DUST, 3, -90 - dir * 40, 30, 80, 220, 0.45, 6, 500);
+            Particles.of(Particles.DUST).count(3).angle(-90 - dir * 40, 30).speed(80, 220)
+                    .life(0.45).size(6).gravity(500).at(new Point2D(entity.getCenter().getX(), groundY - 2));
         }
         double left = RANGE - travelled;
         entity.setOpacity(Math.min(1, left / 120));
@@ -104,7 +105,8 @@ public class ShockwaveComponent extends Component {
     }
 
     private void breakUp() {
-        Particles.burst(new Point2D(entity.getCenter().getX() + dir * W / 2, groundY - 16), Particles.DUST, 18, -90, 80, 100, 340, 0.55, 7, 800);
+        Particles.of(Particles.DUST).count(18).angle(-90, 80).speed(100, 340)
+                .life(0.55).size(7).gravity(800).at(new Point2D(entity.getCenter().getX() + dir * W / 2, groundY - 16));
         entity.removeFromWorld();
     }
 }

@@ -17,7 +17,7 @@ import random
 import sys
 from PIL import Image
 
-from pixel import *
+from pixel import dither_index, mix, new, ramp, strip
 from materials import GOLD
 from menu import IRON
 from hudbars import OUT, PIT as PIT_DARK, GLASS_SHADOW, MANA, TROUGH_LEN, add_shadow, rivet, fill_frames

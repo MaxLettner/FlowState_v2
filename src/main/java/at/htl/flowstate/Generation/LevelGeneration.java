@@ -1,10 +1,11 @@
 package at.htl.flowstate.Generation;
 
-import at.htl.flowstate.Components.Enemies.BossArena;
-import at.htl.flowstate.Components.Enemies.HydraArena;
-import at.htl.flowstate.Components.Enemies.MatriarchArena;
-import com.almasb.fxgl.entity.Entity;
+import at.htl.flowstate.Components.Enemies.Bosses.BossArena;
+import at.htl.flowstate.Components.Enemies.Bosses.Hydra.HydraArena;
+import at.htl.flowstate.Components.Enemies.Bosses.Matriarch.MatriarchArena;
+import at.htl.flowstate.DevFlags;
 import com.almasb.fxgl.core.math.FXGLMath;
+import com.almasb.fxgl.entity.Entity;
 import com.almasb.fxgl.entity.SpawnData;
 import javafx.scene.paint.Color;
 
@@ -59,7 +60,7 @@ public class LevelGeneration {
     //-----INIT-----
     public LevelGeneration() {
         structureGeneration = new StructureGeneration();
-        enemyGeneration = new EnemyGeneration();
+        enemyGeneration = new EnemyGeneration(DevFlags.ONLY_DEMONS, DevFlags.ALL_ELITES);
     }
 
 
@@ -130,9 +131,7 @@ public class LevelGeneration {
         lastGeneratedX = end;
         terrainDrift = 0;
         slopeSegmentsLeft = 0;
-        if (boss == BossArena.Boss.MATRIARCH) MatriarchArena.plan(lockX, currentY, chasmFloor);
-        if (hydra) HydraArena.plan(lockX, currentY, chasmFloor);
-        BossArena.plan(lockX, currentY, boss, enemyGeneration.nextBossHpScale());
+        BossArena.plan(lockX, currentY, boss, enemyGeneration.nextBossHpScale(), chasmFloor);
         enemyGeneration.bossPlaced(end);
     }
 
@@ -152,7 +151,7 @@ public class LevelGeneration {
             //pick a new slope direction and length
             //70% of the time: nearly flat
             //30% of the time: a real slope
-            double roll = Math.random();
+            double roll = FXGLMath.randomDouble();
 
             if (roll < 0.70) {
                 //nearly flat
@@ -215,9 +214,9 @@ public class LevelGeneration {
     //bones, thorns, skulls on stakes ... standing on the surface, purely visual
     private static void spawnDecor(double x, double y, double width) {
         if (width < DECOR_SIZE * 2) return;
-        int count = (int) (width / 220) + (Math.random() < 0.5 ? 1 : 0);
+        int count = (int) (width / 220) + (FXGLMath.randomDouble() < 0.5 ? 1 : 0);
         for (int i = 0; i < count; i++) {
-            double dx = Math.random() * (width - DECOR_SIZE);
+            double dx = FXGLMath.randomDouble() * (width - DECOR_SIZE);
             spawn("decor", new SpawnData(x + dx, y - DECOR_SIZE + 4)
                     .put("frame", FXGLMath.random(0, DECOR_FRAMES - 1)));
         }

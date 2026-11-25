@@ -7,8 +7,9 @@ Conventions for the Java side (see PIVOTS):
 Intended display scale x2 (bows are drawn at BOW_RES x native, see below).
 """
 import math
-from pixel import *
-from materials import *
+from pixel import line, new, outline, put, ramp, strip
+from materials import (
+    BLACK_IRON, BONE, CLOTH_WHITE, CRIMSON, DARK_STEEL, DARK_WOOD, GOLD, GREEN, LEATHER, STEEL, WOOD)
 
 LIGHT = (-1 / math.sqrt(2), -1 / math.sqrt(2))  # light comes from the top-left
 STRING = ramp('#fbf7ec', '#e2dccb', '#b8ae98', '#857c69', '#58513f')

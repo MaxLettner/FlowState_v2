@@ -38,7 +38,7 @@ import sys
 
 from PIL import Image, ImageDraw, ImageFont
 
-from pixel import new, ramp, hexc, mix, strip
+from pixel import new, ramp, hexc, mix, strip, clamp
 import slimes
 import player_slime
 from slimes import EMBER, BASE_Y, rel
@@ -54,10 +54,6 @@ VOID_GLOW = ramp('#f6eaff', '#d8b4ff', '#a86cff', '#7a3ae0', '#4a1a9a')
 HOLLOW_V = 0.24                  # height of the hollow in the body (0 bottom .. 1 top)
 HOLLOW_R = 4.6                   # its radius in 64 px units
 CROWN = ((-0.62, 7), (-0.31, 13), (0.0, 20), (0.31, 15), (0.62, 10))   # (nx across the top, tongue height)
-
-
-def clamp(v):
-    return max(0.0, min(1.0, v))
 
 
 # ---------- recolour ----------

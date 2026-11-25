@@ -2,8 +2,10 @@
 import math
 import random
 
-from synth import *  # noqa: F401,F403  (the DSP toolbox: tone, noise, reverb, cavern, lowpass2, sub, toll, ...)
-from common import *  # noqa: F401,F403  (sound, loop, whoosh, thump, squelch, chord, shimmer, impact)
+from synth import (
+    SR, TAU, amp, bandpass, cavern, clicks, env, formant, highpass2, lowpass2, mix, n, noise, normalize,
+    pluck, resample, reverse, saturate, seamless, stack, sub, sweep, swell, toll, tone, tremolo)
+from common import impact, loop, sound, squelch, thump, whoosh
 
 
 #-----Helpers-----

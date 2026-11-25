@@ -13,7 +13,7 @@ import random
 import sys
 from PIL import Image
 
-from pixel import *
+from pixel import dither_index, hexc, mix, new, ramp, strip
 from materials import CRIMSON, GOLD
 from menu import IRON, SHADOW
 

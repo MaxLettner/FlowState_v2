@@ -16,7 +16,7 @@ Preview:  python tools/art/foreground.py out.png   (mock screen: backgrounds + g
 import math
 import random
 import sys
-from pixel import *
+from pixel import hexc, new
 from effects import WrapNoise
 
 # per layer: body, rim (lit from below), hot rim (closest to the abyss), dark side

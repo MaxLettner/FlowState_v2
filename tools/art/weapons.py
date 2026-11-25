@@ -5,8 +5,10 @@ The Java side relies on this convention: native canvas S x S, 2px margin, handle
 """
 import math
 import random
-from pixel import *
-from materials import *
+from pixel import OUTLINE, new, outline
+from materials import (
+    BLACK_IRON, BONE, CLOTH_WHITE, CRIMSON, DARK_STEEL, DARK_WOOD, GOLD, ICE, LEATHER, RUST, STEEL, TEAL,
+    WOOD)
 
 MARGIN = 2
 SCALE = 2  # intended display scale (pixels look crisp around this size)
