@@ -3,6 +3,7 @@ package at.htl.flowstate.Components.SpriteComponents;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Visuals.FrameSprite;
 import at.htl.flowstate.Visuals.Frames;
+import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.component.Component;
 import javafx.scene.Node;
 import javafx.scene.effect.ColorAdjust;
@@ -259,7 +260,7 @@ public class SpriteComponent extends Component {
             stillTime += tpf;
             if (stillTime >= fidgetAt) {
                 stillTime = 0;
-                fidgetAt = FIDGET_AGAIN + Math.random() * 4;
+                fidgetAt = FIDGET_AGAIN + FXGLMath.randomDouble() * 4;
                 play(Shot.FIDGET, fidget);
             }
         }

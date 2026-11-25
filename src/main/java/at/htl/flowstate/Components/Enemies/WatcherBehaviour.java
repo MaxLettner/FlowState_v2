@@ -192,7 +192,8 @@ public class WatcherBehaviour extends DemonBehaviour {
         Sfx.BEAM_FIRE.at(entity.getCenter());
         Impact.shake(4);
         Point2D end = eye().add(aimDir.multiply(rayLength(eye(), aimDir)));
-        Particles.burst(end, BEAM_SPARKS, 14, Math.toDegrees(Math.atan2(-aimDir.getY(), -aimDir.getX())), 60, 100, 320, 0.4, 5, 300);
+        Particles.of(BEAM_SPARKS).count(14).angle(Math.toDegrees(Math.atan2(-aimDir.getY(), -aimDir.getX())), 60).speed(100, 320)
+                .life(0.4).size(5).gravity(300).at(end);
     }
 
     private void endAttack() {

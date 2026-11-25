@@ -68,7 +68,7 @@ public class GravityWellComponent extends Component {
         view.setScaleY(size);
         view.setRotate(age * 40);
         if (age >= duration) {
-            Particles.burst(entity.getPosition(), MOTES, 16, -90, 180, 80, 260, 0.5, 5, 0);
+            Particles.of(MOTES).count(16).angle(-90, 180).speed(80, 260).life(0.5).size(5).gravity(0).at(entity.getPosition());
             entity.removeFromWorld();
             return;
         }
@@ -79,7 +79,7 @@ public class GravityWellComponent extends Component {
             double a = FXGLMath.random(0, 360);
             double d = RADIUS * size * FXGLMath.random(0.55, 1.0);
             Point2D from = c.add(Math.cos(Math.toRadians(a)) * d, Math.sin(Math.toRadians(a)) * d * 0.8);
-            Particles.burst(from, MOTES, 1, a + 180, 4, d * 1.6, d * 1.9, 0.5, 4, 0);
+            Particles.of(MOTES).count(1).angle(a + 180, 4).speed(d * 1.6, d * 1.9).life(0.5).size(4).gravity(0).at(from);
         }
         if ((humTimer -= tpf) <= 0) {
             humTimer = 0.9;

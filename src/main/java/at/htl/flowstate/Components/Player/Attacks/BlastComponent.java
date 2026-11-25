@@ -72,15 +72,16 @@ public class BlastComponent extends Component {
                 .buildAndAttach();
 
         switch (style) {
-            case FIRE -> Particles.burst(center, Particles.EMBER, 16, -90, 180, 150, 450, 0.6, 6, 500);
+            case FIRE -> Particles.of(Particles.EMBER).count(16).angle(-90, 180).speed(150, 450)
+                    .life(0.6).size(6).gravity(500).at(center);
             case ICE -> {
                 Sfx.FREEZE.at(center);
-                Particles.burst(center, Particles.ICE, 14, -90, 180, 150, 400, 0.5, 5, 400);
+                Particles.of(Particles.ICE).count(14).angle(-90, 180).speed(150, 400).life(0.5).size(5).gravity(400).at(center);
             }
             case DUST -> {
                 Sfx.SLAM_IMPACT.at(center);
-                Particles.burst(center, Particles.DUST, 8, -160, 20, 150, 350, 0.5, 6, 700);
-                Particles.burst(center, Particles.DUST, 8, -20, 20, 150, 350, 0.5, 6, 700);
+                Particles.of(Particles.DUST).count(8).angle(-160, 20).speed(150, 350).life(0.5).size(6).gravity(700).at(center);
+                Particles.of(Particles.DUST).count(8).angle(-20, 20).speed(150, 350).life(0.5).size(6).gravity(700).at(center);
             }
         }
     }

@@ -37,9 +37,9 @@ import math
 import random
 import sys
 from PIL import Image, ImageDraw
-from pixel import *
+from pixel import OUTLINE, clamp, ellipse, hexc, mix, new, ramp
 from materials import BONE, ICE, GREEN
-from demons import Rig, ell, limb, chain, poly, union, bezier, dark, clamp, flame, EMBER, N4, LAVA_RIM
+from demons import Rig, ell, limb, chain, poly, union, bezier, dark, flame, EMBER, N4, LAVA_RIM
 
 TAR_SKIN = ramp('#8a8698', '#46404f', '#28222d', '#17131a', '#0b080d')
 FIN = ramp('#d0606a', '#962e40', '#5e1828', '#36101c', '#1a0810')

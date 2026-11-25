@@ -19,6 +19,10 @@ def mix(c1, c2, t):
     return tuple(int(round(c1[i] * (1 - t) + c2[i] * t)) for i in range(4))
 
 
+def clamp(v, lo=0.0, hi=1.0):
+    return max(lo, min(hi, v))
+
+
 BAYER4 = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]]
 
 

@@ -58,7 +58,8 @@ public class PortalComponent extends Component {
         }
         if (!opened && age >= SPAWN_AT) {
             opened = true;
-            Particles.burst(entity.getCenter().add(0, 20), SPARKS, 16, -90, 120, 60, 240, 0.5, 5, 200);
+            Particles.of(SPARKS).count(16).angle(-90, 120).speed(60, 240)
+                    .life(0.5).size(5).gravity(200).at(entity.getCenter().add(0, 20));
             onOpen.run();
         }
         if (age > LIFE - 0.3) entity.setOpacity(Math.max(0, (LIFE - age) / 0.3));

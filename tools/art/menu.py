@@ -16,7 +16,7 @@ import random
 import sys
 from PIL import Image, ImageChops, ImageFilter
 
-from pixel import *
+from pixel import clamp, dither_index, mix, new, put, ramp, strip
 from effects import Noise
 from pixfont import text_cells, text_width
 import skilltree as st
@@ -75,10 +75,6 @@ PARCHMENT = ramp('#eadcb6', '#cbb88d', '#9c8a66')
 SHADOW = (11, 10, 14, 150)
 MOLTEN = [(0.9, EMBER[3]), (1.6, EMBER[2]), (2.3, EMBER[1])]
 DORMANT = [(1.0, EMBER[5]), (2.0, EMBER[4])]
-
-
-def clamp(v):
-    return max(0.0, min(1.0, v))
 
 
 def circle_pts(r, step=0.4):

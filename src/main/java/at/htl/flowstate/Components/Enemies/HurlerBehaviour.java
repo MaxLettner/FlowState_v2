@@ -114,7 +114,7 @@ public class HurlerBehaviour extends GroundDemonBehaviour {
     private static void splash(Entity ball) {
         Point2D c = ball.getCenter();
         Sfx.MAGMA_SPLASH.at(c);
-        Particles.burst(c, Particles.EMBER, 14, -90, 70, 120, 340, 0.6, 5, 700);
+        Particles.of(Particles.EMBER).count(14).angle(-90, 70).speed(120, 340).life(0.6).size(5).gravity(700).at(c);
         MagmaPoolComponent.spawn(c.getX(), c.getY() - 10, POOL_WIDTH, POOL_TIME);
     }
 

@@ -1,8 +1,9 @@
 package at.htl.flowstate.Components.Player;
 
+import at.htl.flowstate.DevFlags;
+import com.almasb.fxgl.core.math.FXGLMath;
 import javafx.scene.paint.Color;
 import javafx.geometry.Point2D;
-import com.almasb.fxgl.core.math.FXGLMath;
 import at.htl.flowstate.Visuals.Particles;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Sfx;
@@ -29,7 +30,6 @@ public class PlayerStatsComponent extends Component {
     private static final double BLOCK_REDUCTION = 0.6;
     private static final double SHIELD_ABSORB = 0.7;
     /** Testing: run with FLOWSTATE_INFINITE_SP=1 to get unlimited skill points. */
-    private static final boolean INFINITE_SKILL_POINTS = "1".equals(System.getenv("FLOWSTATE_INFINITE_SP"));
     private static final double INFINITE_SKILL_POINTS_SHOWN = 999;
 
     private double health = 100;
@@ -178,10 +178,14 @@ public class PlayerStatsComponent extends Component {
         if (debuffFx > 0) return;
         debuffFx = DEBUFF_FX_INTERVAL;
         Point2D c = entity.getCenter();
-        if (burnLeft > 0) Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(-4, 30)), Particles.EMBER, 1, -90, 15, 40, 90, 0.6, 4, -80);
-        if (poisonLeft > 0) Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(0, 30)), Particles.POISON, 1, -90, 10, 20, 50, 0.7, 4, -40);
-        if (chillLeft > 0) Particles.burst(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-20, 30)), Particles.ICE, 1, 90, 30, 10, 40, 0.6, 4, 60);
-        if (curseLeft > 0) Particles.burst(c.add(FXGLMath.random(-18, 18), FXGLMath.random(-30, 20)), CURSE_MOTES, 1, -90, 40, 20, 50, 0.7, 4, -30);
+        if (burnLeft > 0) Particles.of(Particles.EMBER).count(1).angle(-90, 15).speed(40, 90)
+                .life(0.6).size(4).gravity(-80).at(c.add(FXGLMath.random(-14, 14), FXGLMath.random(-4, 30)));
+        if (poisonLeft > 0) Particles.of(Particles.POISON).count(1).angle(-90, 10).speed(20, 50)
+                .life(0.7).size(4).gravity(-40).at(c.add(FXGLMath.random(-14, 14), FXGLMath.random(0, 30)));
+        if (chillLeft > 0) Particles.of(Particles.ICE).count(1).angle(90, 30).speed(10, 40)
+                .life(0.6).size(4).gravity(60).at(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-20, 30)));
+        if (curseLeft > 0) Particles.of(CURSE_MOTES).count(1).angle(-90, 40).speed(20, 50)
+                .life(0.7).size(4).gravity(-30).at(c.add(FXGLMath.random(-18, 18), FXGLMath.random(-30, 20)));
     }
 
     public void grantInvulnerability(double seconds) {
@@ -235,7 +239,7 @@ public class PlayerStatsComponent extends Component {
     }
 
     public boolean takeSkillPoints(double s) {
-        if (INFINITE_SKILL_POINTS) return true;
+        if (DevFlags.INFINITE_SKILL_POINTS) return true;
         if (skillPoints - s < 0) return false;
         skillPoints -= s;
         fireSkillPointsChanged();
@@ -257,5 +261,5 @@ public class PlayerStatsComponent extends Component {
     public double getMaxHealth() { return maxHealth; }
     public double getExperience() { return experience; }
     public double getMaxExperience() { return maxExperience; }
-    public double getSkillPoints() { return INFINITE_SKILL_POINTS ? INFINITE_SKILL_POINTS_SHOWN : skillPoints; }
+    public double getSkillPoints() { return DevFlags.INFINITE_SKILL_POINTS ? INFINITE_SKILL_POINTS_SHOWN : skillPoints; }
 }

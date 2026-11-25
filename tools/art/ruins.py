@@ -8,8 +8,8 @@
 """
 import math
 import random
-from pixel import *
-from materials import *
+from pixel import ellipse, hexc, line, mix, new, outline, put, ramp, strip
+from materials import BLACK_IRON
 from terrain import DIM_BONE, GLOW, HELLROCK, OBSIDIAN
 
 FW, FH = 96, 72

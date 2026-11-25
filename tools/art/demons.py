@@ -22,7 +22,7 @@ bottom-anchored), MagmaPool (4f 32x16 tile, bottom-anchored).
 import math
 import random
 import sys
-from pixel import *
+from pixel import OUTLINE, clamp, dither_index, hexc, line, mix, new, outline, put, ramp, strip
 from materials import BONE, BLACK_IRON, GOLD
 
 LAVA_RIM = hexc('#ff8a3d')
@@ -34,10 +34,6 @@ N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
 EMBER = ramp('#fff6c0', '#ffd25a', '#ff8a2a', '#ff5a1a', '#c2300f')   # white-hot .. deep red
 FEL = ramp('#f4ffd0', '#b8ff6a', '#5fe83a', '#22a82e', '#0f5c1c')     # hellfire green
 HORN = ramp('#f4e6c8', '#d1bc92', '#a08a62', '#6b5a3e', '#3e3424')
-
-
-def clamp(v, lo=0.0, hi=1.0):
-    return max(lo, min(hi, v))
 
 
 # ---------- shapes: dicts (x, y) -> (nx, ny), the surface normal's screen part ----------

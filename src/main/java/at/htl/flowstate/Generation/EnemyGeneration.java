@@ -1,8 +1,8 @@
 package at.htl.flowstate.Generation;
 
+import at.htl.flowstate.Components.Enemies.Bosses.BossArena;
 import at.htl.flowstate.Components.Enemies.DemonType;
 import at.htl.flowstate.Components.Enemies.EliteComponent;
-import at.htl.flowstate.Components.Enemies.BossArena;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.SpawnData;
 
@@ -76,15 +76,16 @@ public class EnemyGeneration {
 
     private final List<Group> groups;
     private final boolean testing;
-    private final boolean allElite = "1".equals(System.getenv("FLOWSTATE_ELITES"));
+    private final boolean allElite;
     private double nextBossX = BOSS_FIRST;
     private int bossesPlaced;
     private BossArena.Boss testBoss;
     private double budget = 1.5;                         // the first group comes soon after the empty start
     private Group next;
 
-    public EnemyGeneration() {
-        String only = System.getenv("FLOWSTATE_DEMONS");
+    /** only: comma-separated demon names that are the only ones to spawn (null or blank: all); allElite: every one is */
+    public EnemyGeneration(String only, boolean allElite) {
+        this.allElite = allElite;
         testing = only != null && !only.isBlank();
         if (testing) {
             Set<String> names = Stream.of(only.split(",")).map(s -> s.trim().toUpperCase(Locale.ROOT)).collect(Collectors.toSet());
@@ -162,7 +163,7 @@ public class EnemyGeneration {
     private Group pick(double x) {
         double total = 0;
         for (Group g : groups) if (g.unlockX() <= x) total += g.weight();
-        double roll = Math.random() * total;
+        double roll = FXGLMath.randomDouble() * total;
         for (Group g : groups) {
             if (g.unlockX() > x) continue;
             roll -= g.weight();
@@ -178,14 +179,14 @@ public class EnemyGeneration {
             double eliteChance = allElite ? 1 : Math.min(ELITE_MAX, Math.max(0, (x - ELITE_FROM) * ELITE_PER_PX));
             for (int i = 0; i < count; i++) {
                 double room = Math.max(0, width - type.width);
-                double sx = x + Math.random() * room;
+                double sx = x + FXGLMath.randomDouble() * room;
                 // gargoyles fly but start as statues standing on the ground; drakes arrive high up
                 boolean airborne = type.flying && type != DemonType.GARGOYLE;
                 double sy = !airborne ? groundY - type.height - 2
-                        : type == DemonType.DRAKE ? groundY - 520 - Math.random() * 80
-                        : groundY - 280 - Math.random() * 120;
+                        : type == DemonType.DRAKE ? groundY - 520 - FXGLMath.randomDouble() * 80
+                        : groundY - 280 - FXGLMath.randomDouble() * 120;
                 SpawnData data = new SpawnData(sx, sy);
-                if (pack.max() == 1 && Math.random() < eliteChance) data.put("elite", EliteComponent.random());
+                if (pack.max() == 1 && FXGLMath.randomDouble() < eliteChance) data.put("elite", EliteComponent.random());
                 spawn(type.spawnName(), data);
             }
         }

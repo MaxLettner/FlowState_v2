@@ -97,8 +97,10 @@ public class BruteBehaviour extends GroundDemonBehaviour {
         Sfx.BRUTE_SLAM.at(entity.getCenter());
         Impact.shake(16);
         Particles.landingDust(new Point2D(fistX, groundY));
-        Particles.burst(new Point2D(fistX, groundY - 4), Particles.DUST, 28, -90, 75, 160, 520, 0.7, 8, 900);
-        Particles.burst(new Point2D(fistX, groundY - 4), Particles.EMBER, 14, -90, 55, 140, 420, 0.6, 5, 600);
+        Particles.of(Particles.DUST).count(28).angle(-90, 75).speed(160, 520)
+                .life(0.7).size(8).gravity(900).at(new Point2D(fistX, groundY - 4));
+        Particles.of(Particles.EMBER).count(14).angle(-90, 55).speed(140, 420)
+                .life(0.6).size(5).gravity(600).at(new Point2D(fistX, groundY - 4));
 
         // the fists themselves
         double px = player.getCenter().getX() - entity.getCenter().getX();

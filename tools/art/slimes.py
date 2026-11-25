@@ -1,6 +1,6 @@
 """Slime characters: player + enemy types, all animation strips (64x64 frames)."""
 import math
-from pixel import *
+from pixel import OUTLINE, dither_index, ellipse, hexc, mix, new, outline, put, ramp, strip
 
 SIZE = 64
 CX = 32

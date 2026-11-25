@@ -157,7 +157,8 @@ public class EnemyStatsComponent extends Component {
         Sfx.ENEMY_DEATH.at(c, Math.min(1, 0.6 + size * 0.4), type.deathPitch);
         Particles.splat(c.add(0, type.height * 0.25), type.splat);
         // demons burn away: embers rising out of the body
-        Particles.burst(c, Particles.EMBER, (int) (8 + 10 * size), -90, 70, 60, 220 * Math.max(1, size), 0.9, 5, -120);
+        Particles.of(Particles.EMBER).count((int) (8 + 10 * size)).angle(-90, 70).speed(60, 220 * Math.max(1, size))
+                .life(0.9).size(5).gravity(-120).at(c);
         if (behaviour != null) behaviour.onDeath();
         entity.removeFromWorld();
     }
@@ -244,7 +245,8 @@ public class EnemyStatsComponent extends Component {
     private void fizzle() {
         if (fizzleCooldown > 0 || entity == null) return;
         fizzleCooldown = 0.5;
-        Particles.burst(entity.getCenter().add(0, -10), SMOKE, 6, -90, 40, 30, 90, 0.7, 6, -60);
+        Particles.of(SMOKE).count(6).angle(-90, 40).speed(30, 90)
+                .life(0.7).size(6).gravity(-60).at(entity.getCenter().add(0, -10));
     }
 
     public void addPoison(int stacks) {
@@ -334,13 +336,16 @@ public class EnemyStatsComponent extends Component {
         statusFxTimer = STATUS_FX_INTERVAL;
         Point2D c = entity.getCenter();
         if (burnLeft > 0) {
-            Particles.burst(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-4, 30)), Particles.EMBER, 1, -90, 15, 40, 90, 0.6, 4, -80);
+            Particles.of(Particles.EMBER).count(1).angle(-90, 15).speed(40, 90)
+                    .life(0.6).size(4).gravity(-80).at(c.add(FXGLMath.random(-16, 16), FXGLMath.random(-4, 30)));
         }
         if (poisonStacks > 0) {
-            Particles.burst(c.add(FXGLMath.random(-16, 16), FXGLMath.random(0, 30)), Particles.POISON, 1, -90, 10, 20, 50, 0.7, 4, -40);
+            Particles.of(Particles.POISON).count(1).angle(-90, 10).speed(20, 50)
+                    .life(0.7).size(4).gravity(-40).at(c.add(FXGLMath.random(-16, 16), FXGLMath.random(0, 30)));
         }
         if (bleedStacks > 0) {
-            Particles.burst(c.add(FXGLMath.random(-14, 14), FXGLMath.random(0, 20)), Particles.BLOOD, 1, 90, 10, 10, 30, 0.5, 4, 500);
+            Particles.of(Particles.BLOOD).count(1).angle(90, 10).speed(10, 30)
+                    .life(0.5).size(4).gravity(500).at(c.add(FXGLMath.random(-14, 14), FXGLMath.random(0, 20)));
         }
     }
 }

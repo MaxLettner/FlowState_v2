@@ -73,7 +73,8 @@ public class PriestBehaviour extends GroundDemonBehaviour {
         stop();
         timer += t;
         sprite.show("cast", Math.min(3, (int) (timer / CAST_TIME * 4)));
-        if (Math.random() < 0.4) Particles.burst(lantern(), HEX_MOTES, 1, -90, 90, 20, 70, 0.4, 4, -50);
+        if (FXGLMath.randomDouble() < 0.4) Particles.of(HEX_MOTES).count(1).angle(-90, 90).speed(20, 70)
+                .life(0.4).size(4).gravity(-50).at(lantern());
         if (timer < CAST_TIME) return;
         sprite.setTelegraph(null);
         if (casting == Spell.WARD) {
@@ -82,7 +83,7 @@ public class PriestBehaviour extends GroundDemonBehaviour {
                 Point2D from = lantern(), to = e.getCenter();
                 for (int k = 0; k <= 6; k++) {
                     Point2D p = from.add(to.subtract(from).multiply(k / 6.0));
-                    Particles.burst(p, HEX_MOTES, 1, -90, 180, 10, 40, 0.5, 4, 0);
+                    Particles.of(HEX_MOTES).count(1).angle(-90, 180).speed(10, 40).life(0.5).size(4).gravity(0).at(p);
                 }
             }
             Sfx.SHIELD_ON.at(entity.getCenter(), 0.8, 0.8);

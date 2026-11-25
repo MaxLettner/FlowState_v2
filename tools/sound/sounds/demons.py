@@ -2,8 +2,10 @@
 import math
 import random
 
-from synth import *  # noqa: F401,F403  (the DSP toolbox: tone, noise, reverb, cavern, lowpass2, sub, toll, ...)
-from common import *  # noqa: F401,F403  (sound, loop, whoosh, thump, squelch, chord, shimmer, impact)
+from synth import (
+    TAU, amp, bandpass, bell, cavern, clicks, env, fade, formant, highpass2, lowpass2, mix, n, noise,
+    normalize, reverse, saturate, stack, sub, sweep, toll, tone, tremolo)
+from common import impact, sound, squelch, thump, whoosh
 
 PITCH = (1.0, 1.08, 0.92)   # per-variant pitch of the repeating sounds
 

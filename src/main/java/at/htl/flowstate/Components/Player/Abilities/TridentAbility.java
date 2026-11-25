@@ -1,9 +1,9 @@
 package at.htl.flowstate.Components.Player.Abilities;
 
+import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Assets;
 import at.htl.flowstate.Combat.DamageKind;
 import at.htl.flowstate.Combat.Hit;
-import at.htl.flowstate.Components.Enemies.EnemyStatsComponent;
 import at.htl.flowstate.Components.Player.Attacks.BlastComponent;
 import at.htl.flowstate.Components.Player.Attacks.ThrownTridentComponent;
 import at.htl.flowstate.Components.Player.Attacks.ThrustComponent;

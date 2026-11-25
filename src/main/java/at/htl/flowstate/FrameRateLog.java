@@ -11,7 +11,7 @@ import javafx.animation.AnimationTimer;
  * whole game too fast. A game speed far from 100 % here is the sign of either.
  */
 public final class FrameRateLog {
-    private static final boolean ON = "1".equals(System.getenv("FLOWSTATE_FPS"));
+    private static final boolean ON = DevFlags.FPS_LOG;
     private static final long WINDOW = 2_000_000_000L;
 
     private static long windowStart, lastFrame, longest;

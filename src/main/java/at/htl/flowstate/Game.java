@@ -1,10 +1,8 @@
 package at.htl.flowstate;
 
+import at.htl.flowstate.Components.Enemies.Bosses.BossArena;
+import at.htl.flowstate.Components.Enemies.Bosses.Matriarch.ThreadBridgeComponent;
 import at.htl.flowstate.Combat.Combat;
-import at.htl.flowstate.Components.Enemies.BossArena;
-import at.htl.flowstate.Components.Enemies.HydraArena;
-import at.htl.flowstate.Components.Enemies.MatriarchArena;
-import at.htl.flowstate.Components.Enemies.ThreadBridgeComponent;
 import at.htl.flowstate.Visuals.Darkness;
 import at.htl.flowstate.Components.Player.LoadoutComponent;
 import at.htl.flowstate.Components.Player.PlayerMovementComponent;
@@ -12,6 +10,7 @@ import at.htl.flowstate.Components.Player.PlayerStatsComponent;
 import at.htl.flowstate.Components.SpriteComponents.SpriteComponent;
 import at.htl.flowstate.Visuals.Impact;
 import at.htl.flowstate.Visuals.Particles;
+import com.almasb.fxgl.core.math.FXGLMath;
 import javafx.geometry.Point2D;
 import javafx.util.Duration;
 import at.htl.flowstate.Factories.EnemyFactory;
@@ -123,7 +122,7 @@ public class Game extends GameApplication {
         settings.setPreserveResizeRatio(true);
         settings.setFullScreenFromStart(true);
         // the game starts in the rune menu; the world is only built once "Start New Game" is pressed
-        settings.setMainMenuEnabled(!DevShots.AUTOSTART);
+        settings.setMainMenuEnabled(!DevFlags.AUTOSTART);
         settings.setSceneFactory(new SceneFactory() {
             @NotNull
             @Override
@@ -342,8 +341,8 @@ public class Game extends GameApplication {
     @Override
     protected void onUpdate(double tpf) {
         FrameRateLog.gameUpdate(tpf);
-        MatriarchArena.catchFall(player);      // her chasm hurts, but isn't the bottomless abyss
-        HydraArena.catchFall(player);          // nor is the Tar Hydra's lake
+        BossArena arena = BossArena.active();
+        if (arena != null) arena.catchFall(player);   // a boss's chasm or lake hurts, but isn't the bottomless abyss
         if (!dying && player.getY() > WINDOW_HEIGHT + 100) {
             // fell into the abyss: nothing left to animate
             dying = true;
@@ -353,7 +352,7 @@ public class Game extends GameApplication {
         }
         Impact.update(tpf);
         updateCamera();
-        BossArena.update(tpf);
+        if (BossArena.active() != null) BossArena.active().update(tpf);
         Darkness.update(tpf);
         levelGeneration.generateLevel(player.getX());
         cleanupPlatforms(tpf);
@@ -386,10 +385,10 @@ public class Game extends GameApplication {
         emberTimer -= tpf;
         if (emberTimer <= 0) {
             emberTimer = EMBER_INTERVAL;
-            Point2D at = new Point2D(cameraX + Math.random() * WINDOW_WIDTH, WINDOW_HEIGHT + 10);
-            Point2D vel = new Point2D(-15 + Math.random() * 30, -35 - Math.random() * 45);
-            Particles.spawn(at, vel, Particles.EMBER[1 + (int) (Math.random() * (Particles.EMBER.length - 1))],
-                    Math.random() < 0.15 ? 5 : 3, 8 + Math.random() * 5, -2, -50);
+            Point2D at = new Point2D(cameraX + FXGLMath.randomDouble() * WINDOW_WIDTH, WINDOW_HEIGHT + 10);
+            Point2D vel = new Point2D(-15 + FXGLMath.randomDouble() * 30, -35 - FXGLMath.randomDouble() * 45);
+            Particles.spawn(at, vel, Particles.EMBER[1 + (int) (FXGLMath.randomDouble() * (Particles.EMBER.length - 1))],
+                    FXGLMath.randomDouble() < 0.15 ? 5 : 3, 8 + FXGLMath.randomDouble() * 5, -2, -50);
         }
     }
 
@@ -397,7 +396,7 @@ public class Game extends GameApplication {
     private void updateCamera() {
         double threshold = cameraX + WINDOW_WIDTH * 0.75;
         if (player.getX() > threshold) cameraX = player.getX() - WINDOW_WIDTH * 0.75;
-        cameraX = BossArena.clampCamera(cameraX);   // the Pit Lord's arena holds the camera still
+        if (BossArena.active() != null) cameraX = BossArena.active().clampCamera(cameraX);   // a boss arena holds the camera still
         // whole pixels: a fractional camera offset makes JavaFX resample (blur) every sprite
         getGameScene().getViewport().setX(Math.round(cameraX + Impact.getShakeX()));
         getGameScene().getViewport().setY(Math.round(Impact.getShakeY()));

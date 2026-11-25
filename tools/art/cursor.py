@@ -6,7 +6,7 @@
 import sys
 from PIL import Image
 
-from pixel import *
+from pixel import hexc, new, strip
 from materials import GOLD
 from skilltree import EMBER
 

@@ -73,7 +73,7 @@ public class WardenBehaviour extends GroundDemonBehaviour {
             double px = dxToPlayer() * facing;
             if (px > -entity.getWidth() / 2 && px < FLAIL_REACH && Math.abs(dyToPlayer()) < 110) hurtPlayer(FLAIL_DAMAGE);
             Point2D ball = entity.getCenter().add(facing * 120, 10);
-            Particles.burst(ball, Particles.DUST, 8, -90, 60, 80, 220, 0.4, 5, 700);
+            Particles.of(Particles.DUST).count(8).angle(-90, 60).speed(80, 220).life(0.4).size(5).gravity(700).at(ball);
         }
         if (timer >= T_END) {
             swinging = false;
@@ -103,8 +103,8 @@ public class WardenBehaviour extends GroundDemonBehaviour {
     private void breakShield() {
         Sfx.SHIELD_BREAK.at(entity.getCenter(), 1, 0.7);
         Point2D at = entity.getCenter().add(facing * entity.getWidth() * 0.6, 0);
-        Particles.burst(at, new javafx.scene.paint.Color[]{javafx.scene.paint.Color.web("#7a849c"),
-                javafx.scene.paint.Color.web("#383f52"), javafx.scene.paint.Color.web("#ece2c6")}, 18, -90, 100, 120, 380, 0.7, 6, 900);
+        Particles.of(new javafx.scene.paint.Color[]{javafx.scene.paint.Color.web("#7a849c"), javafx.scene.paint.Color.web("#383f52"), javafx.scene.paint.Color.web("#ece2c6")}).count(18).angle(-90, 100).speed(120, 380)
+                .life(0.7).size(6).gravity(900).at(at);
         stats.stun(0.6);                       // staggers when the shield goes
     }
 

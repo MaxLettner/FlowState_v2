@@ -1,5 +1,6 @@
 package at.htl.flowstate.Generation;
 
+import at.htl.flowstate.DevFlags;
 import at.htl.flowstate.Factories.LevelFactory;
 import com.almasb.fxgl.core.math.FXGLMath;
 import com.almasb.fxgl.entity.SpawnData;
@@ -24,7 +25,6 @@ public class StructureGeneration {
     private static final double MIMIC_CHANCE = 1 / 6.0;
     private static final double MIMIC_FROM = 6000;
     /** Testing: {@code FLOWSTATE_MIMICS=1} makes every chest a Mimic. */
-    private static final boolean ALL_MIMICS = "1".equals(System.getenv("FLOWSTATE_MIMICS"));
 
     //ruins sink a little into the ground so they don't float on uneven crust
     private static final double RUIN_SINK = 6;
@@ -32,7 +32,7 @@ public class StructureGeneration {
     public StructureGeneration() { }
 
     public Double trySpawn(double x, double groundY) {
-        double roll = Math.random();
+        double roll = FXGLMath.randomDouble();
         if (roll < CHALLENGE_CHANCE) return spawnChallenge(x, groundY);
         if (roll < CHALLENGE_CHANCE + RUIN_CHANCE) return spawnRuin(x, groundY);
         return null;
@@ -149,7 +149,7 @@ public class StructureGeneration {
         double rx = x + (w - LevelFactory.RUIN_WIDTH) / 2;
         spawn("ruin", new SpawnData(rx, y - LevelFactory.RUIN_HEIGHT + RUIN_SINK)
                 .put("frame", FXGLMath.random(0, LevelFactory.RUIN_FRAMES - 1))
-                .put("flip", Math.random() < 0.5));
+                .put("flip", FXGLMath.randomDouble() < 0.5));
         return x + w;
     }
 
@@ -162,7 +162,7 @@ public class StructureGeneration {
     }
 
     private void spawnChest(double x, double y) {
-        if (ALL_MIMICS || x >= MIMIC_FROM && Math.random() < MIMIC_CHANCE) {
+        if (DevFlags.ALL_MIMICS || x >= MIMIC_FROM && FXGLMath.randomDouble() < MIMIC_CHANCE) {
             spawn("mimic", new SpawnData(x, y - 2));      // same box, same spot: it can't be told apart
             return;
         }
